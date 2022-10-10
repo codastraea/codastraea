@@ -52,29 +52,29 @@ fn dropdown<'a>(
     let id = format!("dropdown-{id}");
 
     let status_child = fn_status.map(|status| match status {
-        FnStatus::NotRun => None,
-        FnStatus::Running => Some(Element::from(
-            span()
-                .class([
-                    bs::ME_2,
-                    bs::SPINNER_BORDER,
-                    bs::SPINNER_BORDER_SM,
-                    bs::TEXT_PRIMARY,
-                ])
-                .aria_hidden("true"),
-        )),
-        FnStatus::Ok => Some(
-            i().class([bs::ME_2, bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
-                .into(),
-        ),
-        FnStatus::Error => Some(
-            i().class([
+        FnStatus::NotRun => {
+            Element::from(i().class([bs::ME_2, bs::TEXT_SECONDARY, icon::BI_CIRCLE]))
+        }
+        FnStatus::Running => span()
+            .class([
+                bs::ME_2,
+                bs::SPINNER_BORDER,
+                bs::SPINNER_BORDER_SM,
+                bs::TEXT_PRIMARY,
+            ])
+            .aria_hidden("true")
+            .into(),
+        FnStatus::Ok => i()
+            .class([bs::ME_2, bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
+            .into(),
+
+        FnStatus::Error => i()
+            .class([
                 bs::ME_2,
                 bs::TEXT_DANGER,
                 icon::BI_EXCLAMATION_TRIANGLE_FILL,
             ])
             .into(),
-        ),
     });
 
     button_group(classes)
@@ -85,7 +85,7 @@ fn dropdown<'a>(
                 .attribute("data-bs-toggle", "dropdown")
                 .r#type("button")
                 .aria_expanded("false")
-                .optional_child_signal(status_child)
+                .child_signal(status_child)
                 .text(name),
         )
         .child(
