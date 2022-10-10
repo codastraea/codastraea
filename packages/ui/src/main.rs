@@ -55,16 +55,25 @@ fn dropdown<'a>(
         FnStatus::NotRun => None,
         FnStatus::Running => Some(Element::from(
             span()
-                .class([bs::SPINNER_BORDER, bs::SPINNER_BORDER_SM, bs::TEXT_PRIMARY])
+                .class([
+                    bs::ME_2,
+                    bs::SPINNER_BORDER,
+                    bs::SPINNER_BORDER_SM,
+                    bs::TEXT_PRIMARY,
+                ])
                 .aria_hidden("true"),
         )),
         FnStatus::Ok => Some(
-            i().class([bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
+            i().class([bs::ME_2, bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
                 .into(),
         ),
         FnStatus::Error => Some(
-            i().class([bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL])
-                .into(),
+            i().class([
+                bs::ME_2,
+                bs::TEXT_DANGER,
+                icon::BI_EXCLAMATION_TRIANGLE_FILL,
+            ])
+            .into(),
         ),
     });
 
@@ -77,7 +86,6 @@ fn dropdown<'a>(
                 .r#type("button")
                 .aria_expanded("false")
                 .optional_child_signal(status_child)
-                // TODO: Add spacer text unless status is `NotRun`
                 .text(name),
         )
         .child(
