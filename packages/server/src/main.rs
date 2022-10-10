@@ -10,11 +10,19 @@ use axum::{
     routing::get,
     Router, Server,
 };
+use serpent_automation_executor::{
+    library::Library,
+    run::{run, RunTracer},
+    syntax_tree::parse,
+    CODE,
+};
 use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
     let app = Router::new().route("/", get(ws_handler));
+    let mut tracer = RunTracer::new();
+    run(&Library::link(parse(CODE).unwrap()), &mut tracer);
 
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
         .serve(app.into_make_service())

@@ -1219,6 +1219,7 @@ name = "serpent-automation-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "serpent-automation-executor",
  "tokio",
 ]
 
