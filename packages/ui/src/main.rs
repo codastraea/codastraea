@@ -7,11 +7,11 @@ use std::{
 use futures::StreamExt;
 use futures_signals::signal::{Mutable, SignalExt};
 use gloo_console::log;
-use gloo_net::websocket::futures::WebSocket;
+use gloo_net::websocket::{futures::WebSocket, Message};
 use itertools::chain;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::FnStatus,
+    run::{FnStatus, RunTracer},
     syntax_tree::{parse, Expression, Function, Statement},
     CODE,
 };
@@ -208,7 +208,15 @@ fn main() {
     let mut ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
     let ws_handler = async move {
         while let Some(msg) = ws.next().await {
-            log!(format!("Received: {:?}", msg))
+            log!(format!("Received: {:?}", msg));
+
+            match msg.unwrap() {
+                Message::Text(text) => {
+                    let _run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
+                    log!("Deserialized `RunTracer`");
+                }
+                Message::Bytes(_) => log!("Unknown binary message"),
+            }
         }
 
         log!("WebSocket Closed")

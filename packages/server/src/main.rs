@@ -32,6 +32,7 @@ async fn main() {
     thread::scope(|scope| {
         scope.spawn(|| ui(tracer.clone()));
         scope.spawn(|| loop {
+            *(tracer.write().unwrap()) = RunTracer::new();
             run(&lib, &tracer)
         });
     });
@@ -59,16 +60,19 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(tracer, socket))
 }
 
-async fn handle_socket(_tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
+async fn handle_socket(tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
     println!("Upgraded to websocket");
 
-    let mut count = 0;
-
     loop {
-        println!("Sending count {count}");
+        println!("Sending count run state");
 
+        let tracer_snapshot = tracer.read().unwrap().clone();
+
+        // TODO: Diff `RunTracer` and send a `RunTracerDelta`
         if socket
-            .send(Message::Text(format!("{count}")))
+            .send(Message::Text(
+                serde_json::to_string(&tracer_snapshot).unwrap(),
+            ))
             .await
             .is_err()
         {
@@ -76,7 +80,6 @@ async fn handle_socket(_tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
             return;
         }
 
-        sleep(Duration::from_secs(3)).await;
-        count += 1;
+        sleep(Duration::from_secs(1)).await;
     }
 }

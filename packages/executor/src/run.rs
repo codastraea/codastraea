@@ -9,7 +9,7 @@ use crate::{
 
 type CallStack = Vec<FunctionId>;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct RunTracer {
     running: CallStack,
     completed: HashSet<CallStack>,
