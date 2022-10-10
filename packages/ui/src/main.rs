@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures::StreamExt;
-use futures_signals::signal::{self, Mutable, Signal, SignalExt};
+use futures_signals::signal::{Mutable, Signal, SignalExt};
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use itertools::chain;
@@ -114,11 +114,6 @@ fn column<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
     div().class(classes.into_iter().chain([bs::D_FLEX, bs::FLEX_COLUMN]))
 }
 
-// TODO: Remove end element
-fn end() -> Element {
-    dropdown("end", signal::always(FnStatus::NotRun), [bs::SHADOW])
-}
-
 fn horizontal_line() -> Element {
     div().class([css::HORIZONTAL_LINE]).into()
 }
@@ -132,19 +127,21 @@ fn arrow_right() -> Element {
 fn render_call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
+    is_last: bool,
     library: &Rc<Library>,
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| render_expression(arg, library, call_stack, run_states))
+        .flat_map(|arg| render_expression(arg, false, library, call_stack, run_states))
         .collect();
 
     let mut call_stack = call_stack.clone();
     call_stack.push(name);
     elems.push(render_function(
         library.lookup(name),
+        is_last,
         library,
         &call_stack,
         run_states,
@@ -173,6 +170,7 @@ fn expandable(stmts: &[Statement<FunctionId>]) -> bool {
 
 fn render_function(
     f: &Function<FunctionId>,
+    is_last: bool,
     library: &Rc<Library>,
     call_stack: &CallStack,
     run_states: &RunStates,
@@ -181,15 +179,16 @@ fn render_function(
     let expanded = expandable(f.body()).then(|| Mutable::new(true));
     let name = f.name();
 
-    let main = row([bs::ALIGN_ITEMS_CENTER])
-        .child(render_function_header(
-            name,
-            expanded.clone(),
-            call_stack,
-            run_states,
-        ))
-        .child(horizontal_line())
-        .child(arrow_right());
+    let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(render_function_header(
+        name,
+        expanded.clone(),
+        call_stack,
+        run_states,
+    ));
+
+    if !is_last {
+        main = main.child(horizontal_line()).child(arrow_right());
+    }
 
     let library = library.clone();
     let body = f.body().clone();
@@ -216,6 +215,11 @@ fn render_function_body<'a>(
 ) -> DivBuilder {
     let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
     let box_model = [bs::MT_3, bs::ME_3, bs::P_3];
+    let body: Vec<_> = body.filter(|stmt| statement_is_expandable(*stmt)).collect();
+
+    assert!(!body.is_empty());
+
+    let (body_head, body_tail) = body.split_at(body.len() - 1);
 
     row(chain!(
         [
@@ -226,11 +230,35 @@ fn render_function_body<'a>(
         border,
         box_model
     ))
-    .children(body.flat_map(|statement| match statement {
+    .children(render_body_statements(
+        body_head.iter().copied(),
+        false,
+        library,
+        call_stack,
+        run_states,
+    ))
+    .children(render_body_statements(
+        body_tail.iter().copied(),
+        true,
+        library,
+        call_stack,
+        run_states,
+    ))
+}
+
+fn render_body_statements<'a>(
+    body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
+    is_last: bool,
+    library: &'a Rc<Library>,
+    call_stack: &'a CallStack,
+    run_states: &'a RunStates,
+) -> impl Iterator<Item = Element> + 'a {
+    body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => render_expression(expr, library, call_stack, run_states),
-    }))
-    .child(end())
+        Statement::Expression(expr) => {
+            render_expression(expr, is_last, library, call_stack, run_states)
+        }
+    })
 }
 
 fn render_function_header(
@@ -275,6 +303,7 @@ fn render_function_header(
 
 fn render_expression(
     expr: &Expression<FunctionId>,
+    is_last: bool,
     library: &Rc<Library>,
     call_stack: &CallStack,
     run_states: &RunStates,
@@ -282,7 +311,7 @@ fn render_expression(
     match expr {
         Expression::Variable { .. } => Vec::new(),
         Expression::Call { name, args } => {
-            render_call(*name, args, library, call_stack, run_states)
+            render_call(*name, args, is_last, library, call_stack, run_states)
         }
     }
 }
@@ -328,15 +357,13 @@ fn main() {
         bs::ALIGN_ITEMS_START,
         bs::OVERFLOW_AUTO,
     ])
-    .children([
-        render_function(
-            library.main().unwrap(),
-            &library,
-            &vec![library.main_id().unwrap()],
-            &run_states,
-        ),
-        end(),
-    ])
+    .children([render_function(
+        library.main().unwrap(),
+        true,
+        &library,
+        &vec![library.main_id().unwrap()],
+        &run_states,
+    )])
     .spawn_future(ws_handler);
 
     mount("app", app);
