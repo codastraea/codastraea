@@ -175,7 +175,6 @@ fn render_function(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Element {
-    // TODO: Render functions with an empty body without a zoom icon
     let expanded = expandable(f.body()).then(|| Mutable::new(false));
     let name = f.name();
 
