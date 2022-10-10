@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::RwLock, thread, time::Duration};
 
 use axum::{
     extract::{
@@ -20,10 +20,20 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(ws_handler));
-    let mut tracer = RunTracer::new();
-    run(&Library::link(parse(CODE).unwrap()), &mut tracer);
+    let lib = Library::link(parse(CODE).unwrap());
+    let tracer = RwLock::new(RunTracer::new());
 
+    thread::scope(|scope| {
+        scope.spawn(|| ui(&tracer));
+        scope.spawn(|| loop {
+            run(&lib, &tracer)
+        });
+    });
+}
+
+#[tokio::main]
+async fn ui(_tracer: &RwLock<RunTracer>) {
+    let app = Router::new().route("/", get(ws_handler));
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
         .serve(app.into_make_service())
         .await

@@ -1,4 +1,6 @@
-use std::{thread::sleep, time::Duration};
+use std::{collections::HashSet, sync::RwLock, thread::sleep, time::Duration};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     library::{FunctionId, Library},
@@ -7,10 +9,10 @@ use crate::{
 
 type CallStack = Vec<FunctionId>;
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct RunTracer {
     running: CallStack,
-    completed: Vec<CallStack>,
+    completed: HashSet<CallStack>,
 }
 
 impl RunTracer {
@@ -24,10 +26,11 @@ impl RunTracer {
     }
 
     pub fn pop(&mut self) {
-        self.completed.push(self.running.clone());
+        self.completed.insert(self.running.clone());
         self.running.pop();
     }
 }
+
 pub enum FnStatus {
     NotRun,
     Running,
@@ -36,10 +39,10 @@ pub enum FnStatus {
 }
 
 pub trait Run {
-    fn run(&self, lib: &Library, tracer: &mut RunTracer);
+    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>);
 }
 
-pub fn run(lib: &Library, tracer: &mut RunTracer) {
+pub fn run(lib: &Library, tracer: &RwLock<RunTracer>) {
     if let Some(main) = lib.main() {
         println!("Running main");
         main.run(lib, tracer);
@@ -48,7 +51,7 @@ pub fn run(lib: &Library, tracer: &mut RunTracer) {
 }
 
 impl Run for Function<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &mut RunTracer) {
+    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         println!("Running function '{}'", self.name());
 
         for stmt in self.body().iter() {
@@ -58,7 +61,7 @@ impl Run for Function<FunctionId> {
 }
 
 impl Run for Statement<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &mut RunTracer) {
+    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         match self {
             Statement::Pass => println!("pass"),
             Statement::Expression(expr) => expr.run(lib, tracer),
@@ -67,13 +70,13 @@ impl Run for Statement<FunctionId> {
 }
 
 impl Run for Expression<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &mut RunTracer) {
+    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         match self {
             Expression::Variable { name } => println!("Variable {name}"),
             Expression::Call { name, .. } => {
-                tracer.push(*name);
+                tracer.write().unwrap().push(*name);
                 lib.lookup(*name).run(lib, tracer);
-                tracer.pop();
+                tracer.write().unwrap().pop();
             }
         }
     }

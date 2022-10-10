@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 use nom::{
     branch::alt,
@@ -46,7 +46,7 @@ impl Module {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function<Id> {
     name: String,
-    body: Rc<Vec<Statement<Id>>>,
+    body: Arc<Vec<Statement<Id>>>,
 }
 
 impl Function<String> {
@@ -67,7 +67,7 @@ impl Function<String> {
             input,
             Function {
                 name: name.fragment().to_string(),
-                body: Rc::new(body),
+                body: Arc::new(body),
             },
         ))
     }
@@ -92,7 +92,7 @@ impl Function<String> {
     pub fn translate_ids<Id: Clone>(&self, id_map: &IdMap<Id>) -> Function<Id> {
         Function {
             name: self.name.clone(),
-            body: Rc::new(
+            body: Arc::new(
                 self.body
                     .iter()
                     .map(|statement| statement.translate_ids(id_map))
@@ -107,7 +107,7 @@ impl<Id> Function<Id> {
         &self.name
     }
 
-    pub fn body(&self) -> &Rc<Vec<Statement<Id>>> {
+    pub fn body(&self) -> &Arc<Vec<Statement<Id>>> {
         &self.body
     }
 }
@@ -291,7 +291,7 @@ operators!((colon, ":"));
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     use indoc::indoc;
 
@@ -442,7 +442,7 @@ mod tests {
             Module {
                 functions: vec![Function {
                     name: "test".to_owned(),
-                    body: Rc::new(body.into()),
+                    body: Arc::new(body.into()),
                 }],
             }
         );

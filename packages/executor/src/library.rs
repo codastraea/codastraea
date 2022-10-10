@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::syntax_tree::{Function, IdMap, Module};
 
 pub struct Library {
@@ -41,5 +43,5 @@ impl Library {
     }
 }
 
-#[derive(Eq, PartialEq, Hash, Copy, Clone)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub struct FunctionId(usize);
