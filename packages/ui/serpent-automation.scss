@@ -5,14 +5,22 @@
     --arrow-min-length: 40px;
 }
 
-.arrow {
-    background: var(--bs-secondary);
+/// Minimum height for dropdown menus
+.flow-diagrams-container {
+    min-height: 200px;
+}
+
+/// An arrow head pointing right
+/// 
+/// It's colour is taken from the background colour
+.arrow-head-right {
     width: var(--arrow-size);
     height: var(--arrow-size);
     flex: none;
     clip-path: polygon(0 0, 0 100%, 100% 50%);
 }
 
+/// A horizontal line across the middle of the element
 .horizontal-line {
     border-top: var(--arrow-stroke-width) solid var(--bs-secondary);
     left: 0;
@@ -21,7 +29,8 @@
     flex: 1;
 }
 
-.speech-bubble-top {
+/// A speech bubble with an arrow on top for displaying below another element
+.speech-bubble-below {
     position: relative;
 }
 
@@ -34,13 +43,13 @@
     height: 0;
 }
 
-.speech-bubble-top:before {
+.speech-bubble-below:before {
     @include speech-bubble-arrow-top;
     border-bottom-color: var(--bs-secondary);
     top: calc(-2 * var(--arrow-size));
 }
 
-.speech-bubble-top:after {
+.speech-bubble-below:after {
     @include speech-bubble-arrow-top;
     border-bottom-color: var(--bs-white);
     top: calc(-2 * var(--arrow-size) + 1px);

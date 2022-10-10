@@ -111,7 +111,9 @@ fn horizontal_line() -> Element {
 }
 
 fn arrow_right() -> Element {
-    div().class([css::ARROW]).into()
+    div()
+        .class([css::ARROW_HEAD_RIGHT, bs::BG_SECONDARY])
+        .into()
 }
 
 fn render_call(
@@ -157,7 +159,7 @@ fn render_function_body<'a>(
         [
             bs::ALIGN_SELF_START,
             bs::ALIGN_ITEMS_START,
-            css::SPEECH_BUBBLE_TOP,
+            css::SPEECH_BUBBLE_BELOW,
         ],
         border,
         box_model
@@ -212,9 +214,14 @@ fn main() {
         log!("WebSocket Closed")
     };
 
-    let app = row([bs::M_3, bs::ALIGN_ITEMS_START, bs::OVERFLOW_AUTO])
-        .children([render_function(library.main().unwrap(), &library), end()])
-        .spawn_future(ws_handler);
+    let app = row([
+        css::FLOW_DIAGRAMS_CONTAINER,
+        bs::M_3,
+        bs::ALIGN_ITEMS_START,
+        bs::OVERFLOW_AUTO,
+    ])
+    .children([render_function(library.main().unwrap(), &library), end()])
+    .spawn_future(ws_handler);
 
     mount("app", app);
 }
