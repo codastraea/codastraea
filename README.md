@@ -1,3 +1,3 @@
-# Serpent CI
+# Serpent Automation
 
-Continuous Integration using Python for workflows
+Like github actions but your workflows are written in Python
