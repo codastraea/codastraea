@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     collections::HashMap,
-    iter,
     rc::Rc,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -129,18 +128,21 @@ fn render_call(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Vec<Element> {
+    let mut elems: Vec<Element> = args
+        .iter()
+        .flat_map(|arg| render_expression(arg, library, call_stack, run_states))
+        .collect();
+
     let mut call_stack = call_stack.clone();
     call_stack.push(name);
+    elems.push(render_function(
+        library.lookup(name),
+        library,
+        &call_stack,
+        run_states,
+    ));
 
-    args.iter()
-        .flat_map(|arg| render_expression(arg, library, &call_stack, run_states))
-        .chain(iter::once(render_function(
-            library.lookup(name),
-            library,
-            &call_stack,
-            run_states,
-        )))
-        .collect()
+    elems
 }
 
 fn render_function(

@@ -79,6 +79,6 @@ async fn handle_socket(tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
             return;
         }
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_millis(100)).await;
     }
 }

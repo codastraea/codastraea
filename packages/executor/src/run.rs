@@ -21,7 +21,7 @@ impl RunTracer {
     }
 
     pub fn status(&self, call_stack: &CallStack) -> FnStatus {
-        if call_stack == &self.running {
+        if self.running.starts_with(call_stack) {
             FnStatus::Running
         } else if self.completed.contains(call_stack) {
             FnStatus::Ok
@@ -65,6 +65,7 @@ pub fn run(lib: &Library, tracer: &RwLock<RunTracer>) {
 impl Run for Function<FunctionId> {
     fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         println!("Running function '{}'", self.name());
+        sleep(Duration::from_secs(2));
 
         for stmt in self.body().iter() {
             stmt.run(lib, tracer)
@@ -91,7 +92,6 @@ impl Run for Expression<FunctionId> {
                 }
 
                 tracer.write().unwrap().push(*name);
-                sleep(Duration::from_secs(3));
                 lib.lookup(*name).run(lib, tracer);
                 tracer.write().unwrap().pop();
             }
