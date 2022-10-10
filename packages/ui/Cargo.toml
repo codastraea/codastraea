@@ -1,5 +1,5 @@
 [package]
-name = "serpent-ci-ui"
+name = "serpent-automation-ui"
 version = "0.1.0"
 authors = ["Simon Bourne <simonbourne@gmail.com>"]
 edition = "2021"
@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 silkenweb = { git = "https://github.com/silkenweb/silkenweb" }
-serpent-ci-executor = { path = "../executor" }
+serpent-automation-executor = { path = "../executor" }
 futures-signals = "0.3.31"
 itertools = "0.10.5"
 gloo-net = "0.2.4"

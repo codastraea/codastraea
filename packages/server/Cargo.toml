@@ -1,5 +1,5 @@
 [package]
-name = "serpent-ci-server"
+name = "serpent-automation-server"
 
 version = "0.1.0"
 edition = "2021"

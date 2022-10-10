@@ -9,7 +9,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use gloo_console::log;
 use gloo_net::websocket::futures::WebSocket;
 use itertools::chain;
-use serpent_ci_executor::{
+use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::FnStatus,
     syntax_tree::{parse, Expression, Function, Statement},
@@ -31,7 +31,7 @@ mod bs {
 }
 
 mod css {
-    silkenweb::css_classes!(visibility: pub, path: "serpent-ci.scss");
+    silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
 }
 
 mod icon {
