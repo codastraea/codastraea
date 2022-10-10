@@ -7,7 +7,7 @@ use crate::{
     syntax_tree::{Expression, Function, Statement},
 };
 
-type CallStack = Vec<FunctionId>;
+pub type CallStack = Vec<FunctionId>;
 
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct RunTracer {
@@ -20,9 +20,18 @@ impl RunTracer {
         Self::default()
     }
 
+    pub fn status(&self, call_stack: &CallStack) -> FnStatus {
+        if call_stack == &self.running {
+            FnStatus::Running
+        } else if self.completed.contains(call_stack) {
+            FnStatus::Ok
+        } else {
+            FnStatus::NotRun
+        }
+    }
+
     pub fn push(&mut self, id: FunctionId) {
         self.running.push(id);
-        sleep(Duration::from_secs(1));
     }
 
     pub fn pop(&mut self) {
@@ -31,6 +40,7 @@ impl RunTracer {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum FnStatus {
     NotRun,
     Running,
@@ -43,10 +53,12 @@ pub trait Run {
 }
 
 pub fn run(lib: &Library, tracer: &RwLock<RunTracer>) {
-    if let Some(main) = lib.main() {
-        println!("Running main");
-        main.run(lib, tracer);
-        println!("Run finished");
+    if let Some(main_id) = lib.main_id() {
+        Expression::Call {
+            name: main_id,
+            args: Vec::new(),
+        }
+        .run(lib, tracer);
     }
 }
 
@@ -63,7 +75,7 @@ impl Run for Function<FunctionId> {
 impl Run for Statement<FunctionId> {
     fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         match self {
-            Statement::Pass => println!("pass"),
+            Statement::Pass => (),
             Statement::Expression(expr) => expr.run(lib, tracer),
         }
     }
@@ -73,8 +85,13 @@ impl Run for Expression<FunctionId> {
     fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
         match self {
             Expression::Variable { name } => println!("Variable {name}"),
-            Expression::Call { name, .. } => {
+            Expression::Call { name, args } => {
+                for arg in args {
+                    arg.run(lib, tracer);
+                }
+
                 tracer.write().unwrap().push(*name);
+                sleep(Duration::from_secs(3));
                 lib.lookup(*name).run(lib, tracer);
                 tracer.write().unwrap().pop();
             }

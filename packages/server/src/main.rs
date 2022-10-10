@@ -64,8 +64,7 @@ async fn handle_socket(tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
     println!("Upgraded to websocket");
 
     loop {
-        println!("Sending count run state");
-
+        println!("Sending run state");
         let tracer_snapshot = tracer.read().unwrap().clone();
 
         // TODO: Diff `RunTracer` and send a `RunTracerDelta`

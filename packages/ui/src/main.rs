@@ -1,17 +1,19 @@
 use std::{
+    cell::RefCell,
+    collections::HashMap,
     iter,
     rc::Rc,
     sync::atomic::{AtomicU64, Ordering},
 };
 
 use futures::StreamExt;
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal::{self, Mutable, Signal, SignalExt};
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use itertools::chain;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{FnStatus, RunTracer},
+    run::{CallStack, FnStatus, RunTracer},
     syntax_tree::{parse, Expression, Function, Statement},
     CODE,
 };
@@ -42,7 +44,7 @@ const BUTTON_STYLE: &str = bs::BTN_OUTLINE_SECONDARY;
 
 fn dropdown<'a>(
     name: &'a str,
-    fn_status: FnStatus,
+    fn_status: impl Signal<Item = FnStatus> + 'static,
     classes: impl IntoIterator<Item = &'a str>,
 ) -> Element {
     static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -50,32 +52,35 @@ fn dropdown<'a>(
     let id = ID_COUNTER.fetch_add(1, Ordering::SeqCst);
     let id = format!("dropdown-{id}");
 
-    let mut main_button = button()
-        .class([bs::BTN, BUTTON_STYLE, bs::DROPDOWN_TOGGLE])
-        .id(&id)
-        .attribute("data-bs-toggle", "dropdown")
-        .r#type("button")
-        .aria_expanded("false");
-
-    main_button = match fn_status {
-        FnStatus::NotRun => main_button,
-        FnStatus::Running => main_button
-            .child(
-                span()
-                    .class([bs::SPINNER_BORDER, bs::SPINNER_BORDER_SM, bs::TEXT_PRIMARY])
-                    .aria_hidden("true"),
-            )
-            .text(" "),
-        FnStatus::Ok => main_button
-            .child(i().class([bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL]))
-            .text(" "),
-        FnStatus::Error => main_button
-            .child(i().class([bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL]))
-            .text(" "),
-    };
+    let status_child = fn_status.map(|status| match status {
+        FnStatus::NotRun => None,
+        FnStatus::Running => Some(Element::from(
+            span()
+                .class([bs::SPINNER_BORDER, bs::SPINNER_BORDER_SM, bs::TEXT_PRIMARY])
+                .aria_hidden("true"),
+        )),
+        FnStatus::Ok => Some(
+            i().class([bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
+                .into(),
+        ),
+        FnStatus::Error => Some(
+            i().class([bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL])
+                .into(),
+        ),
+    });
 
     button_group(classes)
-        .child(main_button.text(name))
+        .child(
+            button()
+                .class([bs::BTN, BUTTON_STYLE, bs::DROPDOWN_TOGGLE])
+                .id(&id)
+                .attribute("data-bs-toggle", "dropdown")
+                .r#type("button")
+                .aria_expanded("false")
+                .optional_child_signal(status_child)
+                // TODO: Add spacer text unless status is `NotRun`
+                .text(name),
+        )
         .child(
             ul().class([bs::DROPDOWN_MENU])
                 .aria_labelledby(id)
@@ -102,8 +107,9 @@ fn column<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
     div().class(classes.into_iter().chain([bs::D_FLEX, bs::FLEX_COLUMN]))
 }
 
+// TODO: Remove end element
 fn end() -> Element {
-    dropdown("end", FnStatus::Ok, [bs::SHADOW])
+    dropdown("end", signal::always(FnStatus::NotRun), [bs::SHADOW])
 }
 
 fn horizontal_line() -> Element {
@@ -120,37 +126,58 @@ fn render_call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
 ) -> Vec<Element> {
+    let mut call_stack = call_stack.clone();
+    call_stack.push(name);
+
     args.iter()
-        .flat_map(|arg| render_expression(arg, library))
-        .chain(iter::once(render_function(library.lookup(name), library)))
+        .flat_map(|arg| render_expression(arg, library, &call_stack, run_states))
+        .chain(iter::once(render_function(
+            library.lookup(name),
+            library,
+            &call_stack,
+            run_states,
+        )))
         .collect()
 }
 
-fn render_function(f: &Function<FunctionId>, library: &Rc<Library>) -> Element {
-    let expanded = Mutable::new(false);
+fn render_function(
+    f: &Function<FunctionId>,
+    library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
+) -> Element {
+    let expanded = Mutable::new(true);
     let name = f.name();
     let main = row([bs::ALIGN_ITEMS_CENTER])
-        .child(render_function_header(name, expanded.clone()))
+        .child(render_function_header(
+            name,
+            expanded.clone(),
+            call_stack,
+            run_states,
+        ))
         .child(horizontal_line())
         .child(arrow_right());
 
     let library = library.clone();
     let body = f.body().clone();
+    clone!(call_stack, run_states);
 
     column([bs::ALIGN_ITEMS_STRETCH])
         .child(main)
-        .optional_child_signal(
-            expanded
-                .signal()
-                .map(move |expanded| expanded.then(|| render_function_body(body.iter(), &library))),
-        )
+        .optional_child_signal(expanded.signal().map(move |expanded| {
+            expanded.then(|| render_function_body(body.iter(), &library, &call_stack, &run_states))
+        }))
         .into()
 }
 
 fn render_function_body<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>>,
     library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
 ) -> DivBuilder {
     let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
     let box_model = [bs::MT_3, bs::ME_3, bs::P_3];
@@ -166,15 +193,26 @@ fn render_function_body<'a>(
     ))
     .children(body.flat_map(|statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => render_expression(expr, library),
+        Statement::Expression(expr) => render_expression(expr, library, call_stack, run_states),
     }))
     .child(end())
 }
 
-fn render_function_header(name: &str, expanded: Mutable<bool>) -> DivBuilder {
+fn render_function_header(
+    name: &str,
+    expanded: Mutable<bool>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
+) -> DivBuilder {
+    let status_signal = run_states
+        .borrow_mut()
+        .entry(call_stack.clone())
+        .or_insert_with(|| Mutable::new(FnStatus::NotRun))
+        .signal();
+
     button_group([bs::SHADOW])
         .aria_label(format!("Function {name}"))
-        .child(dropdown(name, FnStatus::Ok, []))
+        .child(dropdown(name, status_signal, []))
         .child(
             button()
                 .on_click({
@@ -195,31 +233,53 @@ fn render_function_header(name: &str, expanded: Mutable<bool>) -> DivBuilder {
         )
 }
 
-fn render_expression(expr: &Expression<FunctionId>, library: &Rc<Library>) -> Vec<Element> {
+fn render_expression(
+    expr: &Expression<FunctionId>,
+    library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
+) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } => Vec::new(),
-        Expression::Call { name, args } => render_call(*name, args, library),
+        Expression::Call { name, args } => {
+            render_call(*name, args, library, call_stack, run_states)
+        }
     }
 }
+
+// TODO: Struct for this
+type RunStates = Rc<RefCell<HashMap<CallStack, Mutable<FnStatus>>>>;
 
 fn main() {
     let module = parse(CODE).unwrap();
     let library = Rc::new(Library::link(module));
+    let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
+
     let mut ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
-    let ws_handler = async move {
-        while let Some(msg) = ws.next().await {
-            log!(format!("Received: {:?}", msg));
+    let ws_handler = {
+        clone!(run_states);
+        async move {
+            log!("Connected to websocket");
 
-            match msg.unwrap() {
-                Message::Text(text) => {
-                    let _run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
-                    log!("Deserialized `RunTracer`");
+            while let Some(msg) = ws.next().await {
+                log!(format!("Received: {:?}", msg));
+
+                match msg.unwrap() {
+                    Message::Text(text) => {
+                        let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
+                        log!(format!("Deserialized `RunTracer` from `{text}`"));
+
+                        for (call_stack, status) in run_states.borrow().iter() {
+                            log!(format!("call stack {:?}", call_stack));
+                            status.set_neq(run_tracer.status(call_stack));
+                        }
+                    }
+                    Message::Bytes(_) => log!("Unknown binary message"),
                 }
-                Message::Bytes(_) => log!("Unknown binary message"),
             }
-        }
 
-        log!("WebSocket Closed")
+            log!("WebSocket Closed")
+        }
     };
 
     let app = row([
@@ -228,7 +288,15 @@ fn main() {
         bs::ALIGN_ITEMS_START,
         bs::OVERFLOW_AUTO,
     ])
-    .children([render_function(library.main().unwrap(), &library), end()])
+    .children([
+        render_function(
+            library.main().unwrap(),
+            &library,
+            &vec![library.main_id().unwrap()],
+            &run_states,
+        ),
+        end(),
+    ])
     .spawn_future(ws_handler);
 
     mount("app", app);

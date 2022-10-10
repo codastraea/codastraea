@@ -41,7 +41,11 @@ impl Library {
     pub fn main(&self) -> Option<&Function<FunctionId>> {
         self.main_id.map(|main| self.lookup(main))
     }
+
+    pub fn main_id(&self) -> Option<FunctionId> {
+        self.main_id
+    }
 }
 
-#[derive(Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FunctionId(usize);
