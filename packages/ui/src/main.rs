@@ -176,7 +176,7 @@ fn render_function(
     run_states: &RunStates,
 ) -> Element {
     // TODO: Render functions with an empty body without a zoom icon
-    let expanded = expandable(f.body()).then(|| Mutable::new(true));
+    let expanded = expandable(f.body()).then(|| Mutable::new(false));
     let name = f.name();
 
     let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(render_function_header(
