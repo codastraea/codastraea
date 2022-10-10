@@ -153,6 +153,24 @@ fn render_call(
     elems
 }
 
+fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
+    match expression {
+        Expression::Variable { .. } => false,
+        Expression::Call { .. } => true,
+    }
+}
+
+fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
+    match stmt {
+        Statement::Pass => false,
+        Statement::Expression(e) => expression_is_expandable(e),
+    }
+}
+
+fn expandable(stmts: &[Statement<FunctionId>]) -> bool {
+    stmts.iter().any(statement_is_expandable)
+}
+
 fn render_function(
     f: &Function<FunctionId>,
     library: &Rc<Library>,
@@ -160,8 +178,9 @@ fn render_function(
     run_states: &RunStates,
 ) -> Element {
     // TODO: Render functions with an empty body without a zoom icon
-    let expanded = Mutable::new(true);
+    let expanded = expandable(f.body()).then(|| Mutable::new(true));
     let name = f.name();
+
     let main = row([bs::ALIGN_ITEMS_CENTER])
         .child(render_function_header(
             name,
@@ -176,12 +195,17 @@ fn render_function(
     let body = f.body().clone();
     clone!(call_stack, run_states);
 
-    column([bs::ALIGN_ITEMS_STRETCH])
-        .child(main)
-        .optional_child_signal(expanded.signal().map(move |expanded| {
-            expanded.then(|| render_function_body(body.iter(), &library, &call_stack, &run_states))
-        }))
-        .into()
+    if let Some(expanded) = expanded {
+        column([bs::ALIGN_ITEMS_STRETCH])
+            .child(main)
+            .optional_child_signal(expanded.signal().map(move |expanded| {
+                expanded
+                    .then(|| render_function_body(body.iter(), &library, &call_stack, &run_states))
+            }))
+            .into()
+    } else {
+        main.into()
+    }
 }
 
 fn render_function_body<'a>(
@@ -211,37 +235,42 @@ fn render_function_body<'a>(
 
 fn render_function_header(
     name: &str,
-    expanded: Mutable<bool>,
+    expanded: Option<Mutable<bool>>,
     call_stack: &CallStack,
     run_states: &RunStates,
-) -> DivBuilder {
+) -> Element {
     let status_signal = run_states
         .borrow_mut()
         .entry(call_stack.clone())
         .or_insert_with(|| Mutable::new(FnStatus::NotRun))
         .signal();
 
-    button_group([bs::SHADOW])
-        .aria_label(format!("Function {name}"))
-        .child(dropdown(name, status_signal, []))
-        .child(
-            button()
-                .on_click({
-                    clone!(expanded);
-                    move |_, _| {
-                        expanded.replace_with(|e| !*e);
-                    }
-                })
-                .r#type("button")
-                .class([bs::BTN, BUTTON_STYLE])
-                .child(i().class_signal(expanded.signal().map(|expanded| {
-                    [if expanded {
-                        icon::BI_ZOOM_OUT
-                    } else {
-                        icon::BI_ZOOM_IN
-                    }]
-                }))),
-        )
+    if let Some(expanded) = expanded {
+        button_group([bs::SHADOW])
+            .aria_label(format!("Function {name}"))
+            .child(dropdown(name, status_signal, []))
+            .child(
+                button()
+                    .on_click({
+                        clone!(expanded);
+                        move |_, _| {
+                            expanded.replace_with(|e| !*e);
+                        }
+                    })
+                    .r#type("button")
+                    .class([bs::BTN, BUTTON_STYLE])
+                    .child(i().class_signal(expanded.signal().map(|expanded| {
+                        [if expanded {
+                            icon::BI_ZOOM_OUT
+                        } else {
+                            icon::BI_ZOOM_IN
+                        }]
+                    }))),
+            )
+            .into()
+    } else {
+        dropdown(name, status_signal, [bs::SHADOW])
+    }
 }
 
 fn render_expression(
