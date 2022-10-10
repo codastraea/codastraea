@@ -159,6 +159,7 @@ fn render_function(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Element {
+    // TODO: Render functions with an empty body without a zoom icon
     let expanded = Mutable::new(true);
     let name = f.name();
     let main = row([bs::ALIGN_ITEMS_CENTER])
