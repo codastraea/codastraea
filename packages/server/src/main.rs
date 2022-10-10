@@ -33,7 +33,8 @@ async fn main() {
         scope.spawn(|| ui(tracer.clone()));
         scope.spawn(|| loop {
             *(tracer.write().unwrap()) = RunTracer::new();
-            run(&lib, &tracer)
+            run(&lib, &tracer);
+            thread::sleep(Duration::from_secs(3));
         });
     });
 }
