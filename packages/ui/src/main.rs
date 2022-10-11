@@ -17,7 +17,6 @@ use serpent_automation_executor::{
     CODE,
 };
 use silkenweb::{
-    animation::finite_animation,
     clone,
     elements::{
         html::{a, button, div, i, li, span, ul, DivBuilder, LiBuilder},
@@ -25,7 +24,8 @@ use silkenweb::{
     },
     mount,
     node::element::{Element, ElementBuilder},
-    prelude::{HtmlElement, ParentBuilder},
+    prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
+    task::on_animation_frame,
 };
 
 mod bs {
@@ -213,8 +213,6 @@ fn render_function_body<'a>(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
-    const ANIMATION_DURATION: f64 = 200.0;
-    const ANIMATION_MAX_SIZE: f64 = 1000.0;
     let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
     let box_model = [bs::MT_3, bs::ME_3, bs::P_3];
     let body: Vec<_> = body.filter(|stmt| statement_is_expandable(*stmt)).collect();
@@ -230,31 +228,36 @@ fn render_function_body<'a>(
             box_model
         ))
         .child(
-            row([bs::ALIGN_ITEMS_START, bs::OVERFLOW_HIDDEN])
-                .style_signal(finite_animation(ANIMATION_DURATION).map(|elapsed| {
-                    if let Some(elapsed) = elapsed {
-                        let size = elapsed * ANIMATION_MAX_SIZE / ANIMATION_DURATION;
-                        let max_width = size + 100.0;
-                        let max_height = size;
-                        format!("max-width: {max_width}px; max-height: {max_height}px")
-                    } else {
-                        "".to_owned()
-                    }
-                }))
-                .children(render_body_statements(
-                    body_head.iter().copied(),
-                    false,
-                    library,
-                    call_stack,
-                    run_states,
-                ))
-                .children(render_body_statements(
-                    body_tail.iter().copied(),
-                    true,
-                    library,
-                    call_stack,
-                    run_states,
-                )),
+            row([
+                bs::ALIGN_ITEMS_START,
+                bs::OVERFLOW_HIDDEN,
+                css::TRANSITION_ALL,
+            ])
+            .effect(|elem| {
+                let width = elem.get_bounding_client_rect().width();
+                elem.set_attribute("style", "max-width: 100px").unwrap();
+                clone!(elem);
+
+                on_animation_frame(move || {
+                    elem.set_attribute("style", &format!("max-width: {width}px"))
+                        .unwrap()
+                })
+            })
+            .on_transitionend(|_, elem| elem.remove_attribute("style").unwrap())
+            .children(render_body_statements(
+                body_head.iter().copied(),
+                false,
+                library,
+                call_stack,
+                run_states,
+            ))
+            .children(render_body_statements(
+                body_tail.iter().copied(),
+                true,
+                library,
+                call_stack,
+                run_states,
+            )),
         )
 }
 
