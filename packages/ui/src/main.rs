@@ -2,7 +2,10 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     rc::Rc,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use futures::StreamExt;
@@ -187,44 +190,31 @@ fn render_function(
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
-    let library = library.clone();
-    let body = f.body().clone();
-    clone!(call_stack, run_states);
-
     if let Some(expanded) = expanded {
         column([bs::ALIGN_ITEMS_STRETCH])
             .child(main)
-            .optional_child_signal(expanded.signal().map(move |expanded| {
-                clone!(header_elem);
-                expanded.then(|| {
-                    render_function_body(
-                        body.iter(),
-                        header_elem,
-                        &library,
-                        &call_stack,
-                        &run_states,
-                    )
-                })
-            }))
+            .child(render_function_body(
+                f.body(),
+                header_elem,
+                expanded,
+                library,
+                call_stack,
+                run_states,
+            ))
             .into()
     } else {
         main.into()
     }
 }
 
-fn render_function_body<'a>(
-    body: impl Iterator<Item = &'a Statement<FunctionId>>,
+fn render_function_body(
+    body: &Arc<Vec<Statement<FunctionId>>>,
     parent: web_sys::Element,
+    expanded: Mutable<bool>,
     library: &Rc<Library>,
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
-    let body: Vec<_> = body.filter(|stmt| statement_is_expandable(*stmt)).collect();
-
-    assert!(!body.is_empty());
-
-    let (body_head, body_tail) = body.split_at(body.len() - 1);
-
     let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
     let margin = [bs::MT_3, bs::ME_3];
     let padding = [bs::P_3];
@@ -233,23 +223,28 @@ fn render_function_body<'a>(
 
     div()
         .class([css::TRANSITION_ALL, bs::ALIGN_SELF_START])
-        .effect({
+        .effect_signal(expanded.signal(), {
             clone!(style);
-            move |elem| {
-                let initial_width = parent.get_bounding_client_rect().width();
-                let final_bounds = elem.get_bounding_client_rect();
-                let final_width = final_bounds.width();
-                let final_height = final_bounds.height();
-                style.set(format!(
-                    "overflow: hidden; max-width: {initial_width}px; max-height: 0px"
-                ));
-                on_animation_frame(move || {
+            move |elem, expanded| {
+                if expanded {
+                    let initial_width = parent.get_bounding_client_rect().width();
+                    let final_bounds = elem.get_bounding_client_rect();
+                    let final_width = final_bounds.width();
+                    let final_height = final_bounds.height();
                     style.set(format!(
-                        // Cargo fmt doesn't like the long interpolated string
-                        "overflow: hidden; max-width: {}px; max-height: {}px",
-                        final_width, final_height,
+                        "overflow: hidden; max-width: {initial_width}px; max-height: 0px"
                     ));
-                })
+                    on_animation_frame({
+                        clone!(style);
+                        move || {
+                            style.set(format!(
+                                // Cargo fmt doesn't like the long interpolated string
+                                "overflow: hidden; max-width: {}px; max-height: {}px",
+                                final_width, final_height,
+                            ));
+                        }
+                    })
+                }
             }
         })
         .on_transitionend({
@@ -257,28 +252,43 @@ fn render_function_body<'a>(
             move |_, _| style.set("".to_owned())
         })
         .style_signal(style.signal_cloned())
-        .child(
-            row(chain!(
-                [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
-                border,
-                margin,
-                padding
-            ))
-            .children(render_body_statements(
-                body_head.iter().copied(),
-                false,
-                library,
-                call_stack,
-                run_states,
-            ))
-            .children(render_body_statements(
-                body_tail.iter().copied(),
-                true,
-                library,
-                call_stack,
-                run_states,
-            )),
-        )
+        .optional_child_signal(expanded.signal().map({
+            clone!(body, library, call_stack, run_states);
+
+            move |expanded| {
+                expanded.then(|| {
+                    let body: Vec<_> = body
+                        .iter()
+                        .filter(|stmt| statement_is_expandable(*stmt))
+                        .collect();
+
+                    assert!(!body.is_empty());
+
+                    let (body_head, body_tail) = body.split_at(body.len() - 1);
+
+                    row(chain!(
+                        [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
+                        border,
+                        margin,
+                        padding
+                    ))
+                    .children(render_body_statements(
+                        body_head.iter().copied(),
+                        false,
+                        &library,
+                        &call_stack,
+                        &run_states,
+                    ))
+                    .children(render_body_statements(
+                        body_tail.iter().copied(),
+                        true,
+                        &library,
+                        &call_stack,
+                        &run_states,
+                    ))
+                })
+            }
+        }))
 }
 
 fn render_body_statements<'a>(
