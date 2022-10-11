@@ -232,7 +232,6 @@ fn render_function_body<'a>(
     div()
         .class([
             css::TRANSITION_ALL,
-            bs::OVERFLOW_HIDDEN,
             bs::ALIGN_SELF_START,
         ])
         .effect(move |elem| {
@@ -242,7 +241,7 @@ fn render_function_body<'a>(
             let final_height = final_bounds.height();
             elem.set_attribute(
                 "style",
-                &format!("max-width: {initial_width}px; max-height: 0px"),
+                &format!("overflow: hidden; max-width: {initial_width}px; max-height: 0px"),
             )
             .unwrap();
             clone!(elem);
@@ -250,7 +249,7 @@ fn render_function_body<'a>(
             on_animation_frame(move || {
                 elem.set_attribute(
                     "style",
-                    &format!("max-width: {final_width}px; max-height: {final_height}px"),
+                    &format!("overflow: hidden; max-width: {final_width}px; max-height: {final_height}px"),
                 )
                 .unwrap()
             })
