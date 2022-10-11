@@ -179,12 +179,9 @@ fn render_function(
     let expanded = expandable(f.body()).then(|| Mutable::new(false));
     let name = f.name();
 
-    let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(render_function_header(
-        name,
-        expanded.clone(),
-        call_stack,
-        run_states,
-    ));
+    let header = render_function_header(name, expanded.clone(), call_stack, run_states);
+    let header_elem = header.handle().dom_element();
+    let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(header);
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
@@ -198,8 +195,16 @@ fn render_function(
         column([bs::ALIGN_ITEMS_STRETCH])
             .child(main)
             .optional_child_signal(expanded.signal().map(move |expanded| {
-                expanded
-                    .then(|| render_function_body(body.iter(), &library, &call_stack, &run_states))
+                clone!(header_elem);
+                expanded.then(|| {
+                    render_function_body(
+                        body.iter(),
+                        header_elem,
+                        &library,
+                        &call_stack,
+                        &run_states,
+                    )
+                })
             }))
             .into()
     } else {
@@ -209,41 +214,55 @@ fn render_function(
 
 fn render_function_body<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>>,
+    parent: web_sys::Element,
     library: &Rc<Library>,
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
-    let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
-    let box_model = [bs::MT_3, bs::ME_3, bs::P_3];
     let body: Vec<_> = body.filter(|stmt| statement_is_expandable(*stmt)).collect();
 
     assert!(!body.is_empty());
 
     let (body_head, body_tail) = body.split_at(body.len() - 1);
 
-    div()
-        .class(chain!(
-            [bs::ALIGN_SELF_START, css::SPEECH_BUBBLE_BELOW],
-            border,
-            box_model
-        ))
-        .child(
-            row([
-                bs::ALIGN_ITEMS_START,
-                bs::OVERFLOW_HIDDEN,
-                css::TRANSITION_ALL,
-            ])
-            .effect(|elem| {
-                let width = elem.get_bounding_client_rect().width();
-                elem.set_attribute("style", "max-width: 100px").unwrap();
-                clone!(elem);
+    let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
+    let margin = [bs::MT_3, bs::ME_3];
+    let padding = [bs::P_3];
 
-                on_animation_frame(move || {
-                    elem.set_attribute("style", &format!("max-width: {width}px"))
-                        .unwrap()
-                })
+    div()
+        .class([
+            css::TRANSITION_ALL,
+            bs::OVERFLOW_HIDDEN,
+            bs::ALIGN_SELF_START,
+        ])
+        .effect(move |elem| {
+            let initial_width = parent.get_bounding_client_rect().width();
+            let final_bounds = elem.get_bounding_client_rect();
+            let final_width = final_bounds.width();
+            let final_height = final_bounds.height();
+            elem.set_attribute(
+                "style",
+                &format!("max-width: {initial_width}px; max-height: 0px"),
+            )
+            .unwrap();
+            clone!(elem);
+
+            on_animation_frame(move || {
+                elem.set_attribute(
+                    "style",
+                    &format!("max-width: {final_width}px; max-height: {final_height}px"),
+                )
+                .unwrap()
             })
-            .on_transitionend(|_, elem| elem.remove_attribute("style").unwrap())
+        })
+        .on_transitionend(|_, elem| elem.remove_attribute("style").unwrap())
+        .child(
+            row(chain!(
+                [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
+                border,
+                margin,
+                padding
+            ))
             .children(render_body_statements(
                 body_head.iter().copied(),
                 false,
