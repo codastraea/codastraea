@@ -229,32 +229,34 @@ fn render_function_body<'a>(
     let margin = [bs::MT_3, bs::ME_3];
     let padding = [bs::P_3];
 
+    let style = Mutable::new("".to_owned());
+
     div()
         .class([css::TRANSITION_ALL, bs::ALIGN_SELF_START])
-        .effect(move |elem| {
-            let initial_width = parent.get_bounding_client_rect().width();
-            let final_bounds = elem.get_bounding_client_rect();
-            let final_width = final_bounds.width();
-            let final_height = final_bounds.height();
-            elem.set_attribute(
-                "style",
-                &format!("overflow: hidden; max-width: {initial_width}px; max-height: 0px"),
-            )
-            .unwrap();
-            clone!(elem);
-            on_animation_frame(move || {
-                elem.set_attribute(
-                    "style",
-                    &format!(
+        .effect({
+            clone!(style);
+            move |elem| {
+                let initial_width = parent.get_bounding_client_rect().width();
+                let final_bounds = elem.get_bounding_client_rect();
+                let final_width = final_bounds.width();
+                let final_height = final_bounds.height();
+                style.set(format!(
+                    "overflow: hidden; max-width: {initial_width}px; max-height: 0px"
+                ));
+                on_animation_frame(move || {
+                    style.set(format!(
                         // Cargo fmt doesn't like the long interpolated string
                         "overflow: hidden; max-width: {}px; max-height: {}px",
                         final_width, final_height,
-                    ),
-                )
-                .unwrap()
-            })
+                    ));
+                })
+            }
         })
-        .on_transitionend(|_, elem| elem.remove_attribute("style").unwrap())
+        .on_transitionend({
+            clone!(style);
+            move |_, _| style.set("".to_owned())
+        })
+        .style_signal(style.signal_cloned())
         .child(
             row(chain!(
                 [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
