@@ -207,6 +207,14 @@ fn render_function(
     }
 }
 
+fn style_max_size(width: f64, height: f64) -> String {
+    format!("overflow: hidden; max-width: {width}px; max-height: {height}px",)
+}
+
+fn style_min_size(width: f64, height: f64) -> String {
+    format!("overflow: hidden; min-width: {width}px; min-height: {height}px",)
+}
+
 fn render_function_body(
     body: &Arc<Vec<Statement<FunctionId>>>,
     parent: web_sys::Element,
@@ -221,29 +229,43 @@ fn render_function_body(
 
     let style = Mutable::new("".to_owned());
 
+    let show_body = Mutable::new(false);
+
     div()
         .class([css::TRANSITION_ALL, bs::ALIGN_SELF_START])
+        .spawn_future(expanded.signal().for_each({
+            clone!(show_body);
+            move |expanded| {
+                if expanded {
+                    show_body.set(true);
+                }
+                async {}
+            }
+        }))
         .effect_signal(expanded.signal(), {
-            clone!(style);
+            clone!(style, show_body);
             move |elem, expanded| {
+                let elem_bounds = elem.get_bounding_client_rect();
+
                 if expanded {
                     let initial_width = parent.get_bounding_client_rect().width();
                     let final_bounds = elem.get_bounding_client_rect();
                     let final_width = final_bounds.width();
                     let final_height = final_bounds.height();
-                    style.set(format!(
-                        "overflow: hidden; max-width: {initial_width}px; max-height: 0px"
-                    ));
+                    style.set(style_max_size(initial_width, 0.0));
                     on_animation_frame({
                         clone!(style);
                         move || {
-                            style.set(format!(
-                                // Cargo fmt doesn't like the long interpolated string
-                                "overflow: hidden; max-width: {}px; max-height: {}px",
-                                final_width, final_height,
-                            ));
+                            style.set(style_max_size(final_width, final_height));
                         }
                     })
+                } else {
+                    style.set(style_min_size(elem_bounds.width(), elem_bounds.height()));
+
+                    on_animation_frame({
+                        clone!(show_body);
+                        move || show_body.set(false)
+                    });
                 }
             }
         })
@@ -252,11 +274,14 @@ fn render_function_body(
             move |_, _| style.set("".to_owned())
         })
         .style_signal(style.signal_cloned())
-        .optional_child_signal(expanded.signal().map({
+        .optional_child_signal(show_body.signal().map({
             clone!(body, library, call_stack, run_states);
 
             move |expanded| {
-                expanded.then(|| {
+                if !expanded {
+                    style.set(style_min_size(0.0, 0.0));
+                    None
+                } else {
                     let body: Vec<_> = body
                         .iter()
                         .filter(|stmt| statement_is_expandable(*stmt))
@@ -266,7 +291,7 @@ fn render_function_body(
 
                     let (body_head, body_tail) = body.split_at(body.len() - 1);
 
-                    row(chain!(
+                    let row = row(chain!(
                         [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
                         border,
                         margin,
@@ -285,8 +310,10 @@ fn render_function_body(
                         &library,
                         &call_stack,
                         &run_states,
-                    ))
-                })
+                    ));
+
+                    Some(row)
+                }
             }
         }))
 }
