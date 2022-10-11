@@ -230,10 +230,7 @@ fn render_function_body<'a>(
     let padding = [bs::P_3];
 
     div()
-        .class([
-            css::TRANSITION_ALL,
-            bs::ALIGN_SELF_START,
-        ])
+        .class([css::TRANSITION_ALL, bs::ALIGN_SELF_START])
         .effect(move |elem| {
             let initial_width = parent.get_bounding_client_rect().width();
             let final_bounds = elem.get_bounding_client_rect();
@@ -245,11 +242,14 @@ fn render_function_body<'a>(
             )
             .unwrap();
             clone!(elem);
-
             on_animation_frame(move || {
                 elem.set_attribute(
                     "style",
-                    &format!("overflow: hidden; max-width: {final_width}px; max-height: {final_height}px"),
+                    &format!(
+                        // Cargo fmt doesn't like the long interpolated string
+                        "overflow: hidden; max-width: {}px; max-height: {}px",
+                        final_width, final_height,
+                    ),
                 )
                 .unwrap()
             })
