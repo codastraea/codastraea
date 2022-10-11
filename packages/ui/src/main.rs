@@ -17,6 +17,7 @@ use serpent_automation_executor::{
     CODE,
 };
 use silkenweb::{
+    animation::finite_animation,
     clone,
     elements::{
         html::{a, button, div, i, li, span, ul, DivBuilder, LiBuilder},
@@ -212,6 +213,8 @@ fn render_function_body<'a>(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
+    const ANIMATION_DURATION: f64 = 200.0;
+    const ANIMATION_MAX_SIZE: f64 = 1000.0;
     let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
     let box_model = [bs::MT_3, bs::ME_3, bs::P_3];
     let body: Vec<_> = body.filter(|stmt| statement_is_expandable(*stmt)).collect();
@@ -220,29 +223,41 @@ fn render_function_body<'a>(
 
     let (body_head, body_tail) = body.split_at(body.len() - 1);
 
-    row(chain!(
-        [
-            bs::ALIGN_SELF_START,
-            bs::ALIGN_ITEMS_START,
-            css::SPEECH_BUBBLE_BELOW,
-        ],
-        border,
-        box_model
-    ))
-    .children(render_body_statements(
-        body_head.iter().copied(),
-        false,
-        library,
-        call_stack,
-        run_states,
-    ))
-    .children(render_body_statements(
-        body_tail.iter().copied(),
-        true,
-        library,
-        call_stack,
-        run_states,
-    ))
+    div()
+        .class(chain!(
+            [bs::ALIGN_SELF_START, css::SPEECH_BUBBLE_BELOW],
+            border,
+            box_model
+        ))
+        .child(
+            row([bs::ALIGN_ITEMS_START, bs::OVERFLOW_HIDDEN])
+                .style_signal(finite_animation(ANIMATION_DURATION).map(|elapsed| {
+                    if let Some(elapsed) = elapsed {
+                        let max_size = elapsed * ANIMATION_MAX_SIZE / ANIMATION_DURATION;
+                        format!(
+                            "max-width: {}px; max-height: {}px",
+                            max_size + 100.0,
+                            max_size
+                        )
+                    } else {
+                        "".to_owned()
+                    }
+                }))
+                .children(render_body_statements(
+                    body_head.iter().copied(),
+                    false,
+                    library,
+                    call_stack,
+                    run_states,
+                ))
+                .children(render_body_statements(
+                    body_tail.iter().copied(),
+                    true,
+                    library,
+                    call_stack,
+                    run_states,
+                )),
+        )
 }
 
 fn render_body_statements<'a>(
