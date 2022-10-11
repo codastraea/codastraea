@@ -233,12 +233,10 @@ fn render_function_body<'a>(
             row([bs::ALIGN_ITEMS_START, bs::OVERFLOW_HIDDEN])
                 .style_signal(finite_animation(ANIMATION_DURATION).map(|elapsed| {
                     if let Some(elapsed) = elapsed {
-                        let max_size = elapsed * ANIMATION_MAX_SIZE / ANIMATION_DURATION;
-                        format!(
-                            "max-width: {}px; max-height: {}px",
-                            max_size + 100.0,
-                            max_size
-                        )
+                        let size = elapsed * ANIMATION_MAX_SIZE / ANIMATION_DURATION;
+                        let max_width = size + 100.0;
+                        let max_height = size;
+                        format!("max-width: {max_width}px; max-height: {max_height}px")
                     } else {
                         "".to_owned()
                     }
