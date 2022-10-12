@@ -282,6 +282,8 @@ fn expanded_body(
         .collect();
     assert!(!body.is_empty());
     let (body_head, body_tail) = body.split_at(body.len() - 1);
+    assert!(body_tail.len() == 1);
+
     let row = row(chain!(
         [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
         border,
@@ -326,8 +328,6 @@ fn render_function_header(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Element {
-    // TODO: Maybe a spinner is the wrong thing to use to indicate that something is
-    // running?
     let status_signal = run_states
         .borrow_mut()
         .entry(call_stack.clone())
@@ -377,6 +377,31 @@ fn render_expression(
     }
 }
 
+async fn server_connection(mut server_ws: WebSocket, run_states: RunStates) {
+    log!("Connected to websocket");
+
+    while let Some(msg) = server_ws.next().await {
+        log!(format!("Received: {:?}", msg));
+
+        match msg.unwrap() {
+            Message::Text(text) => {
+                let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
+                log!(format!("Deserialized `RunTracer` from `{text}`"));
+
+                // TODO: Share current `run_tracer` so we can get status of newly expanded
+                // function bodies.
+                for (call_stack, status) in run_states.borrow().iter() {
+                    log!(format!("call stack {:?}", call_stack));
+                    status.set_neq(run_tracer.status(call_stack));
+                }
+            }
+            Message::Bytes(_) => log!("Unknown binary message"),
+        }
+    }
+
+    log!("WebSocket Closed")
+}
+
 // TODO: Struct for this
 type RunStates = Rc<RefCell<HashMap<CallStack, Mutable<FnStatus>>>>;
 
@@ -384,35 +409,7 @@ fn main() {
     let module = parse(CODE).unwrap();
     let library = Rc::new(Library::link(module));
     let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
-
-    let mut ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
-    let ws_handler = {
-        clone!(run_states);
-        async move {
-            log!("Connected to websocket");
-
-            while let Some(msg) = ws.next().await {
-                log!(format!("Received: {:?}", msg));
-
-                match msg.unwrap() {
-                    Message::Text(text) => {
-                        let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
-                        log!(format!("Deserialized `RunTracer` from `{text}`"));
-
-                        // TODO: Share current `run_tracer` so we can get status of newly expanded
-                        // function bodies.
-                        for (call_stack, status) in run_states.borrow().iter() {
-                            log!(format!("call stack {:?}", call_stack));
-                            status.set_neq(run_tracer.status(call_stack));
-                        }
-                    }
-                    Message::Bytes(_) => log!("Unknown binary message"),
-                }
-            }
-
-            log!("WebSocket Closed")
-        }
-    };
+    let server = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
     let app = row([
         css::FLOW_DIAGRAMS_CONTAINER,
@@ -427,7 +424,7 @@ fn main() {
         &vec![library.main_id().unwrap()],
         &run_states,
     )])
-    .spawn_future(ws_handler);
+    .spawn_future(server_connection(server, run_states.clone()));
 
     mount("app", app);
 }
