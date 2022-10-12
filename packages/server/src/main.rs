@@ -10,12 +10,7 @@ use axum::{
     routing::get,
     Router, Server,
 };
-use serpent_automation_executor::{
-    library::Library,
-    run::{run, RunTracer},
-    syntax_tree::parse,
-    CODE,
-};
+use serpent_automation_executor::{library::Library, run::RunTracer, syntax_tree::parse, CODE};
 use tokio::{sync::watch, time::sleep};
 
 #[tokio::main]
@@ -27,7 +22,7 @@ async fn main() {
     thread::scope(|scope| {
         scope.spawn(|| server(trace_receive));
         scope.spawn(|| loop {
-            run(&lib, &trace_send);
+            lib.run(&trace_send);
             thread::sleep(Duration::from_secs(3));
             trace_send.send_replace(RunTracer::new());
         });

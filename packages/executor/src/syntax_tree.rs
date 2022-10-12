@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, thread::sleep, time::Duration};
 
 use nom::{
     branch::alt,
@@ -13,6 +13,12 @@ use nom::{
 use nom_greedyerror::{convert_error, GreedyError};
 use nom_locate::LocatedSpan;
 use thiserror::Error;
+use tokio::sync::watch;
+
+use crate::{
+    library::{FunctionId, Library},
+    run::RunTracer,
+};
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
     match all_consuming(Module::parse)(Span::new(input)).finish() {
@@ -112,6 +118,17 @@ impl<Id> Function<Id> {
     }
 }
 
+impl Function<FunctionId> {
+    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+        println!("Running function '{}'", self.name());
+        sleep(Duration::from_secs(2));
+
+        for stmt in self.body().iter() {
+            stmt.run(lib, tracer)
+        }
+    }
+}
+
 pub type IdMap<Id> = HashMap<String, Id>;
 
 fn blank_lines(input: Span) -> ParseResult<()> {
@@ -154,6 +171,15 @@ impl Statement<String> {
     }
 }
 
+impl Statement<FunctionId> {
+    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+        match self {
+            Statement::Pass => (),
+            Statement::Expression(expr) => expr.run(lib, tracer),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum Expression<FnId> {
     Variable {
@@ -163,6 +189,23 @@ pub enum Expression<FnId> {
         name: FnId,
         args: Vec<Expression<FnId>>,
     },
+}
+
+impl Expression<FunctionId> {
+    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+        match self {
+            Expression::Variable { name } => println!("Variable {name}"),
+            Expression::Call { name, args } => {
+                for arg in args {
+                    arg.run(lib, tracer);
+                }
+
+                tracer.send_modify(|t| t.push(*name));
+                lib.lookup(*name).run(lib, tracer);
+                tracer.send_modify(|t| t.pop());
+            }
+        }
+    }
 }
 
 impl Expression<String> {

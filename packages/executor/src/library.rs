@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
+use tokio::sync::watch;
 
-use crate::syntax_tree::{Function, IdMap, Module};
+use crate::{
+    run::RunTracer,
+    syntax_tree::{Expression, Function, IdMap, Module},
+};
 
 pub struct Library {
     main_id: Option<FunctionId>,
@@ -62,6 +66,16 @@ impl Library {
     /// Returns `None` if there was no "main" function.
     pub fn main_id(&self) -> Option<FunctionId> {
         self.main_id
+    }
+
+    pub fn run(&self, tracer: &watch::Sender<RunTracer>) {
+        if let Some(main_id) = self.main_id() {
+            Expression::Call {
+                name: main_id,
+                args: Vec::new(),
+            }
+            .run(self, tracer);
+        }
     }
 }
 
