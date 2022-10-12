@@ -36,8 +36,7 @@ async fn main() {
 
 #[tokio::main]
 async fn server(tracer: watch::Receiver<RunTracer>) {
-    let handler =
-        move |ws, user_agent| async move { upgrade_to_websocket(tracer, ws, user_agent).await };
+    let handler = |ws, user_agent| async { upgrade_to_websocket(tracer, ws, user_agent).await };
     let app = Router::new().route("/", get(handler));
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
         .serve(app.into_make_service())
@@ -54,7 +53,7 @@ async fn upgrade_to_websocket(
         println!("`{}` connected", user_agent.as_str());
     }
 
-    ws.on_upgrade(move |socket| handler(tracer, socket))
+    ws.on_upgrade(|socket| handler(tracer, socket))
 }
 
 async fn handler(mut tracer: watch::Receiver<RunTracer>, mut socket: WebSocket) {
