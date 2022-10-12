@@ -208,10 +208,6 @@ fn render_function_body(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
-    let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
-    let margin = [bs::MT_3, bs::ME_3];
-    let padding = [bs::P_3];
-
     let style = Mutable::new("".to_owned());
     let show_body = Mutable::new(false);
 
@@ -235,7 +231,7 @@ fn render_function_body(
                     let initial_width = parent.get_bounding_client_rect().width();
                     let final_bounds = elem.get_bounding_client_rect();
                     style.set(style_max_size(initial_width, 0.0));
-                    
+
                     on_animation_frame({
                         clone!(style);
                         move || {
@@ -262,43 +258,51 @@ fn render_function_body(
 
             move |expanded| {
                 if expanded {
-                    let body: Vec<_> = body
-                        .iter()
-                        .filter(|stmt| statement_is_expandable(*stmt))
-                        .collect();
-
-                    assert!(!body.is_empty());
-
-                    let (body_head, body_tail) = body.split_at(body.len() - 1);
-
-                    let row = row(chain!(
-                        [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
-                        border,
-                        margin,
-                        padding
-                    ))
-                    .children(render_body_statements(
-                        body_head.iter().copied(),
-                        false,
-                        &library,
-                        &call_stack,
-                        &run_states,
-                    ))
-                    .children(render_body_statements(
-                        body_tail.iter().copied(),
-                        true,
-                        &library,
-                        &call_stack,
-                        &run_states,
-                    ));
-
-                    Some(row)
+                    Some(expanded_body(&body, &library, &call_stack, &run_states))
                 } else {
                     style.set(style_min_size(0.0, 0.0));
                     None
                 }
             }
         }))
+}
+
+fn expanded_body(
+    body: &Arc<Vec<Statement<FunctionId>>>,
+    library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
+) -> DivBuilder {
+    let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
+    let margin = [bs::MT_3, bs::ME_3];
+    let padding = [bs::P_3];
+    let body: Vec<_> = body
+        .iter()
+        .filter(|stmt| statement_is_expandable(*stmt))
+        .collect();
+    assert!(!body.is_empty());
+    let (body_head, body_tail) = body.split_at(body.len() - 1);
+    let row = row(chain!(
+        [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
+        border,
+        margin,
+        padding
+    ))
+    .children(render_body_statements(
+        body_head.iter().copied(),
+        false,
+        library,
+        call_stack,
+        run_states,
+    ))
+    .children(render_body_statements(
+        body_tail.iter().copied(),
+        true,
+        library,
+        call_stack,
+        run_states,
+    ));
+    row
 }
 
 fn render_body_statements<'a>(
