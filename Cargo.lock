@@ -1222,6 +1222,7 @@ dependencies = [
  "nom_locate 4.0.0",
  "serde",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

@@ -1,8 +1,4 @@
-use std::{
-    sync::{Arc, RwLock},
-    thread,
-    time::Duration,
-};
+use std::{thread, time::Duration};
 
 use axum::{
     extract::{
@@ -20,27 +16,26 @@ use serpent_automation_executor::{
     syntax_tree::parse,
     CODE,
 };
-use tokio::time::sleep;
+use tokio::{sync::watch, time::sleep};
 
 #[tokio::main]
 async fn main() {
     let lib = Library::link(parse(CODE).unwrap());
-    // Unfortunately we need to use an `Arc` as axum requires `'static` lifetimes on
-    // closures/futures.
-    let tracer = Arc::new(RwLock::new(RunTracer::new()));
+
+    let (trace_send, trace_receive) = watch::channel(RunTracer::new());
 
     thread::scope(|scope| {
-        scope.spawn(|| ui(tracer.clone()));
+        scope.spawn(|| ui(trace_receive));
         scope.spawn(|| loop {
-            *(tracer.write().unwrap()) = RunTracer::new();
-            run(&lib, &tracer);
+            run(&lib, &trace_send);
             thread::sleep(Duration::from_secs(3));
+            trace_send.send_replace(RunTracer::new());
         });
     });
 }
 
 #[tokio::main]
-async fn ui(tracer: Arc<RwLock<RunTracer>>) {
+async fn ui(tracer: watch::Receiver<RunTracer>) {
     let handler = move |ws, user_agent| async move { ws_handler(tracer, ws, user_agent).await };
     let app = Router::new().route("/", get(handler));
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
@@ -50,7 +45,7 @@ async fn ui(tracer: Arc<RwLock<RunTracer>>) {
 }
 
 async fn ws_handler(
-    tracer: Arc<RwLock<RunTracer>>,
+    tracer: watch::Receiver<RunTracer>,
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
 ) -> impl IntoResponse {
@@ -61,21 +56,17 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(tracer, socket))
 }
 
-async fn handle_socket(tracer: Arc<RwLock<RunTracer>>, mut socket: WebSocket) {
+async fn handle_socket(mut tracer: watch::Receiver<RunTracer>, mut socket: WebSocket) {
     println!("Upgraded to websocket");
 
     loop {
-        println!("Sending run state");
-        let tracer_snapshot = tracer.read().unwrap().clone();
+        tracer.changed().await.unwrap();
+
+        let serialize_tracer = serde_json::to_string(&*tracer.borrow()).unwrap();
 
         // TODO: Diff `RunTracer` and send a `RunTracerDelta`
-        if socket
-            .send(Message::Text(
-                serde_json::to_string(&tracer_snapshot).unwrap(),
-            ))
-            .await
-            .is_err()
-        {
+        println!("Sending run state");
+        if socket.send(Message::Text(serialize_tracer)).await.is_err() {
             println!("Client disconnected");
             return;
         }

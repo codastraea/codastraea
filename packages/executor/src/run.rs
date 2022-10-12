@@ -1,6 +1,7 @@
-use std::{collections::HashSet, sync::RwLock, thread::sleep, time::Duration};
+use std::{collections::HashSet, thread::sleep, time::Duration};
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
@@ -49,10 +50,10 @@ pub enum FnStatus {
 }
 
 pub trait Run {
-    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>);
+    fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>);
 }
 
-pub fn run(lib: &Library, tracer: &RwLock<RunTracer>) {
+pub fn run(lib: &Library, tracer: &watch::Sender<RunTracer>) {
     if let Some(main_id) = lib.main_id() {
         Expression::Call {
             name: main_id,
@@ -63,7 +64,7 @@ pub fn run(lib: &Library, tracer: &RwLock<RunTracer>) {
 }
 
 impl Run for Function<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
+    fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(2));
 
@@ -74,7 +75,7 @@ impl Run for Function<FunctionId> {
 }
 
 impl Run for Statement<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
+    fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
         match self {
             Statement::Pass => (),
             Statement::Expression(expr) => expr.run(lib, tracer),
@@ -83,7 +84,7 @@ impl Run for Statement<FunctionId> {
 }
 
 impl Run for Expression<FunctionId> {
-    fn run(&self, lib: &Library, tracer: &RwLock<RunTracer>) {
+    fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
         match self {
             Expression::Variable { name } => println!("Variable {name}"),
             Expression::Call { name, args } => {
@@ -91,9 +92,9 @@ impl Run for Expression<FunctionId> {
                     arg.run(lib, tracer);
                 }
 
-                tracer.write().unwrap().push(*name);
+                tracer.send_modify(|t| t.push(*name));
                 lib.lookup(*name).run(lib, tracer);
-                tracer.write().unwrap().pop();
+                tracer.send_modify(|t| t.pop());
             }
         }
     }
