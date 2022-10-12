@@ -22,7 +22,7 @@ use serpent_automation_executor::{
 use silkenweb::{
     clone,
     elements::{
-        html::{a, button, div, i, li, span, ul, DivBuilder, LiBuilder},
+        html::{a, button, div, i, li, ul, DivBuilder, LiBuilder, I},
         AriaElement, ElementEvents,
     },
     mount,
@@ -56,29 +56,10 @@ fn dropdown<'a>(
     let id = format!("dropdown-{id}");
 
     let status_child = fn_status.map(|status| match status {
-        FnStatus::NotRun => {
-            Element::from(i().class([bs::ME_2, bs::TEXT_SECONDARY, icon::BI_CIRCLE]))
-        }
-        FnStatus::Running => span()
-            .class([
-                bs::ME_2,
-                bs::SPINNER_BORDER,
-                bs::SPINNER_BORDER_SM,
-                bs::TEXT_PRIMARY,
-            ])
-            .aria_hidden("true")
-            .into(),
-        FnStatus::Ok => i()
-            .class([bs::ME_2, bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL])
-            .into(),
-
-        FnStatus::Error => i()
-            .class([
-                bs::ME_2,
-                bs::TEXT_DANGER,
-                icon::BI_EXCLAMATION_TRIANGLE_FILL,
-            ])
-            .into(),
+        FnStatus::NotRun => status_icon(bs::TEXT_SECONDARY, icon::BI_CIRCLE),
+        FnStatus::Running => status_icon(bs::TEXT_PRIMARY, icon::BI_PLAY_CIRCLE_FILL),
+        FnStatus::Ok => status_icon(bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL),
+        FnStatus::Error => status_icon(bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL),
     });
 
     button_group(classes)
@@ -98,6 +79,10 @@ fn dropdown<'a>(
                 .children([dropdown_item("Run"), dropdown_item("Pause")]),
         )
         .into()
+}
+
+fn status_icon(colour: &str, icon: &str) -> I {
+    i().class([bs::ME_2, colour, icon]).build()
 }
 
 fn button_group<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
