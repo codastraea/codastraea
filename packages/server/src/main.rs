@@ -25,7 +25,7 @@ async fn main() {
     let (trace_send, trace_receive) = watch::channel(RunTracer::new());
 
     thread::scope(|scope| {
-        scope.spawn(|| ui(trace_receive));
+        scope.spawn(|| server(trace_receive));
         scope.spawn(|| loop {
             run(&lib, &trace_send);
             thread::sleep(Duration::from_secs(3));
@@ -35,8 +35,9 @@ async fn main() {
 }
 
 #[tokio::main]
-async fn ui(tracer: watch::Receiver<RunTracer>) {
-    let handler = move |ws, user_agent| async move { ws_handler(tracer, ws, user_agent).await };
+async fn server(tracer: watch::Receiver<RunTracer>) {
+    let handler =
+        move |ws, user_agent| async move { upgrade_to_websocket(tracer, ws, user_agent).await };
     let app = Router::new().route("/", get(handler));
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
         .serve(app.into_make_service())
@@ -44,7 +45,7 @@ async fn ui(tracer: watch::Receiver<RunTracer>) {
         .unwrap();
 }
 
-async fn ws_handler(
+async fn upgrade_to_websocket(
     tracer: watch::Receiver<RunTracer>,
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
@@ -53,19 +54,19 @@ async fn ws_handler(
         println!("`{}` connected", user_agent.as_str());
     }
 
-    ws.on_upgrade(move |socket| handle_socket(tracer, socket))
+    ws.on_upgrade(move |socket| handler(tracer, socket))
 }
 
-async fn handle_socket(mut tracer: watch::Receiver<RunTracer>, mut socket: WebSocket) {
+async fn handler(mut tracer: watch::Receiver<RunTracer>, mut socket: WebSocket) {
     println!("Upgraded to websocket");
 
     loop {
         tracer.changed().await.unwrap();
 
         let serialize_tracer = serde_json::to_string(&*tracer.borrow()).unwrap();
+        println!("Sending run state");
 
         // TODO: Diff `RunTracer` and send a `RunTracerDelta`
-        println!("Sending run state");
         if socket.send(Message::Text(serialize_tracer)).await.is_err() {
             println!("Client disconnected");
             return;
