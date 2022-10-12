@@ -339,6 +339,8 @@ fn render_function_header(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Element {
+    // TODO: Maybe a spinner is the wrong thing to use to indicate that something is
+    // running?
     let status_signal = run_states
         .borrow_mut()
         .entry(call_stack.clone())
@@ -410,6 +412,8 @@ fn main() {
                         let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
                         log!(format!("Deserialized `RunTracer` from `{text}`"));
 
+                        // TODO: Share current `run_tracer` so we can get status of newly expanded
+                        // function bodies.
                         for (call_stack, status) in run_states.borrow().iter() {
                             log!(format!("call stack {:?}", call_stack));
                             status.set_neq(run_tracer.status(call_stack));
