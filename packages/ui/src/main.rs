@@ -151,7 +151,7 @@ fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
     }
 }
 
-fn expandable(stmts: &[Statement<FunctionId>]) -> bool {
+fn is_expandable(stmts: &[Statement<FunctionId>]) -> bool {
     stmts.iter().any(statement_is_expandable)
 }
 
@@ -162,7 +162,7 @@ fn render_function(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> Element {
-    let expanded = expandable(f.body()).then(|| Mutable::new(false));
+    let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
     let name = f.name();
 
     let header = render_function_header(name, expanded.clone(), call_stack, run_states);
