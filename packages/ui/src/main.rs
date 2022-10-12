@@ -86,9 +86,7 @@ fn status_icon(colour: &str, icon: &str) -> I {
 }
 
 fn button_group<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div()
-        .class(classes.into_iter().chain([bs::BTN_GROUP]))
-        .role("group")
+    div().class(chain!(classes, [bs::BTN_GROUP])).role("group")
 }
 
 fn dropdown_item(name: &str) -> LiBuilder {
@@ -96,11 +94,11 @@ fn dropdown_item(name: &str) -> LiBuilder {
 }
 
 fn row<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div().class(classes.into_iter().chain([bs::D_FLEX, bs::FLEX_ROW]))
+    div().class(chain!(classes, [bs::D_FLEX, bs::FLEX_ROW]))
 }
 
 fn column<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div().class(classes.into_iter().chain([bs::D_FLEX, bs::FLEX_COLUMN]))
+    div().class(chain!(classes, [bs::D_FLEX, bs::FLEX_COLUMN]))
 }
 
 fn horizontal_line() -> Element {
