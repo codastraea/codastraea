@@ -163,9 +163,7 @@ fn render_function(
     run_states: &RunStates,
 ) -> Element {
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
-    let name = f.name();
-
-    let header = render_function_header(name, expanded.clone(), call_stack, run_states);
+    let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
     let header_elem = header.handle().dom_element();
     let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(header);
 
@@ -190,12 +188,16 @@ fn render_function(
     }
 }
 
+fn style_size(bound: &str, width: f64, height: f64) -> String {
+    format!("overflow: hidden; {bound}-width: {width}px; {bound}-height: {height}px",)
+}
+
 fn style_max_size(width: f64, height: f64) -> String {
-    format!("overflow: hidden; max-width: {width}px; max-height: {height}px",)
+    style_size("max", width, height)
 }
 
 fn style_min_size(width: f64, height: f64) -> String {
-    format!("overflow: hidden; min-width: {width}px; min-height: {height}px",)
+    style_size("min", width, height)
 }
 
 fn render_function_body(
@@ -211,7 +213,6 @@ fn render_function_body(
     let padding = [bs::P_3];
 
     let style = Mutable::new("".to_owned());
-
     let show_body = Mutable::new(false);
 
     div()
@@ -233,13 +234,12 @@ fn render_function_body(
                 if expanded {
                     let initial_width = parent.get_bounding_client_rect().width();
                     let final_bounds = elem.get_bounding_client_rect();
-                    let final_width = final_bounds.width();
-                    let final_height = final_bounds.height();
                     style.set(style_max_size(initial_width, 0.0));
+                    
                     on_animation_frame({
                         clone!(style);
                         move || {
-                            style.set(style_max_size(final_width, final_height));
+                            style.set(style_max_size(final_bounds.width(), final_bounds.height()));
                         }
                     })
                 } else {
@@ -261,10 +261,7 @@ fn render_function_body(
             clone!(body, library, call_stack, run_states);
 
             move |expanded| {
-                if !expanded {
-                    style.set(style_min_size(0.0, 0.0));
-                    None
-                } else {
+                if expanded {
                     let body: Vec<_> = body
                         .iter()
                         .filter(|stmt| statement_is_expandable(*stmt))
@@ -296,6 +293,9 @@ fn render_function_body(
                     ));
 
                     Some(row)
+                } else {
+                    style.set(style_min_size(0.0, 0.0));
+                    None
                 }
             }
         }))
