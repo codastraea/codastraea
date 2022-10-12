@@ -45,10 +45,10 @@ mod icon {
 
 const BUTTON_STYLE: &str = bs::BTN_OUTLINE_SECONDARY;
 
-fn dropdown<'a>(
-    name: &'a str,
+fn dropdown(
+    container: DivBuilder,
+    name: &str,
     fn_status: impl Signal<Item = FnStatus> + 'static,
-    classes: impl IntoIterator<Item = &'a str>,
 ) -> Element {
     static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -62,7 +62,7 @@ fn dropdown<'a>(
         FnStatus::Error => status_icon(bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL),
     });
 
-    button_group(classes)
+    container
         .child(
             button()
                 .class([bs::BTN, BUTTON_STYLE, bs::DROPDOWN_TOGGLE])
@@ -335,7 +335,7 @@ fn render_function_header(
     if let Some(expanded) = expanded {
         button_group([bs::SHADOW])
             .aria_label(format!("Function {name}"))
-            .child(dropdown(name, status_signal, []))
+            .child(dropdown(button_group([]), name, status_signal))
             .child(
                 button()
                     .on_click({
@@ -356,7 +356,7 @@ fn render_function_header(
             )
             .into()
     } else {
-        dropdown(name, status_signal, [bs::SHADOW])
+        dropdown(div().class([bs::DROPDOWN, bs::SHADOW]), name, status_signal)
     }
 }
 
