@@ -12,7 +12,6 @@ use futures::StreamExt;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
-use itertools::chain;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, FnStatus, RunTracer},
@@ -85,20 +84,20 @@ fn status_icon(colour: &str, icon: &str) -> I {
     i().class([bs::ME_2, colour, icon]).build()
 }
 
-fn button_group<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div().class(chain!(classes, [bs::BTN_GROUP])).role("group")
+fn button_group() -> DivBuilder {
+    div().class([bs::BTN_GROUP]).role("group")
 }
 
 fn dropdown_item(name: &str) -> LiBuilder {
     li().child(a().class([bs::DROPDOWN_ITEM]).href("#").text(name))
 }
 
-fn row<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div().class(chain!(classes, [bs::D_FLEX, bs::FLEX_ROW]))
+fn row() -> DivBuilder {
+    div().class([bs::D_FLEX, bs::FLEX_ROW])
 }
 
-fn column<'a>(classes: impl IntoIterator<Item = &'a str>) -> DivBuilder {
-    div().class(chain!(classes, [bs::D_FLEX, bs::FLEX_COLUMN]))
+fn column() -> DivBuilder {
+    div().class([bs::D_FLEX, bs::FLEX_COLUMN])
 }
 
 fn horizontal_line() -> Element {
@@ -165,14 +164,15 @@ fn render_function(
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
     let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
     let header_elem = header.handle().dom_element();
-    let mut main = row([bs::ALIGN_ITEMS_CENTER]).child(header);
+    let mut main = row().class([bs::ALIGN_ITEMS_CENTER]).child(header);
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
     if let Some(expanded) = expanded {
-        column([bs::ALIGN_ITEMS_STRETCH])
+        column()
+            .class([bs::ALIGN_ITEMS_STRETCH])
             .child(main)
             .child(render_function_body(
                 f.body(),
@@ -284,26 +284,25 @@ fn expanded_body(
     let (body_head, body_tail) = body.split_at(body.len() - 1);
     assert!(body_tail.len() == 1);
 
-    let row = row(chain!(
-        [bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW,],
-        border,
-        margin,
-        padding
-    ))
-    .children(render_body_statements(
-        body_head.iter().copied(),
-        false,
-        library,
-        call_stack,
-        run_states,
-    ))
-    .children(render_body_statements(
-        body_tail.iter().copied(),
-        true,
-        library,
-        call_stack,
-        run_states,
-    ));
+    let row = row()
+        .class([bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW])
+        .class(border)
+        .class(margin)
+        .class(padding)
+        .children(render_body_statements(
+            body_head.iter().copied(),
+            false,
+            library,
+            call_stack,
+            run_states,
+        ))
+        .children(render_body_statements(
+            body_tail.iter().copied(),
+            true,
+            library,
+            call_stack,
+            run_states,
+        ));
     row
 }
 
@@ -335,9 +334,10 @@ fn render_function_header(
         .signal();
 
     if let Some(expanded) = expanded {
-        button_group([bs::SHADOW])
+        button_group()
+            .class([bs::SHADOW])
             .aria_label(format!("Function {name}"))
-            .child(dropdown(button_group([]), name, status_signal))
+            .child(dropdown(button_group(), name, status_signal))
             .child(
                 button()
                     .on_click({
@@ -411,20 +411,21 @@ fn main() {
     let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
     let server = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
-    let app = row([
-        css::FLOW_DIAGRAMS_CONTAINER,
-        bs::M_3,
-        bs::ALIGN_ITEMS_START,
-        bs::OVERFLOW_AUTO,
-    ])
-    .children([render_function(
-        library.main().unwrap(),
-        true,
-        &library,
-        &vec![library.main_id().unwrap()],
-        &run_states,
-    )])
-    .spawn_future(server_connection(server, run_states.clone()));
+    let app = row()
+        .class([
+            css::FLOW_DIAGRAMS_CONTAINER,
+            bs::M_3,
+            bs::ALIGN_ITEMS_START,
+            bs::OVERFLOW_AUTO,
+        ])
+        .children([render_function(
+            library.main().unwrap(),
+            true,
+            &library,
+            &vec![library.main_id().unwrap()],
+            &run_states,
+        )])
+        .spawn_future(server_connection(server, run_states.clone()));
 
     mount("app", app);
 }

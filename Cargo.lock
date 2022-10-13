@@ -1243,7 +1243,6 @@ dependencies = [
  "futures-signals",
  "gloo-console",
  "gloo-net",
- "itertools",
  "serde-json-wasm",
  "serpent-automation-executor",
  "silkenweb",
@@ -1284,7 +1283,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#f4ef2d402349213e81b5a293c3ba8377e0c7d835"
+source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
 dependencies = [
  "caseless",
  "discard",
@@ -1292,6 +1291,7 @@ dependencies = [
  "futures-signals",
  "html-escape",
  "indexmap",
+ "itertools",
  "js-sys",
  "paste",
  "silkenweb-base",
@@ -1304,7 +1304,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#f4ef2d402349213e81b5a293c3ba8377e0c7d835"
+source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -1314,7 +1314,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#f4ef2d402349213e81b5a293c3ba8377e0c7d835"
+source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
 dependencies = [
  "cssparser",
  "grass",
