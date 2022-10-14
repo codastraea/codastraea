@@ -1246,6 +1246,7 @@ dependencies = [
  "serde-json-wasm",
  "serpent-automation-executor",
  "silkenweb",
+ "silkenweb-bootstrap",
  "web-sys",
 ]
 
@@ -1283,7 +1284,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
+source = "git+https://github.com/silkenweb/silkenweb#f403a8bfd1ef7e877e113867b0180195f9152566"
 dependencies = [
  "caseless",
  "discard",
@@ -1304,7 +1305,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
+source = "git+https://github.com/silkenweb/silkenweb#f403a8bfd1ef7e877e113867b0180195f9152566"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -1312,9 +1313,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "silkenweb-bootstrap"
+version = "0.1.0"
+source = "git+https://github.com/silkenweb/silkenweb#f403a8bfd1ef7e877e113867b0180195f9152566"
+dependencies = [
+ "futures-signals",
+ "silkenweb",
+]
+
+[[package]]
 name = "silkenweb-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#1f9460201b09691089a12eccfe9a42fe8997ec83"
+source = "git+https://github.com/silkenweb/silkenweb#f403a8bfd1ef7e877e113867b0180195f9152566"
 dependencies = [
  "cssparser",
  "grass",

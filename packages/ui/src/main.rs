@@ -29,6 +29,7 @@ use silkenweb::{
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
 };
+use silkenweb_bootstrap::utility::{Colour, Overflow, Side, Size::Size3, Spacing};
 
 mod bs {
     silkenweb::css_classes!(visibility: pub, path: "bootstrap.min.css");
@@ -92,21 +93,14 @@ fn dropdown_item(name: &str) -> LiBuilder {
     li().child(a().class([bs::DROPDOWN_ITEM]).href("#").text(name))
 }
 
-fn row() -> DivBuilder {
-    div().class([bs::D_FLEX, bs::FLEX_ROW])
-}
-
-fn column() -> DivBuilder {
-    div().class([bs::D_FLEX, bs::FLEX_COLUMN])
-}
-
 fn horizontal_line() -> Element {
     div().class([css::HORIZONTAL_LINE]).into()
 }
 
 fn arrow_right() -> Element {
     div()
-        .class([css::ARROW_HEAD_RIGHT, bs::BG_SECONDARY])
+        .class([css::ARROW_HEAD_RIGHT])
+        .background_colour(Colour::Secondary)
         .into()
 }
 
@@ -164,14 +158,18 @@ fn render_function(
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
     let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
     let header_elem = header.handle().dom_element();
-    let mut main = row().class([bs::ALIGN_ITEMS_CENTER]).child(header);
+    let mut main = div()
+        .flex_row()
+        .class([bs::ALIGN_ITEMS_CENTER])
+        .child(header);
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
     if let Some(expanded) = expanded {
-        column()
+        div()
+            .flex_column()
             .class([bs::ALIGN_ITEMS_STRETCH])
             .child(main)
             .child(render_function_body(
@@ -273,9 +271,6 @@ fn expanded_body(
     call_stack: &CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
-    let border = [bs::BORDER, bs::BORDER_SECONDARY, bs::ROUNDED, bs::SHADOW];
-    let margin = [bs::MT_3, bs::ME_3];
-    let padding = [bs::P_3];
     let body: Vec<_> = body
         .iter()
         .filter(|stmt| statement_is_expandable(*stmt))
@@ -284,11 +279,16 @@ fn expanded_body(
     let (body_head, body_tail) = body.split_at(body.len() - 1);
     assert!(body_tail.len() == 1);
 
-    let row = row()
+    let row = div()
+        .flex_row()
         .class([bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW])
-        .class(border)
-        .class(margin)
-        .class(padding)
+        .margin_on(Some(Size3), Side::Top)
+        .margin_on(Some(Size3), Side::End)
+        .padding(Size3)
+        .border()
+        .border_colour(Colour::Secondary)
+        .rounded_border()
+        .shadow()
         .children(render_body_statements(
             body_head.iter().copied(),
             false,
@@ -335,7 +335,7 @@ fn render_function_header(
 
     if let Some(expanded) = expanded {
         button_group()
-            .class([bs::SHADOW])
+            .shadow()
             .aria_label(format!("Function {name}"))
             .child(dropdown(button_group(), name, status_signal))
             .child(
@@ -358,7 +358,7 @@ fn render_function_header(
             )
             .into()
     } else {
-        dropdown(div().class([bs::DROPDOWN, bs::SHADOW]), name, status_signal)
+        dropdown(div().class([bs::DROPDOWN]).shadow(), name, status_signal)
     }
 }
 
@@ -411,13 +411,11 @@ fn main() {
     let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
     let server = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
-    let app = row()
-        .class([
-            css::FLOW_DIAGRAMS_CONTAINER,
-            bs::M_3,
-            bs::ALIGN_ITEMS_START,
-            bs::OVERFLOW_AUTO,
-        ])
+    let app = div()
+        .flex_row()
+        .margin(Some(Size3))
+        .class([css::FLOW_DIAGRAMS_CONTAINER, bs::ALIGN_ITEMS_START])
+        .overflow(Overflow::Auto)
         .children([render_function(
             library.main().unwrap(),
             true,
