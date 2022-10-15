@@ -21,7 +21,7 @@ use serpent_automation_executor::{
 use silkenweb::{
     clone,
     elements::{
-        html::{self, a, div, li, ul, DivBuilder, LiBuilder},
+        html::{self, a, div, ABuilder, DivBuilder},
         AriaElement, ElementEvents,
     },
     mount,
@@ -31,7 +31,7 @@ use silkenweb::{
 };
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
-    column,
+    column, dropdown,
     icon::{icon_signal, Icon, IconType},
     row,
     utility::{
@@ -86,11 +86,7 @@ fn dropdown(
                 .child_signal(status_child)
                 .text(name),
         )
-        .child(
-            ul().class([bs::DROPDOWN_MENU])
-                .aria_labelledby(id)
-                .children([dropdown_item("Run"), dropdown_item("Pause")]),
-        )
+        .child(dropdown::menu().children([dropdown_item("Run"), dropdown_item("Pause")]))
         .into()
 }
 
@@ -98,8 +94,8 @@ fn button_group() -> DivBuilder {
     div().class([bs::BTN_GROUP]).role("group")
 }
 
-fn dropdown_item(name: &str) -> LiBuilder {
-    li().child(a().class([bs::DROPDOWN_ITEM]).href("#").text(name))
+fn dropdown_item(name: &str) -> ABuilder {
+    a().href("#").text(name)
 }
 
 fn horizontal_line() -> Element {
