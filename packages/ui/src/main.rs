@@ -30,6 +30,7 @@ use silkenweb::{
     task::on_animation_frame,
 };
 use silkenweb_bootstrap::{
+    button::{button, ButtonStyle},
     column,
     icon::{icon_signal, Icon, IconType},
     row,
@@ -52,7 +53,7 @@ mod icon {
     silkenweb::css_classes!(visibility: pub, path: "bootstrap-icons.css");
 }
 
-const BUTTON_STYLE: &str = bs::BTN_OUTLINE_SECONDARY;
+const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 
 fn dropdown(
     container: DivBuilder,
@@ -77,7 +78,7 @@ fn dropdown(
     container
         .child(
             html::button()
-                .class([bs::BTN, BUTTON_STYLE, bs::DROPDOWN_TOGGLE])
+                .class([bs::BTN, bs::BTN_OUTLINE_SECONDARY, bs::DROPDOWN_TOGGLE])
                 .id(&id)
                 .attribute("data-bs-toggle", "dropdown")
                 .r#type("button")
@@ -344,16 +345,15 @@ fn render_function_header(
             .aria_label(format!("Function {name}"))
             .child(dropdown(button_group(), name, status_signal))
             .child(
-                html::button()
+                button("button")
                     .on_click({
                         clone!(expanded);
                         move |_, _| {
                             expanded.replace_with(|e| !*e);
                         }
                     })
-                    .r#type("button")
-                    .class([bs::BTN, BUTTON_STYLE])
-                    .child(icon_signal(expanded.signal().map(|expanded| {
+                    .appearance(BUTTON_STYLE)
+                    .icon(icon_signal(expanded.signal().map(|expanded| {
                         if expanded {
                             IconType::ZoomOut
                         } else {
