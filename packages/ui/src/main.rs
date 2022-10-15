@@ -21,7 +21,7 @@ use serpent_automation_executor::{
 use silkenweb::{
     clone,
     elements::{
-        html::{a, button, div, i, li, ul, DivBuilder, LiBuilder, I},
+        html::{a, button, div, i, li, ul, DivBuilder, LiBuilder},
         AriaElement, ElementEvents,
     },
     mount,
@@ -30,10 +30,13 @@ use silkenweb::{
     task::on_animation_frame,
 };
 use silkenweb_bootstrap::{
-    column, row,
+    column,
+    icon::Icon,
+    row,
     utility::{
         Align, Colour, Overflow, SetAlign, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing,
-        Side, Size::Size3,
+        Side,
+        Size::{self, Size3},
     },
 };
 
@@ -61,11 +64,14 @@ fn dropdown(
     let id = ID_COUNTER.fetch_add(1, Ordering::SeqCst);
     let id = format!("dropdown-{id}");
 
-    let status_child = fn_status.map(|status| match status {
-        FnStatus::NotRun => status_icon(bs::TEXT_SECONDARY, icon::BI_CIRCLE),
-        FnStatus::Running => status_icon(bs::TEXT_PRIMARY, icon::BI_PLAY_CIRCLE_FILL),
-        FnStatus::Ok => status_icon(bs::TEXT_SUCCESS, icon::BI_CHECK_CIRCLE_FILL),
-        FnStatus::Error => status_icon(bs::TEXT_DANGER, icon::BI_EXCLAMATION_TRIANGLE_FILL),
+    let status_child = fn_status.map(|status| {
+        match status {
+            FnStatus::NotRun => Icon::circle().colour(Colour::Secondary),
+            FnStatus::Running => Icon::play_circle_fill().colour(Colour::Primary),
+            FnStatus::Ok => Icon::check_circle_fill().colour(Colour::Success),
+            FnStatus::Error => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+        }
+        .margin_on(Some(Size::Size2), Side::End)
     });
 
     container
@@ -85,10 +91,6 @@ fn dropdown(
                 .children([dropdown_item("Run"), dropdown_item("Pause")]),
         )
         .into()
-}
-
-fn status_icon(colour: &str, icon: &str) -> I {
-    i().class([bs::ME_2, colour, icon]).build()
 }
 
 fn button_group() -> DivBuilder {
