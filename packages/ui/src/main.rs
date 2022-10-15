@@ -29,7 +29,9 @@ use silkenweb::{
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
 };
-use silkenweb_bootstrap::utility::{Colour, Overflow, Side, Size::Size3, Spacing};
+use silkenweb_bootstrap::utility::{
+    Colour, Overflow, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing, Side, Size::Size3,
+};
 
 mod bs {
     silkenweb::css_classes!(visibility: pub, path: "bootstrap.min.css");
