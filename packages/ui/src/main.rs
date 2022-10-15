@@ -32,7 +32,8 @@ use silkenweb::{
 use silkenweb_bootstrap::{
     column, row,
     utility::{
-        Colour, Overflow, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing, Side, Size::Size3,
+        Align, Colour, Overflow, SetAlign, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing,
+        Side, Size::Size3,
     },
 };
 
@@ -163,7 +164,7 @@ fn render_function(
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
     let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
     let header_elem = header.handle().dom_element();
-    let mut main = row().class([bs::ALIGN_ITEMS_CENTER]).child(header);
+    let mut main = row().align_items(Align::Center).child(header);
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
@@ -171,7 +172,7 @@ fn render_function(
 
     if let Some(expanded) = expanded {
         column()
-            .class([bs::ALIGN_ITEMS_STRETCH])
+            .align_items(Align::Stretch)
             .child(main)
             .child(render_function_body(
                 f.body(),
@@ -211,7 +212,8 @@ fn render_function_body(
     let show_body = Mutable::new(false);
 
     div()
-        .class([css::TRANSITION_ALL, bs::ALIGN_SELF_START])
+        .align_self(Align::Start)
+        .class([css::TRANSITION_ALL])
         .spawn_future(expanded.signal().for_each({
             clone!(show_body);
             move |expanded| {
@@ -281,7 +283,8 @@ fn expanded_body(
     assert!(body_tail.len() == 1);
 
     let row = row()
-        .class([bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW])
+        .align_items(Align::Start)
+        .class([css::SPEECH_BUBBLE_BELOW])
         .margin_on(Some(Size3), Side::Top)
         .margin_on(Some(Size3), Side::End)
         .padding(Size3)
@@ -413,7 +416,8 @@ fn main() {
 
     let app = row()
         .margin(Some(Size3))
-        .class([css::FLOW_DIAGRAMS_CONTAINER, bs::ALIGN_ITEMS_START])
+        .class([css::FLOW_DIAGRAMS_CONTAINER])
+        .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .children([render_function(
             library.main().unwrap(),
