@@ -1095,9 +1095,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.46"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94e2ef8dbfc347b10c094890f778ee2e36ca9bb4262e86dc99cd217e35f3470b"
+checksum = "5ea3d908b0e36316caf9e9e2c4625cdde190a7e6f440d794667ed17a1855e725"
 dependencies = [
  "unicode-ident",
 ]
@@ -1318,7 +1318,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#da45ff952043ab067d7923972886659d92ab69a6"
+source = "git+https://github.com/silkenweb/silkenweb#ebeb7e06e304769d4e334b453f688aa7fee1ffa8"
 dependencies = [
  "caseless",
  "discard",
@@ -1339,7 +1339,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#da45ff952043ab067d7923972886659d92ab69a6"
+source = "git+https://github.com/silkenweb/silkenweb#ebeb7e06e304769d4e334b453f688aa7fee1ffa8"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -1349,7 +1349,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap"
 version = "0.1.0"
-source = "git+https://github.com/silkenweb/silkenweb#da45ff952043ab067d7923972886659d92ab69a6"
+source = "git+https://github.com/silkenweb/silkenweb#ebeb7e06e304769d4e334b453f688aa7fee1ffa8"
 dependencies = [
  "derive_more",
  "futures-signals",
@@ -1359,7 +1359,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#da45ff952043ab067d7923972886659d92ab69a6"
+source = "git+https://github.com/silkenweb/silkenweb#ebeb7e06e304769d4e334b453f688aa7fee1ffa8"
 dependencies = [
  "cssparser",
  "grass",

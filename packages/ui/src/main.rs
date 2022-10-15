@@ -29,8 +29,11 @@ use silkenweb::{
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
 };
-use silkenweb_bootstrap::utility::{
-    Colour, Overflow, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing, Side, Size::Size3,
+use silkenweb_bootstrap::{
+    column, row,
+    utility::{
+        Colour, Overflow, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing, Side, Size::Size3,
+    },
 };
 
 mod bs {
@@ -160,18 +163,14 @@ fn render_function(
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
     let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
     let header_elem = header.handle().dom_element();
-    let mut main = div()
-        .flex_row()
-        .class([bs::ALIGN_ITEMS_CENTER])
-        .child(header);
+    let mut main = row().class([bs::ALIGN_ITEMS_CENTER]).child(header);
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
     if let Some(expanded) = expanded {
-        div()
-            .flex_column()
+        column()
             .class([bs::ALIGN_ITEMS_STRETCH])
             .child(main)
             .child(render_function_body(
@@ -281,8 +280,7 @@ fn expanded_body(
     let (body_head, body_tail) = body.split_at(body.len() - 1);
     assert!(body_tail.len() == 1);
 
-    let row = div()
-        .flex_row()
+    let row = row()
         .class([bs::ALIGN_ITEMS_START, css::SPEECH_BUBBLE_BELOW])
         .margin_on(Some(Size3), Side::Top)
         .margin_on(Some(Size3), Side::End)
@@ -413,8 +411,7 @@ fn main() {
     let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
     let server = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
-    let app = div()
-        .flex_row()
+    let app = row()
         .margin(Some(Size3))
         .class([css::FLOW_DIAGRAMS_CONTAINER, bs::ALIGN_ITEMS_START])
         .overflow(Overflow::Auto)
