@@ -21,7 +21,7 @@ use serpent_automation_executor::{
 use silkenweb::{
     clone,
     elements::{
-        html::{a, button, div, i, li, ul, DivBuilder, LiBuilder},
+        html::{self, a, div, li, ul, DivBuilder, LiBuilder},
         AriaElement, ElementEvents,
     },
     mount,
@@ -31,7 +31,7 @@ use silkenweb::{
 };
 use silkenweb_bootstrap::{
     column,
-    icon::Icon,
+    icon::{icon_signal, Icon, IconType},
     row,
     utility::{
         Align, Colour, Overflow, SetAlign, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing,
@@ -76,7 +76,7 @@ fn dropdown(
 
     container
         .child(
-            button()
+            html::button()
                 .class([bs::BTN, BUTTON_STYLE, bs::DROPDOWN_TOGGLE])
                 .id(&id)
                 .attribute("data-bs-toggle", "dropdown")
@@ -344,7 +344,7 @@ fn render_function_header(
             .aria_label(format!("Function {name}"))
             .child(dropdown(button_group(), name, status_signal))
             .child(
-                button()
+                html::button()
                     .on_click({
                         clone!(expanded);
                         move |_, _| {
@@ -353,12 +353,12 @@ fn render_function_header(
                     })
                     .r#type("button")
                     .class([bs::BTN, BUTTON_STYLE])
-                    .child(i().class_signal(expanded.signal().map(|expanded| {
-                        [if expanded {
-                            icon::BI_ZOOM_OUT
+                    .child(icon_signal(expanded.signal().map(|expanded| {
+                        if expanded {
+                            IconType::ZoomOut
                         } else {
-                            icon::BI_ZOOM_IN
-                        }]
+                            IconType::ZoomIn
+                        }
                     }))),
             )
             .into()
