@@ -6,8 +6,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-silkenweb = { git = "https://github.com/silkenweb/silkenweb" }
-silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb" }
+silkenweb = { git = "https://github.com/silkenweb/silkenweb", branch = "sig-newtype2-gat"}
+silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb", branch = "sig-newtype2-gat" }
 serpent-automation-executor = { path = "../executor" }
 futures-signals = "0.3.31"
 gloo-net = "0.2.4"

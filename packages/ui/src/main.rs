@@ -28,15 +28,16 @@ use silkenweb::{
     node::element::{Element, ElementBuilder},
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
+    value::Sig,
 };
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
     column, dropdown,
-    icon::{icon_signal, Icon, IconType},
+    icon::{icon, Icon, IconType},
     row,
     utility::{
         Align, Colour, Overflow, SetAlign, SetBorder, SetColour, SetFlex, SetOverflow, SetSpacing,
-        Side,
+        Shadow, Side,
         Size::{self, Size3},
     },
 };
@@ -72,18 +73,18 @@ fn dropdown(
             FnStatus::Ok => Icon::check_circle_fill().colour(Colour::Success),
             FnStatus::Error => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
-        .margin_on(Some(Size::Size2), Side::End)
+        .margin_on_side((Some(Size::Size2), Side::End))
     });
 
     container
         .child(
             html::button()
-                .class([bs::BTN, bs::BTN_OUTLINE_SECONDARY, bs::DROPDOWN_TOGGLE])
+                .classes([bs::BTN, bs::BTN_OUTLINE_SECONDARY, bs::DROPDOWN_TOGGLE])
                 .id(&id)
                 .attribute("data-bs-toggle", "dropdown")
                 .r#type("button")
                 .aria_expanded("false")
-                .child_signal(status_child)
+                .child(Sig(status_child))
                 .text(name),
         )
         .child(dropdown::menu().children([dropdown_item("Run"), dropdown_item("Pause")]))
@@ -91,7 +92,7 @@ fn dropdown(
 }
 
 fn button_group() -> DivBuilder {
-    div().class([bs::BTN_GROUP]).role("group")
+    div().class(bs::BTN_GROUP).role("group")
 }
 
 fn dropdown_item(name: &str) -> ABuilder {
@@ -99,12 +100,12 @@ fn dropdown_item(name: &str) -> ABuilder {
 }
 
 fn horizontal_line() -> Element {
-    div().class([css::HORIZONTAL_LINE]).into()
+    div().class(css::HORIZONTAL_LINE).into()
 }
 
 fn arrow_right() -> Element {
     div()
-        .class([css::ARROW_HEAD_RIGHT])
+        .class(css::ARROW_HEAD_RIGHT)
         .background_colour(Colour::Secondary)
         .into()
 }
@@ -212,7 +213,7 @@ fn render_function_body(
 
     div()
         .align_self(Align::Start)
-        .class([css::TRANSITION_ALL])
+        .class(css::TRANSITION_ALL)
         .spawn_future(expanded.signal().for_each({
             clone!(show_body);
             move |expanded| {
@@ -252,8 +253,8 @@ fn render_function_body(
             clone!(style);
             move |_, _| style.set("".to_owned())
         })
-        .style_signal(style.signal_cloned())
-        .optional_child_signal(show_body.signal().map({
+        .style(Sig(style.signal_cloned()))
+        .optional_child(Sig(show_body.signal().map({
             clone!(body, library, call_stack, run_states);
 
             move |expanded| {
@@ -264,7 +265,7 @@ fn render_function_body(
                     None
                 }
             }
-        }))
+        })))
 }
 
 fn expanded_body(
@@ -275,7 +276,7 @@ fn expanded_body(
 ) -> DivBuilder {
     let body: Vec<_> = body
         .iter()
-        .filter(|stmt| statement_is_expandable(*stmt))
+        .filter(|stmt| statement_is_expandable(stmt))
         .collect();
     assert!(!body.is_empty());
     let (body_head, body_tail) = body.split_at(body.len() - 1);
@@ -283,14 +284,14 @@ fn expanded_body(
 
     let row = row()
         .align_items(Align::Start)
-        .class([css::SPEECH_BUBBLE_BELOW])
-        .margin_on(Some(Size3), Side::Top)
-        .margin_on(Some(Size3), Side::End)
+        .class(css::SPEECH_BUBBLE_BELOW)
+        .margin_on_side((Some(Size3), Side::Top))
+        .margin_on_side((Some(Size3), Side::End))
         .padding(Size3)
-        .border()
+        .border(true)
         .border_colour(Colour::Secondary)
-        .rounded_border()
-        .shadow()
+        .rounded_border(true)
+        .shadow(Shadow::Medium)
         .children(render_body_statements(
             body_head.iter().copied(),
             false,
@@ -337,29 +338,28 @@ fn render_function_header(
 
     if let Some(expanded) = expanded {
         button_group()
-            .shadow()
+            .shadow(Shadow::Medium)
             .aria_label(format!("Function {name}"))
             .child(dropdown(button_group(), name, status_signal))
             .child(
-                button("button")
+                button("button", BUTTON_STYLE)
                     .on_click({
                         clone!(expanded);
                         move |_, _| {
                             expanded.replace_with(|e| !*e);
                         }
                     })
-                    .appearance(BUTTON_STYLE)
-                    .icon(icon_signal(expanded.signal().map(|expanded| {
+                    .icon(icon(Sig(expanded.signal().map(|expanded| {
                         if expanded {
                             IconType::ZoomOut
                         } else {
                             IconType::ZoomIn
                         }
-                    }))),
+                    })))),
             )
             .into()
     } else {
-        dropdown(div().class([bs::DROPDOWN]).shadow(), name, status_signal)
+        dropdown(div().class(bs::DROPDOWN).shadow(Shadow::Medium), name, status_signal)
     }
 }
 
@@ -414,7 +414,7 @@ fn main() {
 
     let app = row()
         .margin(Some(Size3))
-        .class([css::FLOW_DIAGRAMS_CONTAINER])
+        .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .children([render_function(
