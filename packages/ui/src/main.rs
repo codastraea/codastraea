@@ -36,16 +36,8 @@ use silkenweb_bootstrap::{
     },
 };
 
-mod bs {
-    silkenweb::css_classes!(visibility: pub, path: "bootstrap.min.css");
-}
-
 mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
-}
-
-mod icon {
-    silkenweb::css_classes!(visibility: pub, path: "bootstrap-icons.css");
 }
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
