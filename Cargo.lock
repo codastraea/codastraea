@@ -1260,6 +1260,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "serpent-automation-frontend"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "futures-signals",
+ "gloo-console",
+ "gloo-net",
+ "serde-json-wasm",
+ "serpent-automation-executor",
+]
+
+[[package]]
 name = "serpent-automation-server"
 version = "0.1.0"
 dependencies = [
@@ -1273,12 +1285,9 @@ dependencies = [
 name = "serpent-automation-ui"
 version = "0.1.0"
 dependencies = [
- "futures",
  "futures-signals",
- "gloo-console",
- "gloo-net",
- "serde-json-wasm",
  "serpent-automation-executor",
+ "serpent-automation-frontend",
  "silkenweb",
  "silkenweb-bootstrap",
  "web-sys",

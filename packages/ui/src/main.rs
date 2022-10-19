@@ -1,14 +1,14 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
-use futures::StreamExt;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
-use gloo_console::log;
-use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, FnStatus, RunTracer},
+    run::{CallStack, FnStatus},
     syntax_tree::{parse, Expression, Function, Statement},
     CODE,
+};
+use serpent_automation_frontend::{
+    is_expandable, server_connection, statement_is_expandable, RunStates,
 };
 use silkenweb::{
     clone,
@@ -100,24 +100,6 @@ fn render_call(
     ));
 
     elems
-}
-
-fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
-    match expression {
-        Expression::Variable { .. } => false,
-        Expression::Call { .. } => true,
-    }
-}
-
-fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
-    match stmt {
-        Statement::Pass => false,
-        Statement::Expression(e) => expression_is_expandable(e),
-    }
-}
-
-fn is_expandable(stmts: &[Statement<FunctionId>]) -> bool {
-    stmts.iter().any(statement_is_expandable)
 }
 
 fn render_function(
@@ -345,39 +327,10 @@ fn render_expression(
     }
 }
 
-async fn server_connection(mut server_ws: WebSocket, run_states: RunStates) {
-    log!("Connected to websocket");
-
-    while let Some(msg) = server_ws.next().await {
-        log!(format!("Received: {:?}", msg));
-
-        match msg.unwrap() {
-            Message::Text(text) => {
-                let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
-                log!(format!("Deserialized `RunTracer` from `{text}`"));
-
-                // TODO: Share current `run_tracer` so we can get status of newly expanded
-                // function bodies.
-                for (call_stack, status) in run_states.borrow().iter() {
-                    log!(format!("call stack {:?}", call_stack));
-                    status.set_neq(run_tracer.status(call_stack));
-                }
-            }
-            Message::Bytes(_) => log!("Unknown binary message"),
-        }
-    }
-
-    log!("WebSocket Closed")
-}
-
-// TODO: Struct for this
-type RunStates = Rc<RefCell<HashMap<CallStack, Mutable<FnStatus>>>>;
-
 fn main() {
     let module = parse(CODE).unwrap();
     let library = Rc::new(Library::link(module));
     let run_states: RunStates = Rc::new(RefCell::new(HashMap::new()));
-    let server = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
     let app = row()
         .margin(Some(Size3))
@@ -391,7 +344,7 @@ fn main() {
             &vec![library.main_id().unwrap()],
             &run_states,
         )])
-        .spawn_future(server_connection(server, run_states.clone()));
+        .spawn_future(server_connection(run_states.clone()));
 
     mount("app", app);
 }
