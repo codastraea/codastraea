@@ -1,12 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
 use futures::StreamExt;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
@@ -21,8 +13,8 @@ use serpent_automation_executor::{
 use silkenweb::{
     clone,
     elements::{
-        html::{self, a, div, ABuilder, DivBuilder},
-        AriaElement, ElementEvents,
+        html::{a, div, ABuilder, DivBuilder},
+        ElementEvents,
     },
     mount,
     node::element::{Element, ElementBuilder},
@@ -32,7 +24,9 @@ use silkenweb::{
 };
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
-    column, dropdown,
+    button_group::button_group,
+    column,
+    dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     row,
     utility::{
@@ -56,17 +50,8 @@ mod icon {
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 
-fn dropdown(
-    container: DivBuilder,
-    name: &str,
-    fn_status: impl Signal<Item = FnStatus> + 'static,
-) -> Element {
-    static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    let id = ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-    let id = format!("dropdown-{id}");
-
-    let status_child = fn_status.map(|status| {
+fn fn_dropdown(name: &str, fn_status: impl Signal<Item = FnStatus> + 'static) -> DropdownBuilder {
+    let status = fn_status.map(|status| {
         match status {
             FnStatus::NotRun => Icon::circle().colour(Colour::Secondary),
             FnStatus::Running => Icon::play_circle_fill().colour(Colour::Primary),
@@ -76,23 +61,12 @@ fn dropdown(
         .margin_on_side((Some(Size::Size2), Side::End))
     });
 
-    container
-        .child(
-            html::button()
-                .classes([bs::BTN, bs::BTN_OUTLINE_SECONDARY, bs::DROPDOWN_TOGGLE])
-                .id(&id)
-                .attribute("data-bs-toggle", "dropdown")
-                .r#type("button")
-                .aria_expanded("false")
-                .child(Sig(status_child))
-                .text(name),
-        )
-        .child(dropdown::menu().children([dropdown_item("Run"), dropdown_item("Pause")]))
-        .into()
-}
-
-fn button_group() -> DivBuilder {
-    div().class(bs::BTN_GROUP).role("group")
+    dropdown(
+        button("button", ButtonStyle::Outline(Colour::Secondary))
+            .icon(Sig(status))
+            .text(name),
+        dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
+    )
 }
 
 fn dropdown_item(name: &str) -> ABuilder {
@@ -337,11 +311,10 @@ fn render_function_header(
         .signal();
 
     if let Some(expanded) = expanded {
-        button_group()
+        button_group(format!("Function {name}"))
             .shadow(Shadow::Medium)
-            .aria_label(format!("Function {name}"))
-            .child(dropdown(button_group(), name, status_signal))
-            .child(
+            .dropdown(fn_dropdown(name, status_signal))
+            .button(
                 button("button", BUTTON_STYLE)
                     .on_click({
                         clone!(expanded);
@@ -359,7 +332,9 @@ fn render_function_header(
             )
             .into()
     } else {
-        dropdown(div().class(bs::DROPDOWN).shadow(Shadow::Medium), name, status_signal)
+        fn_dropdown(name, status_signal)
+            .shadow(Shadow::Medium)
+            .into()
     }
 }
 
