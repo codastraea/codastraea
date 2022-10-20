@@ -40,8 +40,8 @@ pub async fn server_connection(run_states: RunStates) {
                 let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
 
-                // TODO: Share current `run_tracer` so we can get status of newly expanded
-                // function bodies.
+                // TODO: Loop over run tracer and set any states in run state, rather than the
+                // other way around.
                 for (call_stack, status) in run_states.borrow().iter() {
                     log!(format!("call stack {:?}", call_stack));
                     status.set_neq(run_tracer.status(call_stack));
@@ -54,5 +54,5 @@ pub async fn server_connection(run_states: RunStates) {
     log!("WebSocket Closed")
 }
 
-// TODO: Struct for this
+// TODO: Struct for this and rename to `ThreadState`?
 pub type RunStates = Rc<RefCell<HashMap<CallStack, Mutable<FnStatus>>>>;
