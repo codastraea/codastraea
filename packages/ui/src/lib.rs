@@ -18,15 +18,12 @@ mod css {
 }
 
 pub fn app(library: &Rc<Library>, run_states: &RunStates) -> impl Into<Node> {
+    let main_id = library.main_id().unwrap();
+
     row()
         .margin(Some(Size3))
         .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
-        .child(ThreadView::new(
-            library.main().unwrap(),
-            library,
-            &vec![library.main_id().unwrap()],
-            run_states,
-        ))
+        .child(ThreadView::new(main_id, library, run_states))
 }

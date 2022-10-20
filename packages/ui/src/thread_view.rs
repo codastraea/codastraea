@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, FnStatus},
-    syntax_tree::{Expression, Function, Statement},
+    syntax_tree::{Expression, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable, RunStates};
 use silkenweb::{
@@ -44,25 +44,25 @@ const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 pub struct ThreadView(Node);
 
 impl ThreadView {
-    pub fn new(
-        f: &Function<FunctionId>,
-        library: &Rc<Library>,
-        call_stack: &CallStack,
-        run_states: &RunStates,
-    ) -> Self {
-        Self(function(f, true, library, call_stack, run_states).into())
+    // TODO: Return Result<Self, LinkError>
+    pub fn new(fn_id: FunctionId, library: &Rc<Library>, run_states: &RunStates) -> Self {
+        // TODO: Create a map<CallStack, ExpandedState> and pass around so we can store
+        // expanded state.
+        Self(function(fn_id, true, library, vec![], run_states).into())
     }
 }
 
 fn function(
-    f: &Function<FunctionId>,
+    fn_id: FunctionId,
     is_last: bool,
     library: &Rc<Library>,
-    call_stack: &CallStack,
+    mut call_stack: CallStack,
     run_states: &RunStates,
 ) -> Element {
+    let f = library.lookup(fn_id);
+    call_stack.push(fn_id);
     let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
-    let header = function_header(f.name(), expanded.clone(), call_stack, run_states);
+    let header = function_header(f.name(), expanded.clone(), &call_stack, run_states);
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
 
@@ -127,21 +127,19 @@ fn call(
     args: &[Expression<FunctionId>],
     is_last: bool,
     library: &Rc<Library>,
-    call_stack: &CallStack,
+    call_stack: CallStack,
     run_states: &RunStates,
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| expression(arg, false, library, call_stack, run_states))
+        .flat_map(|arg| expression(arg, false, library, &call_stack, run_states))
         .collect();
 
-    let mut call_stack = call_stack.clone();
-    call_stack.push(name);
     elems.push(function(
-        library.lookup(name),
+        name,
         is_last,
         library,
-        &call_stack,
+        call_stack,
         run_states,
     ));
 
@@ -165,7 +163,7 @@ fn function_body(
     parent: web_sys::Element,
     expanded: Mutable<bool>,
     library: &Rc<Library>,
-    call_stack: &CallStack,
+    call_stack: CallStack,
     run_states: &RunStates,
 ) -> DivBuilder {
     let style = Mutable::new("".to_owned());
@@ -215,7 +213,7 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(body, library, call_stack, run_states);
+            clone!(body, library, run_states);
 
             move |expanded| {
                 if expanded {
@@ -332,7 +330,7 @@ fn expression(
     match expr {
         Expression::Variable { .. } => Vec::new(),
         Expression::Call { name, args } => {
-            call(*name, args, is_last, library, call_stack, run_states)
+            call(*name, args, is_last, library, call_stack.clone(), run_states)
         }
     }
 }
