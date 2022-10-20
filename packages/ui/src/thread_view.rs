@@ -1,5 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
+use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
@@ -13,10 +14,14 @@ use silkenweb::{
         html::{a, div, ABuilder, DivBuilder},
         ElementEvents,
     },
-    node::element::{Element, ElementBuilder},
+    node::{
+        element::{Element, ElementBuilder},
+        Node,
+    },
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
     value::Sig,
+    Value,
 };
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
@@ -34,6 +39,54 @@ use silkenweb_bootstrap::{
 use crate::css;
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
+
+#[derive(Into, Value)]
+pub struct ThreadView(Node);
+
+impl ThreadView {
+    pub fn new(
+        f: &Function<FunctionId>,
+        library: &Rc<Library>,
+        call_stack: &CallStack,
+        run_states: &RunStates,
+    ) -> Self {
+        Self(function(f, true, library, call_stack, run_states).into())
+    }
+}
+
+fn function(
+    f: &Function<FunctionId>,
+    is_last: bool,
+    library: &Rc<Library>,
+    call_stack: &CallStack,
+    run_states: &RunStates,
+) -> Element {
+    let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
+    let header = function_header(f.name(), expanded.clone(), call_stack, run_states);
+    let header_elem = header.handle().dom_element();
+    let mut main = row().align_items(Align::Center).child(header);
+
+    if !is_last {
+        main = main.child(horizontal_line()).child(arrow_right());
+    }
+
+    if let Some(expanded) = expanded {
+        column()
+            .align_items(Align::Stretch)
+            .child(main)
+            .child(function_body(
+                f.body(),
+                header_elem,
+                expanded,
+                library,
+                call_stack,
+                run_states,
+            ))
+            .into()
+    } else {
+        main.into()
+    }
+}
 
 fn fn_dropdown(name: &str, fn_status: impl Signal<Item = FnStatus> + 'static) -> DropdownBuilder {
     let status = fn_status.map(|status| {
@@ -69,7 +122,7 @@ fn arrow_right() -> Element {
         .into()
 }
 
-fn render_call(
+fn call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     is_last: bool,
@@ -79,12 +132,12 @@ fn render_call(
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| render_expression(arg, false, library, call_stack, run_states))
+        .flat_map(|arg| expression(arg, false, library, call_stack, run_states))
         .collect();
 
     let mut call_stack = call_stack.clone();
     call_stack.push(name);
-    elems.push(render_function(
+    elems.push(function(
         library.lookup(name),
         is_last,
         library,
@@ -93,40 +146,6 @@ fn render_call(
     ));
 
     elems
-}
-
-pub fn render_function(
-    f: &Function<FunctionId>,
-    is_last: bool,
-    library: &Rc<Library>,
-    call_stack: &CallStack,
-    run_states: &RunStates,
-) -> Element {
-    let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
-    let header = render_function_header(f.name(), expanded.clone(), call_stack, run_states);
-    let header_elem = header.handle().dom_element();
-    let mut main = row().align_items(Align::Center).child(header);
-
-    if !is_last {
-        main = main.child(horizontal_line()).child(arrow_right());
-    }
-
-    if let Some(expanded) = expanded {
-        column()
-            .align_items(Align::Stretch)
-            .child(main)
-            .child(render_function_body(
-                f.body(),
-                header_elem,
-                expanded,
-                library,
-                call_stack,
-                run_states,
-            ))
-            .into()
-    } else {
-        main.into()
-    }
 }
 
 fn style_size(bound: &str, width: f64, height: f64) -> String {
@@ -141,7 +160,7 @@ fn style_min_size(width: f64, height: f64) -> String {
     style_size("min", width, height)
 }
 
-fn render_function_body(
+fn function_body(
     body: &Arc<Vec<Statement<FunctionId>>>,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
@@ -233,14 +252,14 @@ fn expanded_body(
         .border_colour(Colour::Secondary)
         .rounded_border(true)
         .shadow(Shadow::Medium)
-        .children(render_body_statements(
+        .children(body_statements(
             body_head.iter().copied(),
             false,
             library,
             call_stack,
             run_states,
         ))
-        .children(render_body_statements(
+        .children(body_statements(
             body_tail.iter().copied(),
             true,
             library,
@@ -250,7 +269,7 @@ fn expanded_body(
     row
 }
 
-fn render_body_statements<'a>(
+fn body_statements<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     is_last: bool,
     library: &'a Rc<Library>,
@@ -259,13 +278,11 @@ fn render_body_statements<'a>(
 ) -> impl Iterator<Item = Element> + 'a {
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => {
-            render_expression(expr, is_last, library, call_stack, run_states)
-        }
+        Statement::Expression(expr) => expression(expr, is_last, library, call_stack, run_states),
     })
 }
 
-fn render_function_header(
+fn function_header(
     name: &str,
     expanded: Option<Mutable<bool>>,
     call_stack: &CallStack,
@@ -305,7 +322,7 @@ fn render_function_header(
     }
 }
 
-fn render_expression(
+fn expression(
     expr: &Expression<FunctionId>,
     is_last: bool,
     library: &Rc<Library>,
@@ -315,7 +332,7 @@ fn render_expression(
     match expr {
         Expression::Variable { .. } => Vec::new(),
         Expression::Call { name, args } => {
-            render_call(*name, args, is_last, library, call_stack, run_states)
+            call(*name, args, is_last, library, call_stack, run_states)
         }
     }
 }

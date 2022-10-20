@@ -10,7 +10,7 @@ use silkenweb_bootstrap::{
     row,
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
 };
-use thread_view::render_function;
+use thread_view::ThreadView;
 
 mod thread_view;
 mod css {
@@ -23,11 +23,10 @@ pub fn app(library: &Rc<Library>, run_states: &RunStates) -> impl Into<Node> {
         .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
-        .children([render_function(
+        .child(ThreadView::new(
             library.main().unwrap(),
-            true,
             library,
             &vec![library.main_id().unwrap()],
             run_states,
-        )])
+        ))
 }
