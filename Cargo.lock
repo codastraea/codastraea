@@ -1334,7 +1334,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "caseless",
  "discard",
@@ -1356,7 +1356,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "cssparser",
  "js-sys",
@@ -1367,7 +1367,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap"
 version = "0.1.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "derive_more",
  "futures-signals",
@@ -1378,7 +1378,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -1391,7 +1391,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "cssparser",
  "grass",
@@ -1405,7 +1405,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-signals-ext"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#aa6da7a3e808c30791441f5089dad6dd75a06f89"
+source = "git+https://github.com/silkenweb/silkenweb?branch=sig-newtype2-gat#d2ed2e93d4362675782c0d1086dc4f0a3401d1aa"
 dependencies = [
  "futures-signals",
  "paste",
