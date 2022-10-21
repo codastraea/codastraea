@@ -50,19 +50,19 @@ impl ThreadView {
         library: &Rc<Library>,
         stack_frame_states: &StackFrameStates,
     ) -> Self {
-        let fn_nodes = FnNodes::new(stack_frame_states.clone(), library.clone());
-        Self(function(fn_id, true, vec![], &fn_nodes).into())
+        let view_state = ThreadViewState::new(stack_frame_states.clone(), library.clone());
+        Self(function(fn_id, true, vec![], &view_state).into())
     }
 }
 
 #[derive(Clone)]
-struct FnNodes {
+struct ThreadViewState {
     expanded: Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>,
     stack_frame_states: StackFrameStates,
     library: Rc<Library>,
 }
 
-impl FnNodes {
+impl ThreadViewState {
     fn new(stack_frame_states: StackFrameStates, library: Rc<Library>) -> Self {
         Self {
             expanded: Rc::new(RefCell::new(HashMap::new())),
@@ -92,12 +92,12 @@ fn function(
     fn_id: FunctionId,
     is_last: bool,
     mut call_stack: CallStack,
-    fn_nodes: &FnNodes,
+    view_state: &ThreadViewState,
 ) -> Element {
-    let f = fn_nodes.lookup_fn(fn_id);
+    let f = view_state.lookup_fn(fn_id);
     call_stack.push(fn_id);
-    let expanded = is_expandable(f.body()).then(|| fn_nodes.expanded(&call_stack));
-    let run_state = fn_nodes.run_state(&call_stack);
+    let expanded = is_expandable(f.body()).then(|| view_state.expanded(&call_stack));
+    let run_state = view_state.run_state(&call_stack);
     let header = function_header(f.name(), expanded.clone(), run_state);
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
@@ -115,7 +115,7 @@ fn function(
                 header_elem,
                 expanded,
                 call_stack,
-                fn_nodes,
+                view_state,
             ))
             .into()
     } else {
@@ -162,14 +162,14 @@ fn call(
     args: &[Expression<FunctionId>],
     is_last: bool,
     call_stack: CallStack,
-    fn_nodes: &FnNodes,
+    view_state: &ThreadViewState,
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| expression(arg, false, &call_stack, fn_nodes))
+        .flat_map(|arg| expression(arg, false, &call_stack, view_state))
         .collect();
 
-    elems.push(function(name, is_last, call_stack, fn_nodes));
+    elems.push(function(name, is_last, call_stack, view_state));
 
     elems
 }
@@ -191,7 +191,7 @@ fn function_body(
     parent: web_sys::Element,
     expanded: Mutable<bool>,
     call_stack: CallStack,
-    fn_nodes: &FnNodes,
+    view_state: &ThreadViewState,
 ) -> DivBuilder {
     let style = Mutable::new("".to_owned());
     let show_body = Mutable::new(false);
@@ -240,11 +240,11 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(body, fn_nodes);
+            clone!(body, view_state);
 
             move |expanded| {
                 if expanded {
-                    Some(expanded_body(&body, &call_stack, &fn_nodes))
+                    Some(expanded_body(&body, &call_stack, &view_state))
                 } else {
                     style.set(style_min_size(0.0, 0.0));
                     None
@@ -256,7 +256,7 @@ fn function_body(
 fn expanded_body(
     body: &Arc<Vec<Statement<FunctionId>>>,
     call_stack: &CallStack,
-    fn_nodes: &FnNodes,
+    view_state: &ThreadViewState,
 ) -> DivBuilder {
     let body: Vec<_> = body
         .iter()
@@ -280,13 +280,13 @@ fn expanded_body(
             body_head.iter().copied(),
             false,
             call_stack,
-            fn_nodes,
+            view_state,
         ))
         .children(body_statements(
             body_tail.iter().copied(),
             true,
             call_stack,
-            fn_nodes,
+            view_state,
         ));
     row
 }
@@ -295,11 +295,11 @@ fn body_statements<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     is_last: bool,
     call_stack: &'a CallStack,
-    fn_nodes: &'a FnNodes,
+    view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => expression(expr, is_last, call_stack, fn_nodes),
+        Statement::Expression(expr) => expression(expr, is_last, call_stack, view_state),
     })
 }
 
@@ -338,10 +338,12 @@ fn expression(
     expr: &Expression<FunctionId>,
     is_last: bool,
     call_stack: &CallStack,
-    fn_nodes: &FnNodes,
+    view_state: &ThreadViewState,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } => Vec::new(),
-        Expression::Call { name, args } => call(*name, args, is_last, call_stack.clone(), fn_nodes),
+        Expression::Call { name, args } => {
+            call(*name, args, is_last, call_stack.clone(), view_state)
+        }
     }
 }
