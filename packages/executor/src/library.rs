@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
 use crate::{
-    run::RunTracer,
+    run::ThreadState,
     syntax_tree::{Expression, Function, IdMap, Module},
 };
 
@@ -69,13 +69,13 @@ impl Library {
         self.main_id
     }
 
-    pub fn run(&self, tracer: &watch::Sender<RunTracer>) {
+    pub fn run(&self, thread_state: &watch::Sender<ThreadState>) {
         if let Some(main_id) = self.main_id() {
             Expression::Call {
                 name: main_id,
                 args: Vec::new(),
             }
-            .run(self, tracer);
+            .run(self, thread_state);
         }
     }
 }

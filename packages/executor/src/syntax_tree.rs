@@ -17,7 +17,7 @@ use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
-    run::RunTracer,
+    run::ThreadState,
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
@@ -119,12 +119,12 @@ impl<Id> Function<Id> {
 }
 
 impl Function<FunctionId> {
-    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+    pub fn run(&self, lib: &Library, thread_state: &watch::Sender<ThreadState>) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(2));
 
         for stmt in self.body().iter() {
-            stmt.run(lib, tracer)
+            stmt.run(lib, thread_state)
         }
     }
 }
@@ -172,10 +172,10 @@ impl Statement<String> {
 }
 
 impl Statement<FunctionId> {
-    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+    pub fn run(&self, lib: &Library, thread_state: &watch::Sender<ThreadState>) {
         match self {
             Statement::Pass => (),
-            Statement::Expression(expr) => expr.run(lib, tracer),
+            Statement::Expression(expr) => expr.run(lib, thread_state),
         }
     }
 }
@@ -192,17 +192,17 @@ pub enum Expression<FnId> {
 }
 
 impl Expression<FunctionId> {
-    pub fn run(&self, lib: &Library, tracer: &watch::Sender<RunTracer>) {
+    pub fn run(&self, lib: &Library, thread_state: &watch::Sender<ThreadState>) {
         match self {
             Expression::Variable { name } => println!("Variable {name}"),
             Expression::Call { name, args } => {
                 for arg in args {
-                    arg.run(lib, tracer);
+                    arg.run(lib, thread_state);
                 }
 
-                tracer.send_modify(|t| t.push(*name));
-                lib.lookup(*name).run(lib, tracer);
-                tracer.send_modify(|t| t.pop());
+                thread_state.send_modify(|t| t.push(*name));
+                lib.lookup(*name).run(lib, thread_state);
+                thread_state.send_modify(|t| t.pop());
             }
         }
     }

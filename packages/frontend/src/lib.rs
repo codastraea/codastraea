@@ -6,7 +6,7 @@ use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::FunctionId,
-    run::{CallStack, FnStatus, RunTracer},
+    run::{CallStack, FnStatus, ThreadState},
     syntax_tree::{Expression, Statement},
 };
 
@@ -37,13 +37,13 @@ pub async fn server_connection(fn_states: FunctionStates) {
 
         match msg.unwrap() {
             Message::Text(text) => {
-                let run_tracer: RunTracer = serde_json_wasm::from_str(&text).unwrap();
+                let thread_state: ThreadState = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
 
                 // TODO: Pass runtracer to status so we can get the status of newly created mutables
                 for (call_stack, status) in fn_states.borrow().iter() {
                     log!(format!("call stack {:?}", call_stack));
-                    status.set_neq(run_tracer.status(call_stack));
+                    status.set_neq(thread_state.status(call_stack));
                 }
             }
             Message::Bytes(_) => log!("Unknown binary message"),
