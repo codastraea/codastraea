@@ -7,7 +7,7 @@ use serpent_automation_executor::{
     run::{CallStack, RunState},
     syntax_tree::{Expression, Function, Statement},
 };
-use serpent_automation_frontend::{is_expandable, statement_is_expandable, StackFrameStates};
+use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
     clone,
     elements::{
@@ -36,7 +36,7 @@ use silkenweb_bootstrap::{
     },
 };
 
-use crate::css;
+use crate::{css, StackFrameStates};
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 

@@ -1270,7 +1270,6 @@ name = "serpent-automation-frontend"
 version = "0.1.0"
 dependencies = [
  "futures",
- "futures-signals",
  "gloo-console",
  "gloo-net",
  "serde-json-wasm",
@@ -1293,6 +1292,7 @@ version = "0.1.0"
 dependencies = [
  "derive_more",
  "futures-signals",
+ "gloo-console",
  "serpent-automation-executor",
  "serpent-automation-frontend",
  "silkenweb",

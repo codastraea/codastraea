@@ -1,7 +1,12 @@
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use serpent_automation_executor::library::Library;
-use serpent_automation_frontend::StackFrameStates;
+use futures_signals::signal::{Mutable, Signal};
+use gloo_console::log;
+use serpent_automation_executor::{
+    library::Library,
+    run::{CallStack, RunState, ThreadCallStates},
+};
+use serpent_automation_frontend::ReceiveCallStates;
 use silkenweb::{
     node::{element::ElementBuilder, Node},
     prelude::ParentBuilder,
@@ -26,4 +31,46 @@ pub fn app(library: &Rc<Library>, stack_frame_states: &StackFrameStates) -> impl
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .child(ThreadView::new(main_id, library, stack_frame_states))
+}
+
+#[derive(Clone, Default)]
+pub struct StackFrameStates(Rc<RefCell<StackFrameStatesData>>);
+
+impl StackFrameStates {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn run_state(&self, call_stack: &CallStack) -> impl Signal<Item = RunState> {
+        let mut data = self.0.borrow_mut();
+
+        if let Some(existing) = data.stack_frame_states.get(call_stack) {
+            existing
+        } else {
+            let new = Mutable::new(data.call_states.run_state(call_stack));
+            data.stack_frame_states
+                .entry(call_stack.clone())
+                .or_insert(new)
+        }
+        .signal()
+    }
+}
+
+impl ReceiveCallStates for StackFrameStates {
+    fn set_call_states(&self, thread_state: ThreadCallStates) {
+        let mut data = self.0.borrow_mut();
+
+        for (call_stack, run_state) in &data.stack_frame_states {
+            log!(format!("call stack {:?}", call_stack));
+            run_state.set_neq(thread_state.run_state(call_stack));
+        }
+
+        data.call_states = thread_state;
+    }
+}
+
+#[derive(Default)]
+struct StackFrameStatesData {
+    stack_frame_states: HashMap<CallStack, Mutable<RunState>>,
+    call_states: ThreadCallStates,
 }
