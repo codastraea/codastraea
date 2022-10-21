@@ -128,8 +128,8 @@ fn fn_dropdown(name: &str, fn_status: impl Signal<Item = FnStatus> + 'static) ->
         match status {
             FnStatus::NotRun => Icon::circle().colour(Colour::Secondary),
             FnStatus::Running => Icon::play_circle_fill().colour(Colour::Primary),
-            FnStatus::Ok => Icon::check_circle_fill().colour(Colour::Success),
-            FnStatus::Error => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+            FnStatus::Successful => Icon::check_circle_fill().colour(Colour::Success),
+            FnStatus::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size::Size2), Side::End))
     });

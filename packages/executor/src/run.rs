@@ -21,7 +21,7 @@ impl ThreadState {
         if self.running.starts_with(call_stack) {
             FnStatus::Running
         } else if self.completed.contains(call_stack) {
-            FnStatus::Ok
+            FnStatus::Successful
         } else {
             FnStatus::NotRun
         }
@@ -41,6 +41,6 @@ impl ThreadState {
 pub enum FnStatus {
     NotRun,
     Running,
-    Ok,
-    Error,
+    Successful,
+    Failed,
 }
