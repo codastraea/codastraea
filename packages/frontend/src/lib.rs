@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use futures::StreamExt;
-use futures_signals::signal::Mutable;
+use futures_signals::signal::{Mutable, Signal};
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
@@ -28,7 +28,7 @@ pub fn is_expandable(stmts: &[Statement<FunctionId>]) -> bool {
     stmts.iter().any(statement_is_expandable)
 }
 
-pub async fn server_connection(fn_states: FunctionStates) {
+pub async fn server_connection(stack_frame_states: StackFrameStates) {
     log!("Connecting to websocket");
     let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
@@ -39,12 +39,7 @@ pub async fn server_connection(fn_states: FunctionStates) {
             Message::Text(text) => {
                 let thread_state: ThreadState = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
-
-                // TODO: Pass runtracer to status so we can get the status of newly created mutables
-                for (call_stack, status) in fn_states.borrow().iter() {
-                    log!(format!("call stack {:?}", call_stack));
-                    status.set_neq(thread_state.status(call_stack));
-                }
+                stack_frame_states.set_thread_state(thread_state);
             }
             Message::Bytes(_) => log!("Unknown binary message"),
         }
@@ -53,5 +48,42 @@ pub async fn server_connection(fn_states: FunctionStates) {
     log!("WebSocket Closed")
 }
 
-// TODO: Struct for this and rename to `ThreadState`?
-pub type FunctionStates = Rc<RefCell<HashMap<CallStack, Mutable<FnStatus>>>>;
+#[derive(Clone, Default)]
+pub struct StackFrameStates(Rc<RefCell<StackFrameStatesData>>);
+
+impl StackFrameStates {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn status_signal(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
+        let mut data = self.0.borrow_mut();
+
+        if let Some(existing) = data.stack_frame_states.get(call_stack) {
+            existing
+        } else {
+            let new = Mutable::new(data.thread_state.status(call_stack));
+            data.stack_frame_states
+                .entry(call_stack.clone())
+                .or_insert(new)
+        }
+        .signal()
+    }
+
+    fn set_thread_state(&self, thread_state: ThreadState) {
+        let mut data = self.0.borrow_mut();
+
+        for (call_stack, status) in &data.stack_frame_states {
+            log!(format!("call stack {:?}", call_stack));
+            status.set_neq(thread_state.status(call_stack));
+        }
+
+        data.thread_state = thread_state;
+    }
+}
+
+#[derive(Default)]
+struct StackFrameStatesData {
+    stack_frame_states: HashMap<CallStack, Mutable<FnStatus>>,
+    thread_state: ThreadState,
+}
