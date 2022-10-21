@@ -36,7 +36,7 @@ use silkenweb_bootstrap::{
     },
 };
 
-use crate::{css, StackFrameStates};
+use crate::{css, ViewCallStates};
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 
@@ -48,9 +48,9 @@ impl ThreadView {
     pub fn new(
         fn_id: FunctionId,
         library: &Rc<Library>,
-        stack_frame_states: &StackFrameStates,
+        view_call_states: &ViewCallStates,
     ) -> Self {
-        let view_state = ThreadViewState::new(stack_frame_states.clone(), library.clone());
+        let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
         Self(function(fn_id, true, vec![], &view_state).into())
     }
 }
@@ -58,16 +58,16 @@ impl ThreadView {
 #[derive(Clone)]
 struct ThreadViewState {
     expanded: Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>,
-    stack_frame_states: StackFrameStates,
+    view_call_states: ViewCallStates,
     library: Rc<Library>,
 }
 
 impl ThreadViewState {
-    fn new(stack_frame_states: StackFrameStates, library: Rc<Library>) -> Self {
+    fn new(view_call_states: ViewCallStates, library: Rc<Library>) -> Self {
         Self {
             expanded: Rc::new(RefCell::new(HashMap::new())),
             library,
-            stack_frame_states,
+            view_call_states,
         }
     }
 
@@ -80,7 +80,7 @@ impl ThreadViewState {
     }
 
     fn run_state(&self, call_stack: &CallStack) -> impl Signal<Item = RunState> {
-        self.stack_frame_states.run_state(call_stack)
+        self.view_call_states.run_state(call_stack)
     }
 
     fn lookup_fn(&self, fn_id: FunctionId) -> &Function<FunctionId> {

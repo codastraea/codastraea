@@ -22,7 +22,7 @@ mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
 }
 
-pub fn app(library: &Rc<Library>, stack_frame_states: &StackFrameStates) -> impl Into<Node> {
+pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
     let main_id = library.main_id().unwrap();
 
     row()
@@ -30,13 +30,13 @@ pub fn app(library: &Rc<Library>, stack_frame_states: &StackFrameStates) -> impl
         .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
-        .child(ThreadView::new(main_id, library, stack_frame_states))
+        .child(ThreadView::new(main_id, library, view_call_states))
 }
 
 #[derive(Clone, Default)]
-pub struct StackFrameStates(Rc<RefCell<StackFrameStatesData>>);
+pub struct ViewCallStates(Rc<RefCell<ViewCallStatesData>>);
 
-impl StackFrameStates {
+impl ViewCallStates {
     pub fn new() -> Self {
         Self::default()
     }
@@ -44,11 +44,11 @@ impl StackFrameStates {
     pub fn run_state(&self, call_stack: &CallStack) -> impl Signal<Item = RunState> {
         let mut data = self.0.borrow_mut();
 
-        if let Some(existing) = data.stack_frame_states.get(call_stack) {
+        if let Some(existing) = data.view_call_states.get(call_stack) {
             existing
         } else {
             let new = Mutable::new(data.call_states.run_state(call_stack));
-            data.stack_frame_states
+            data.view_call_states
                 .entry(call_stack.clone())
                 .or_insert(new)
         }
@@ -56,11 +56,11 @@ impl StackFrameStates {
     }
 }
 
-impl ReceiveCallStates for StackFrameStates {
+impl ReceiveCallStates for ViewCallStates {
     fn set_call_states(&self, thread_state: ThreadCallStates) {
         let mut data = self.0.borrow_mut();
 
-        for (call_stack, run_state) in &data.stack_frame_states {
+        for (call_stack, run_state) in &data.view_call_states {
             log!(format!("call stack {:?}", call_stack));
             run_state.set_neq(thread_state.run_state(call_stack));
         }
@@ -70,7 +70,7 @@ impl ReceiveCallStates for StackFrameStates {
 }
 
 #[derive(Default)]
-struct StackFrameStatesData {
-    stack_frame_states: HashMap<CallStack, Mutable<RunState>>,
+struct ViewCallStatesData {
+    view_call_states: HashMap<CallStack, Mutable<RunState>>,
     call_states: ThreadCallStates,
 }
