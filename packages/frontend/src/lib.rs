@@ -6,7 +6,7 @@ use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::FunctionId,
-    run::{CallStack, FnStatus, ThreadState},
+    run::{CallStack, RunState, ThreadState},
     syntax_tree::{Expression, Statement},
 };
 
@@ -56,13 +56,13 @@ impl StackFrameStates {
         Self::default()
     }
 
-    pub fn status(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
+    pub fn run_state(&self, call_stack: &CallStack) -> impl Signal<Item = RunState> {
         let mut data = self.0.borrow_mut();
 
         if let Some(existing) = data.stack_frame_states.get(call_stack) {
             existing
         } else {
-            let new = Mutable::new(data.thread_state.status(call_stack));
+            let new = Mutable::new(data.thread_state.run_state(call_stack));
             data.stack_frame_states
                 .entry(call_stack.clone())
                 .or_insert(new)
@@ -73,9 +73,9 @@ impl StackFrameStates {
     fn set_thread_state(&self, thread_state: ThreadState) {
         let mut data = self.0.borrow_mut();
 
-        for (call_stack, status) in &data.stack_frame_states {
+        for (call_stack, run_state) in &data.stack_frame_states {
             log!(format!("call stack {:?}", call_stack));
-            status.set_neq(thread_state.status(call_stack));
+            run_state.set_neq(thread_state.run_state(call_stack));
         }
 
         data.thread_state = thread_state;
@@ -84,6 +84,6 @@ impl StackFrameStates {
 
 #[derive(Default)]
 struct StackFrameStatesData {
-    stack_frame_states: HashMap<CallStack, Mutable<FnStatus>>,
+    stack_frame_states: HashMap<CallStack, Mutable<RunState>>,
     thread_state: ThreadState,
 }

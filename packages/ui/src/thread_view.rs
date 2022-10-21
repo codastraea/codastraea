@@ -4,7 +4,7 @@ use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, FnStatus},
+    run::{CallStack, RunState},
     syntax_tree::{Expression, Function, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable, StackFrameStates};
@@ -79,8 +79,8 @@ impl FnNodes {
             .clone()
     }
 
-    fn status(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
-        self.stack_frame_states.status(call_stack)
+    fn run_state(&self, call_stack: &CallStack) -> impl Signal<Item = RunState> {
+        self.stack_frame_states.run_state(call_stack)
     }
 
     fn lookup_fn(&self, fn_id: FunctionId) -> &Function<FunctionId> {
@@ -97,8 +97,8 @@ fn function(
     let f = fn_nodes.lookup_fn(fn_id);
     call_stack.push(fn_id);
     let expanded = is_expandable(f.body()).then(|| fn_nodes.expanded(&call_stack));
-    let status = fn_nodes.status(&call_stack);
-    let header = function_header(f.name(), expanded.clone(), status);
+    let run_state = fn_nodes.run_state(&call_stack);
+    let header = function_header(f.name(), expanded.clone(), run_state);
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
 
@@ -123,20 +123,20 @@ fn function(
     }
 }
 
-fn fn_dropdown(name: &str, fn_status: impl Signal<Item = FnStatus> + 'static) -> DropdownBuilder {
-    let status = fn_status.map(|status| {
-        match status {
-            FnStatus::NotRun => Icon::circle().colour(Colour::Secondary),
-            FnStatus::Running => Icon::play_circle_fill().colour(Colour::Primary),
-            FnStatus::Successful => Icon::check_circle_fill().colour(Colour::Success),
-            FnStatus::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+fn fn_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
+    let run_state = run_state.map(|run_state| {
+        match run_state {
+            RunState::NotRun => Icon::circle().colour(Colour::Secondary),
+            RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
+            RunState::Successful => Icon::check_circle_fill().colour(Colour::Success),
+            RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size::Size2), Side::End))
     });
 
     dropdown(
         button("button", ButtonStyle::Outline(Colour::Secondary))
-            .icon(Sig(status))
+            .icon(Sig(run_state))
             .text(name),
         dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
     )
@@ -306,12 +306,12 @@ fn body_statements<'a>(
 fn function_header(
     name: &str,
     expanded: Option<Mutable<bool>>,
-    status: impl Signal<Item = FnStatus> + 'static,
+    run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
         button_group(format!("Function {name}"))
             .shadow(Shadow::Medium)
-            .dropdown(fn_dropdown(name, status))
+            .dropdown(fn_dropdown(name, run_state))
             .button(
                 button("button", BUTTON_STYLE)
                     .on_click({
@@ -330,7 +330,7 @@ fn function_header(
             )
             .into()
     } else {
-        fn_dropdown(name, status).shadow(Shadow::Medium).into()
+        fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
     }
 }
 
