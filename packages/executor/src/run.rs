@@ -7,12 +7,12 @@ use crate::library::FunctionId;
 pub type CallStack = Vec<FunctionId>;
 
 #[derive(Default, Clone, Serialize, Deserialize)]
-pub struct ThreadState {
+pub struct ThreadCallStates {
     running: CallStack,
     completed: HashSet<CallStack>,
 }
 
-impl ThreadState {
+impl ThreadCallStates {
     pub fn new() -> Self {
         Self::default()
     }

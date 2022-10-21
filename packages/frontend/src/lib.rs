@@ -6,7 +6,7 @@ use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::FunctionId,
-    run::{CallStack, RunState, ThreadState},
+    run::{CallStack, RunState, ThreadCallStates},
     syntax_tree::{Expression, Statement},
 };
 
@@ -37,9 +37,9 @@ pub async fn server_connection(stack_frame_states: StackFrameStates) {
 
         match msg.unwrap() {
             Message::Text(text) => {
-                let thread_state: ThreadState = serde_json_wasm::from_str(&text).unwrap();
+                let call_states: ThreadCallStates = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
-                stack_frame_states.set_thread_state(thread_state);
+                stack_frame_states.set_call_states(call_states);
             }
             Message::Bytes(_) => log!("Unknown binary message"),
         }
@@ -62,7 +62,7 @@ impl StackFrameStates {
         if let Some(existing) = data.stack_frame_states.get(call_stack) {
             existing
         } else {
-            let new = Mutable::new(data.thread_state.run_state(call_stack));
+            let new = Mutable::new(data.call_states.run_state(call_stack));
             data.stack_frame_states
                 .entry(call_stack.clone())
                 .or_insert(new)
@@ -70,7 +70,7 @@ impl StackFrameStates {
         .signal()
     }
 
-    fn set_thread_state(&self, thread_state: ThreadState) {
+    fn set_call_states(&self, thread_state: ThreadCallStates) {
         let mut data = self.0.borrow_mut();
 
         for (call_stack, run_state) in &data.stack_frame_states {
@@ -78,12 +78,12 @@ impl StackFrameStates {
             run_state.set_neq(thread_state.run_state(call_stack));
         }
 
-        data.thread_state = thread_state;
+        data.call_states = thread_state;
     }
 }
 
 #[derive(Default)]
 struct StackFrameStatesData {
     stack_frame_states: HashMap<CallStack, Mutable<RunState>>,
-    thread_state: ThreadState,
+    call_states: ThreadCallStates,
 }
