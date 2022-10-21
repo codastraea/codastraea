@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use serpent_automation_executor::library::Library;
-use serpent_automation_frontend::RunStates;
+use serpent_automation_frontend::FunctionStates;
 use silkenweb::{
     node::{element::ElementBuilder, Node},
     prelude::ParentBuilder,
@@ -17,7 +17,7 @@ mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
 }
 
-pub fn app(library: &Rc<Library>, run_states: &RunStates) -> impl Into<Node> {
+pub fn app(library: &Rc<Library>, fn_states: &FunctionStates) -> impl Into<Node> {
     let main_id = library.main_id().unwrap();
 
     row()
@@ -25,5 +25,5 @@ pub fn app(library: &Rc<Library>, run_states: &RunStates) -> impl Into<Node> {
         .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
-        .child(ThreadView::new(main_id, library, run_states))
+        .child(ThreadView::new(main_id, library, fn_states))
 }
