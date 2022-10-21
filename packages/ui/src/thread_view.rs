@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, FnStatus},
-    syntax_tree::{Expression, Statement},
+    syntax_tree::{Expression, Function, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable, StackFrameStates};
 use silkenweb::{
@@ -50,48 +50,55 @@ impl ThreadView {
         library: &Rc<Library>,
         stack_frame_states: &StackFrameStates,
     ) -> Self {
-        // TODO: Create a map<CallStack, ExpandedState> and pass around so we can store
-        // expanded state.
-        let expanded_states = ExpandedStates::default();
-        Self(
-            function(
-                fn_id,
-                true,
-                library,
-                vec![],
-                stack_frame_states,
-                &expanded_states,
-            )
-            .into(),
-        )
+        let fn_nodes = FnNodes::new(stack_frame_states.clone(), library.clone());
+        Self(function(fn_id, true, vec![], &fn_nodes).into())
     }
 }
 
-#[derive(Default, Clone)]
-struct ExpandedStates(Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>);
+#[derive(Clone)]
+struct FnNodes {
+    expanded: Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>,
+    stack_frame_states: StackFrameStates,
+    library: Rc<Library>,
+}
 
-impl ExpandedStates {
-    fn get(&self, call_stack: &CallStack) -> Mutable<bool> {
-        self.0
+impl FnNodes {
+    fn new(stack_frame_states: StackFrameStates, library: Rc<Library>) -> Self {
+        Self {
+            expanded: Rc::new(RefCell::new(HashMap::new())),
+            library,
+            stack_frame_states,
+        }
+    }
+
+    fn expanded(&self, call_stack: &CallStack) -> Mutable<bool> {
+        self.expanded
             .borrow_mut()
             .entry(call_stack.clone())
             .or_insert_with(|| Mutable::new(false))
             .clone()
+    }
+
+    fn status(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
+        self.stack_frame_states.status(call_stack)
+    }
+
+    fn lookup_fn(&self, fn_id: FunctionId) -> &Function<FunctionId> {
+        self.library.lookup(fn_id)
     }
 }
 
 fn function(
     fn_id: FunctionId,
     is_last: bool,
-    library: &Rc<Library>,
     mut call_stack: CallStack,
-    stack_frame_states: &StackFrameStates,
-    expanded_states: &ExpandedStates,
+    fn_nodes: &FnNodes,
 ) -> Element {
-    let f = library.lookup(fn_id);
+    let f = fn_nodes.lookup_fn(fn_id);
     call_stack.push(fn_id);
-    let expanded = is_expandable(f.body()).then(|| expanded_states.get(&call_stack));
-    let header = function_header(f.name(), expanded.clone(), &call_stack, stack_frame_states);
+    let expanded = is_expandable(f.body()).then(|| fn_nodes.expanded(&call_stack));
+    let status = fn_nodes.status(&call_stack);
+    let header = function_header(f.name(), expanded.clone(), status);
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
 
@@ -107,10 +114,8 @@ fn function(
                 f.body(),
                 header_elem,
                 expanded,
-                library,
                 call_stack,
-                stack_frame_states,
-                expanded_states,
+                fn_nodes,
             ))
             .into()
     } else {
@@ -156,33 +161,15 @@ fn call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     is_last: bool,
-    library: &Rc<Library>,
     call_stack: CallStack,
-    stack_frame_states: &StackFrameStates,
-    expanded_states: &ExpandedStates,
+    fn_nodes: &FnNodes,
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| {
-            expression(
-                arg,
-                false,
-                library,
-                &call_stack,
-                stack_frame_states,
-                expanded_states,
-            )
-        })
+        .flat_map(|arg| expression(arg, false, &call_stack, fn_nodes))
         .collect();
 
-    elems.push(function(
-        name,
-        is_last,
-        library,
-        call_stack,
-        stack_frame_states,
-        expanded_states,
-    ));
+    elems.push(function(name, is_last, call_stack, fn_nodes));
 
     elems
 }
@@ -203,11 +190,8 @@ fn function_body(
     body: &Arc<Vec<Statement<FunctionId>>>,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
-    library: &Rc<Library>,
     call_stack: CallStack,
-    // TODO: Group library, stack_frame_states, expanded_states into a struct
-    stack_frame_states: &StackFrameStates,
-    expanded_states: &ExpandedStates,
+    fn_nodes: &FnNodes,
 ) -> DivBuilder {
     let style = Mutable::new("".to_owned());
     let show_body = Mutable::new(false);
@@ -256,17 +240,11 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(body, library, stack_frame_states, expanded_states);
+            clone!(body, fn_nodes);
 
             move |expanded| {
                 if expanded {
-                    Some(expanded_body(
-                        &body,
-                        &library,
-                        &call_stack,
-                        &stack_frame_states,
-                        &expanded_states,
-                    ))
+                    Some(expanded_body(&body, &call_stack, &fn_nodes))
                 } else {
                     style.set(style_min_size(0.0, 0.0));
                     None
@@ -277,10 +255,8 @@ fn function_body(
 
 fn expanded_body(
     body: &Arc<Vec<Statement<FunctionId>>>,
-    library: &Rc<Library>,
     call_stack: &CallStack,
-    stack_frame_states: &StackFrameStates,
-    expanded_states: &ExpandedStates,
+    fn_nodes: &FnNodes,
 ) -> DivBuilder {
     let body: Vec<_> = body
         .iter()
@@ -303,18 +279,14 @@ fn expanded_body(
         .children(body_statements(
             body_head.iter().copied(),
             false,
-            library,
             call_stack,
-            stack_frame_states,
-            expanded_states,
+            fn_nodes,
         ))
         .children(body_statements(
             body_tail.iter().copied(),
             true,
-            library,
             call_stack,
-            stack_frame_states,
-            expanded_states,
+            fn_nodes,
         ));
     row
 }
@@ -322,36 +294,24 @@ fn expanded_body(
 fn body_statements<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     is_last: bool,
-    library: &'a Rc<Library>,
     call_stack: &'a CallStack,
-    stack_frame_states: &'a StackFrameStates,
-    expanded_states: &'a ExpandedStates,
+    fn_nodes: &'a FnNodes,
 ) -> impl Iterator<Item = Element> + 'a {
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => expression(
-            expr,
-            is_last,
-            library,
-            call_stack,
-            stack_frame_states,
-            expanded_states,
-        ),
+        Statement::Expression(expr) => expression(expr, is_last, call_stack, fn_nodes),
     })
 }
 
 fn function_header(
     name: &str,
     expanded: Option<Mutable<bool>>,
-    call_stack: &CallStack,
-    stack_frame_states: &StackFrameStates,
+    status: impl Signal<Item = FnStatus> + 'static,
 ) -> Element {
-    let status_signal = stack_frame_states.status_signal(call_stack);
-
     if let Some(expanded) = expanded {
         button_group(format!("Function {name}"))
             .shadow(Shadow::Medium)
-            .dropdown(fn_dropdown(name, status_signal))
+            .dropdown(fn_dropdown(name, status))
             .button(
                 button("button", BUTTON_STYLE)
                     .on_click({
@@ -370,30 +330,18 @@ fn function_header(
             )
             .into()
     } else {
-        fn_dropdown(name, status_signal)
-            .shadow(Shadow::Medium)
-            .into()
+        fn_dropdown(name, status).shadow(Shadow::Medium).into()
     }
 }
 
 fn expression(
     expr: &Expression<FunctionId>,
     is_last: bool,
-    library: &Rc<Library>,
     call_stack: &CallStack,
-    stack_frame_states: &StackFrameStates,
-    expanded_states: &ExpandedStates,
+    fn_nodes: &FnNodes,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } => Vec::new(),
-        Expression::Call { name, args } => call(
-            *name,
-            args,
-            is_last,
-            library,
-            call_stack.clone(),
-            stack_frame_states,
-            expanded_states,
-        ),
+        Expression::Call { name, args } => call(*name, args, is_last, call_stack.clone(), fn_nodes),
     }
 }

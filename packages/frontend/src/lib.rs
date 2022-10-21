@@ -56,7 +56,7 @@ impl StackFrameStates {
         Self::default()
     }
 
-    pub fn status_signal(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
+    pub fn status(&self, call_stack: &CallStack) -> impl Signal<Item = FnStatus> {
         let mut data = self.0.borrow_mut();
 
         if let Some(existing) = data.stack_frame_states.get(call_stack) {
