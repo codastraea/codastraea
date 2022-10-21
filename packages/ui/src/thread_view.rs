@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
 use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
@@ -52,7 +52,31 @@ impl ThreadView {
     ) -> Self {
         // TODO: Create a map<CallStack, ExpandedState> and pass around so we can store
         // expanded state.
-        Self(function(fn_id, true, library, vec![], stack_frame_states).into())
+        let expanded_states = ExpandedStates::default();
+        Self(
+            function(
+                fn_id,
+                true,
+                library,
+                vec![],
+                stack_frame_states,
+                &expanded_states,
+            )
+            .into(),
+        )
+    }
+}
+
+#[derive(Default, Clone)]
+struct ExpandedStates(Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>);
+
+impl ExpandedStates {
+    fn get(&self, call_stack: &CallStack) -> Mutable<bool> {
+        self.0
+            .borrow_mut()
+            .entry(call_stack.clone())
+            .or_insert_with(|| Mutable::new(false))
+            .clone()
     }
 }
 
@@ -62,10 +86,11 @@ fn function(
     library: &Rc<Library>,
     mut call_stack: CallStack,
     stack_frame_states: &StackFrameStates,
+    expanded_states: &ExpandedStates,
 ) -> Element {
     let f = library.lookup(fn_id);
     call_stack.push(fn_id);
-    let expanded = is_expandable(f.body()).then(|| Mutable::new(false));
+    let expanded = is_expandable(f.body()).then(|| expanded_states.get(&call_stack));
     let header = function_header(f.name(), expanded.clone(), &call_stack, stack_frame_states);
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
@@ -85,6 +110,7 @@ fn function(
                 library,
                 call_stack,
                 stack_frame_states,
+                expanded_states,
             ))
             .into()
     } else {
@@ -133,10 +159,20 @@ fn call(
     library: &Rc<Library>,
     call_stack: CallStack,
     stack_frame_states: &StackFrameStates,
+    expanded_states: &ExpandedStates,
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| expression(arg, false, library, &call_stack, stack_frame_states))
+        .flat_map(|arg| {
+            expression(
+                arg,
+                false,
+                library,
+                &call_stack,
+                stack_frame_states,
+                expanded_states,
+            )
+        })
         .collect();
 
     elems.push(function(
@@ -145,6 +181,7 @@ fn call(
         library,
         call_stack,
         stack_frame_states,
+        expanded_states,
     ));
 
     elems
@@ -168,7 +205,9 @@ fn function_body(
     expanded: Mutable<bool>,
     library: &Rc<Library>,
     call_stack: CallStack,
+    // TODO: Group library, stack_frame_states, expanded_states into a struct
     stack_frame_states: &StackFrameStates,
+    expanded_states: &ExpandedStates,
 ) -> DivBuilder {
     let style = Mutable::new("".to_owned());
     let show_body = Mutable::new(false);
@@ -217,7 +256,7 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(body, library, stack_frame_states);
+            clone!(body, library, stack_frame_states, expanded_states);
 
             move |expanded| {
                 if expanded {
@@ -226,6 +265,7 @@ fn function_body(
                         &library,
                         &call_stack,
                         &stack_frame_states,
+                        &expanded_states,
                     ))
                 } else {
                     style.set(style_min_size(0.0, 0.0));
@@ -240,6 +280,7 @@ fn expanded_body(
     library: &Rc<Library>,
     call_stack: &CallStack,
     stack_frame_states: &StackFrameStates,
+    expanded_states: &ExpandedStates,
 ) -> DivBuilder {
     let body: Vec<_> = body
         .iter()
@@ -265,6 +306,7 @@ fn expanded_body(
             library,
             call_stack,
             stack_frame_states,
+            expanded_states,
         ))
         .children(body_statements(
             body_tail.iter().copied(),
@@ -272,6 +314,7 @@ fn expanded_body(
             library,
             call_stack,
             stack_frame_states,
+            expanded_states,
         ));
     row
 }
@@ -282,12 +325,18 @@ fn body_statements<'a>(
     library: &'a Rc<Library>,
     call_stack: &'a CallStack,
     stack_frame_states: &'a StackFrameStates,
+    expanded_states: &'a ExpandedStates,
 ) -> impl Iterator<Item = Element> + 'a {
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => {
-            expression(expr, is_last, library, call_stack, stack_frame_states)
-        }
+        Statement::Expression(expr) => expression(
+            expr,
+            is_last,
+            library,
+            call_stack,
+            stack_frame_states,
+            expanded_states,
+        ),
     })
 }
 
@@ -333,6 +382,7 @@ fn expression(
     library: &Rc<Library>,
     call_stack: &CallStack,
     stack_frame_states: &StackFrameStates,
+    expanded_states: &ExpandedStates,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } => Vec::new(),
@@ -343,6 +393,7 @@ fn expression(
             library,
             call_stack.clone(),
             stack_frame_states,
+            expanded_states,
         ),
     }
 }
