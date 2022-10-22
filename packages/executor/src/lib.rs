@@ -12,6 +12,7 @@ pub const CODE: &str = indoc! {"
 
     def function1():
         function2(function3())
+        print(\"Hello, world!\")
 
     def function2():
         function3()

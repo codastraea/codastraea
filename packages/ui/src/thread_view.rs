@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, RunState},
-    syntax_tree::{Expression, Function, Statement},
+    syntax_tree::{Body, Expression, LinkedFunction, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
@@ -83,8 +83,25 @@ impl ThreadViewState {
         self.view_call_states.run_state(call_stack)
     }
 
-    fn lookup_fn(&self, fn_id: FunctionId) -> &Function<FunctionId> {
+    fn lookup_fn(&self, fn_id: FunctionId) -> &LinkedFunction {
         self.library.lookup(fn_id)
+    }
+}
+
+struct ExpandableBody<'a> {
+    expanded: Mutable<bool>,
+    statements: &'a Arc<Vec<Statement<FunctionId>>>,
+}
+
+impl<'a> ExpandableBody<'a> {
+    fn new(body: &'a Body, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
+        match body {
+            Body::Local(statements) => is_expandable(statements).then(|| ExpandableBody {
+                expanded: view_state.expanded(call_stack),
+                statements,
+            }),
+            Body::Python => None,
+        }
     }
 }
 
@@ -96,9 +113,13 @@ fn function(
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(fn_id);
-    let expanded = is_expandable(f.body()).then(|| view_state.expanded(&call_stack));
+    let expandable_body = ExpandableBody::new(f.body(), &call_stack, view_state);
     let run_state = view_state.run_state(&call_stack);
-    let header = function_header(f.name(), expanded.clone(), run_state);
+    let header = function_header(
+        f.name(),
+        expandable_body.as_ref().map(|body| body.expanded.clone()),
+        run_state,
+    );
     let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
 
@@ -106,12 +127,16 @@ fn function(
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
-    if let Some(expanded) = expanded {
+    if let Some(ExpandableBody {
+        expanded,
+        statements,
+    }) = expandable_body
+    {
         column()
             .align_items(Align::Stretch)
             .child(main)
             .child(function_body(
-                f.body(),
+                statements,
                 header_elem,
                 expanded,
                 call_stack,

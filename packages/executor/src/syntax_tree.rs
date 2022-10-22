@@ -33,7 +33,7 @@ type ParseResult<'a, T> = IResult<Span<'a>, T, GreedyError<Span<'a>, ErrorKind>>
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
-    functions: Vec<Function<String>>,
+    functions: Vec<Function>,
 }
 
 impl Module {
@@ -44,18 +44,22 @@ impl Module {
         Ok((input, Module { functions }))
     }
 
-    pub fn functions(&self) -> &[Function<String>] {
+    pub fn functions(&self) -> &[Function] {
         &self.functions
     }
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Function<Id> {
+pub struct Function {
     name: String,
-    body: Arc<Vec<Statement<Id>>>,
+    body: Vec<Statement<String>>,
 }
 
-impl Function<String> {
+impl Function {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     fn parse(input: Span) -> ParseResult<Self> {
         let (input, (_def, _, name, _params, _colon, body)) = context(
             "function",
@@ -73,7 +77,7 @@ impl Function<String> {
             input,
             Function {
                 name: name.fragment().to_string(),
-                body: Arc::new(body),
+                body,
             },
         ))
     }
@@ -95,43 +99,82 @@ impl Function<String> {
         )(input)
     }
 
-    pub fn translate_ids(&self, id_map: &IdMap) -> Function<FunctionId> {
-        Function {
-            name: self.name.clone(),
-            body: Arc::new(
-                self.body
-                    .iter()
-                    .map(|statement| statement.translate_ids(id_map))
-                    .collect(),
-            ),
-        }
+    pub fn translate_ids(&self, id_map: &IdMap) -> LinkedFunction {
+        LinkedFunction::local(
+            &self.name,
+            self.body
+                .iter()
+                .map(|statement| statement.translate_ids(id_map)),
+        )
+    }
+
+    pub fn unresolved_symbols<'a>(
+        &'a self,
+        id_map: &'a HashMap<String, FunctionId>,
+    ) -> impl Iterator<Item = String> + 'a {
+        self.body
+            .iter()
+            .flat_map(|stmt| stmt.unresolved_symbols(id_map))
     }
 }
 
-impl<Id> Function<Id> {
+// TODO: Move this
+#[derive(Debug)]
+pub struct LinkedFunction {
+    name: String,
+    body: Body,
+}
+
+impl LinkedFunction {
+    pub fn local(name: &str, body: impl IntoIterator<Item = Statement<FunctionId>>) -> Self {
+        Self {
+            name: name.to_owned(),
+            body: Body::Local(Arc::new(body.into_iter().collect())),
+        }
+    }
+
+    pub fn python(name: String) -> Self {
+        Self {
+            name,
+            body: Body::Python,
+        }
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn body(&self) -> &Arc<Vec<Statement<Id>>> {
+    pub fn body(&self) -> &Body {
         &self.body
     }
-}
 
-impl Function<FunctionId> {
     pub fn run(
         &self,
-        _args: impl Iterator<Item = Value>,
+        args: &[Value],
         lib: &Library,
         call_states: &watch::Sender<ThreadCallStates>,
     ) {
         println!("Running function '{}'", self.name());
-        sleep(Duration::from_secs(2));
+        sleep(Duration::from_secs(1));
 
-        for stmt in self.body().iter() {
-            stmt.run(lib, call_states)
+        match &self.body {
+            Body::Local(local) => {
+                for stmt in local.iter() {
+                    stmt.run(lib, call_states)
+                }
+            }
+            Body::Python => {
+                // TODO
+                println!("{}({:?})", self.name(), args)
+            }
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum Body {
+    Local(Arc<Vec<Statement<FunctionId>>>),
+    Python,
 }
 
 pub type IdMap = HashMap<String, FunctionId>;
@@ -174,6 +217,13 @@ impl Statement<String> {
             Self::Expression(expression) => Statement::Expression(expression.translate_ids(id_map)),
         }
     }
+
+    fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
+        match self {
+            Statement::Pass => vec![],
+            Statement::Expression(expr) => expr.unresolved_symbols(id_map),
+        }
+    }
 }
 
 impl Statement<FunctionId> {
@@ -204,10 +254,10 @@ impl Expression<FunctionId> {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args } => {
-                let args = args.iter().map(|arg| arg.run(lib, call_states));
+                let args: Vec<_> = args.iter().map(|arg| arg.run(lib, call_states)).collect();
 
                 call_states.send_modify(|t| t.push(*name));
-                lib.lookup(*name).run(args, lib, call_states);
+                lib.lookup(*name).run(&args, lib, call_states);
                 call_states.send_modify(|t| t.pop());
 
                 Value::None
@@ -277,8 +327,27 @@ impl Expression<String> {
             },
         }
     }
+
+    fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
+        match self {
+            Expression::Literal(_) | Expression::Variable { .. } => vec![],
+            Expression::Call { name, args } => {
+                let args_unresolved = args.iter().flat_map(|arg| arg.unresolved_symbols(id_map));
+
+                if id_map.contains_key(name) {
+                    None
+                } else {
+                    Some(name.to_owned())
+                }
+                .into_iter()
+                .chain(args_unresolved)
+                .collect()
+            }
+        }
+    }
 }
 
+#[derive(Debug)]
 pub enum Value {
     String(String),
     None,
@@ -371,8 +440,6 @@ operators!((colon, ":"));
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use indoc::indoc;
 
     use super::{parse, Expression, Function, Literal, Module, Statement};
@@ -538,7 +605,7 @@ mod tests {
             Module {
                 functions: vec![Function {
                     name: "test".to_owned(),
-                    body: Arc::new(body.into()),
+                    body: body.into(),
                 }],
             }
         );

@@ -1,14 +1,16 @@
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
 use crate::{
     run::ThreadCallStates,
-    syntax_tree::{Expression, Function, IdMap, Module},
+    syntax_tree::{Expression, IdMap, LinkedFunction, Module},
 };
 
 pub struct Library {
     main_id: Option<FunctionId>,
-    lookup_map: Vec<Function<FunctionId>>,
+    lookup_map: Vec<LinkedFunction>,
 }
 
 impl Library {
@@ -17,23 +19,26 @@ impl Library {
     /// Translate all `String` function id's to a [`FunctionId`] that is fast to
     /// lookup
     pub fn link(module: Module) -> Self {
-        let mut id_map = IdMap::new();
-        let mut main_id = None;
+        let symbol_table_len = module.functions().len();
+        let mut id_map = Self::symbol_table(&module);
+        let unresolved_symbols: BTreeSet<String> = module
+            .functions()
+            .iter()
+            .flat_map(|f| f.unresolved_symbols(&id_map))
+            .collect();
 
-        for function in module.functions() {
-            let name = function.name();
-            let id = FunctionId(id_map.len());
-            id_map.insert(name.to_owned(), id);
+        assert!(symbol_table_len == id_map.len());
 
-            if name == "main" {
-                main_id = Some(id);
-            }
+        for (index, python_name) in unresolved_symbols.iter().enumerate() {
+            id_map.insert(python_name.clone(), FunctionId(index + symbol_table_len));
         }
 
+        let main_id = id_map.get("main").copied();
         let lookup_map = module
             .functions()
             .iter()
             .map(|f| f.translate_ids(&id_map))
+            .chain(unresolved_symbols.into_iter().map(LinkedFunction::python))
             .collect();
 
         Self {
@@ -50,7 +55,7 @@ impl Library {
     /// # Panic
     ///
     /// If `id` was not found.
-    pub fn lookup(&self, id: FunctionId) -> &Function<FunctionId> {
+    pub fn lookup(&self, id: FunctionId) -> &LinkedFunction {
         // TODO: Return LinkError if not found
         &self.lookup_map[id.0]
     }
@@ -58,7 +63,7 @@ impl Library {
     /// Lookup a function called "main"
     ///
     /// Returns `None` if not found.
-    pub fn main(&self) -> Option<&Function<FunctionId>> {
+    pub fn main(&self) -> Option<&LinkedFunction> {
         self.main_id.map(|main| self.lookup(main))
     }
 
@@ -77,6 +82,21 @@ impl Library {
             }
             .run(self, call_states);
         }
+    }
+
+    fn symbol_table(module: &Module) -> std::collections::HashMap<String, FunctionId> {
+        let mut id_map = IdMap::new();
+
+        for function in module.functions() {
+            let name = function.name();
+            let id = FunctionId(id_map.len());
+
+            if id_map.insert(name.to_owned(), id).is_some() {
+                // TODO: Error
+                panic!("Duplicte symbol: {name}");
+            }
+        }
+        id_map
     }
 }
 
