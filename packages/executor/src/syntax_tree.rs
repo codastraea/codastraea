@@ -219,7 +219,16 @@ impl Expression<FunctionId> {
 
 impl Expression<String> {
     fn parse(input: Span) -> ParseResult<Self> {
-        alt((Self::call, Self::variable, Self::parenthasized))(input)
+        alt((
+            Self::call,
+            Self::literal,
+            Self::variable,
+            Self::parenthasized,
+        ))(input)
+    }
+
+    fn literal(input: Span) -> ParseResult<Self> {
+        map(Literal::parse, Self::Literal)(input)
     }
 
     fn variable(input: Span) -> ParseResult<Self> {
@@ -284,6 +293,14 @@ impl Literal {
         match self {
             Literal::String(string) => Value::String(string.clone()),
         }
+    }
+
+    fn parse(input: Span) -> ParseResult<Self> {
+        // TODO: Support other literal types + full python string literals
+        let (input, contents) =
+            context("literal", delimited(tag("\""), is_not("\""), tag("\"")))(input)?;
+
+        Ok((input, Self::String(contents.fragment().to_string())))
     }
 }
 
@@ -358,7 +375,7 @@ mod tests {
 
     use indoc::indoc;
 
-    use super::{parse, Expression, Function, Module, Statement};
+    use super::{parse, Expression, Function, Module, Statement, Literal};
 
     #[test]
     fn empty_fn() {
@@ -491,6 +508,22 @@ mod tests {
                         name: "z".to_string(),
                     },
                 ],
+            },
+        );
+    }
+
+    #[test]
+    fn string_literal() {
+        parse_expression(
+            indoc! {"
+                def test():
+                    print(\"Hello, world!\")
+            "},
+            Expression::Call {
+                name: "print".to_string(),
+                args: vec![Expression::Literal(Literal::String(
+                    "Hello, world!".to_string(),
+                ))],
             },
         );
     }
