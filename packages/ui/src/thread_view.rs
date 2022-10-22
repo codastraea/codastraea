@@ -341,7 +341,7 @@ fn expression(
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     match expr {
-        Expression::Variable { .. } => Vec::new(),
+        Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
         Expression::Call { name, args } => {
             call(*name, args, is_last, call_stack.clone(), view_state)
         }

@@ -119,7 +119,12 @@ impl<Id> Function<Id> {
 }
 
 impl Function<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
+    pub fn run(
+        &self,
+        _args: impl Iterator<Item = Value>,
+        lib: &Library,
+        call_states: &watch::Sender<ThreadCallStates>,
+    ) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(2));
 
@@ -175,13 +180,16 @@ impl Statement<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
         match self {
             Statement::Pass => (),
-            Statement::Expression(expr) => expr.run(lib, call_states),
+            Statement::Expression(expr) => {
+                expr.run(lib, call_states);
+            }
         }
     }
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Expression<FnId> {
+    Literal(Literal),
     Variable {
         name: String,
     },
@@ -192,18 +200,19 @@ pub enum Expression<FnId> {
 }
 
 impl Expression<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) -> Value {
         match self {
-            Expression::Variable { name } => println!("Variable {name}"),
+            Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args } => {
-                for arg in args {
-                    arg.run(lib, call_states);
-                }
+                let args = args.iter().map(|arg| arg.run(lib, call_states));
 
                 call_states.send_modify(|t| t.push(*name));
-                lib.lookup(*name).run(lib, call_states);
+                lib.lookup(*name).run(args, lib, call_states);
                 call_states.send_modify(|t| t.pop());
+
+                Value::None
             }
+            Expression::Literal(literal) => literal.run(),
         }
     }
 }
@@ -251,6 +260,7 @@ impl Expression<String> {
 
     fn translate_ids<Id: Clone>(&self, id_map: &IdMap<Id>) -> Expression<Id> {
         match self {
+            Self::Literal(literal) => Expression::Literal(literal.clone()),
             Self::Variable { name } => Expression::Variable { name: name.clone() },
             Self::Call { name, args } => Expression::Call {
                 name: id_map.get(name).unwrap().clone(),
@@ -260,11 +270,21 @@ impl Expression<String> {
     }
 }
 
-pub enum BinOp {
-    Plus,
-    Minus,
-    Mulitply,
-    Divide,
+pub enum Value {
+    String(String),
+    None,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Literal {
+    String(String),
+}
+impl Literal {
+    fn run(&self) -> Value {
+        match self {
+            Literal::String(string) => Value::String(string.clone()),
+        }
+    }
 }
 
 #[derive(Error, Debug)]

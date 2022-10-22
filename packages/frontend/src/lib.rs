@@ -9,7 +9,7 @@ use serpent_automation_executor::{
 
 fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     match expression {
-        Expression::Variable { .. } => false,
+        Expression::Variable { .. } | Expression::Literal(_) => false,
         Expression::Call { .. } => true,
     }
 }
