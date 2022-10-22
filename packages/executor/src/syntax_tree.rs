@@ -95,7 +95,7 @@ impl Function<String> {
         )(input)
     }
 
-    pub fn translate_ids<Id: Clone>(&self, id_map: &IdMap<Id>) -> Function<Id> {
+    pub fn translate_ids(&self, id_map: &IdMap) -> Function<FunctionId> {
         Function {
             name: self.name.clone(),
             body: Arc::new(
@@ -134,7 +134,7 @@ impl Function<FunctionId> {
     }
 }
 
-pub type IdMap<Id> = HashMap<String, Id>;
+pub type IdMap = HashMap<String, FunctionId>;
 
 fn blank_lines(input: Span) -> ParseResult<()> {
     discard(many0(pair(space0, eol)))(input)
@@ -168,7 +168,7 @@ impl Statement<String> {
         Ok((input, stmt))
     }
 
-    fn translate_ids<Id: Clone>(&self, id_map: &IdMap<Id>) -> Statement<Id> {
+    fn translate_ids(&self, id_map: &IdMap) -> Statement<FunctionId> {
         match self {
             Self::Pass => Statement::Pass,
             Self::Expression(expression) => Statement::Expression(expression.translate_ids(id_map)),
@@ -267,12 +267,12 @@ impl Expression<String> {
         )(input)
     }
 
-    fn translate_ids<Id: Clone>(&self, id_map: &IdMap<Id>) -> Expression<Id> {
+    fn translate_ids(&self, id_map: &IdMap) -> Expression<FunctionId> {
         match self {
             Self::Literal(literal) => Expression::Literal(literal.clone()),
             Self::Variable { name } => Expression::Variable { name: name.clone() },
             Self::Call { name, args } => Expression::Call {
-                name: id_map.get(name).unwrap().clone(),
+                name: *id_map.get(name).unwrap(),
                 args: args.iter().map(|arg| arg.translate_ids(id_map)).collect(),
             },
         }
@@ -375,7 +375,7 @@ mod tests {
 
     use indoc::indoc;
 
-    use super::{parse, Expression, Function, Module, Statement, Literal};
+    use super::{parse, Expression, Function, Literal, Module, Statement};
 
     #[test]
     fn empty_fn() {
