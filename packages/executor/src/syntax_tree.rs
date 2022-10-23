@@ -558,9 +558,9 @@ where
 }
 
 macro_rules! keywords {
-    ($($kw:ident $(($kw_id:ident))?),*) => {
+    ($($kw:ident $(($kw_text:literal))?),*) => {
         $(
-            keyword!($kw $( ($kw_id) )?);
+            keyword!($kw $( ($kw_text) )?);
         )*
     };
 }
@@ -571,15 +571,14 @@ macro_rules! keyword {
             discard(tag(stringify!($kw)))(input)
         }
     };
-    ($kw:ident($kw_id:ident)) => {
-        fn $kw_id(input: Span) -> ParseResult<()> {
-            discard(tag(stringify!($kw)))(input)
+    ($kw:ident($kw_text:literal)) => {
+        fn $kw(input: Span) -> ParseResult<()> {
+            discard(tag(stringify!($kw_text)))(input)
         }
     };
 }
 
-// TODO: r#if("if")
-keywords!(def, pass, if(r#if), else(r#else));
+keywords!(def, pass, r#if("if"), r#else("else"));
 
 macro_rules! operators {
     ($(($name:ident, $op:expr)),*) => {
