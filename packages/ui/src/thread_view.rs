@@ -24,7 +24,7 @@ use silkenweb::{
     Value,
 };
 use silkenweb_bootstrap::{
-    button::{button, ButtonStyle},
+    button::{button, icon_button, ButtonStyle},
     button_group::button_group,
     column,
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
@@ -156,9 +156,12 @@ fn fn_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) ->
     });
 
     dropdown(
-        button("button", ButtonStyle::Outline(Colour::Secondary))
-            .icon(Sig(run_state))
-            .text(name),
+        icon_button(
+            "button",
+            Sig(run_state),
+            ButtonStyle::Outline(Colour::Secondary),
+        )
+        .text(name),
         dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
     )
 }
@@ -336,9 +339,7 @@ fn if_statement(
     is_last: bool,
 ) -> Vec<Element> {
     let mut main = row().align_items(Align::Center).child(
-        button("button", ButtonStyle::Solid(Colour::Primary))
-            .text("If")
-            .rounded_pill_border(true),
+        button("button", "If", ButtonStyle::Solid(Colour::Primary)).rounded_pill_border(true),
     );
 
     if !is_last {
@@ -354,25 +355,23 @@ fn function_header(
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
+        let icon = icon(Sig(expanded.signal().map(|expanded| {
+            if expanded {
+                IconType::ZoomOut
+            } else {
+                IconType::ZoomIn
+            }
+        })));
+
         button_group(format!("Function {name}"))
             .shadow(Shadow::Medium)
             .dropdown(fn_dropdown(name, run_state))
-            .button(
-                button("button", BUTTON_STYLE)
-                    .on_click({
-                        clone!(expanded);
-                        move |_, _| {
-                            expanded.replace_with(|e| !*e);
-                        }
-                    })
-                    .icon(icon(Sig(expanded.signal().map(|expanded| {
-                        if expanded {
-                            IconType::ZoomOut
-                        } else {
-                            IconType::ZoomIn
-                        }
-                    })))),
-            )
+            .button(icon_button("button", icon, BUTTON_STYLE).on_click({
+                clone!(expanded);
+                move |_, _| {
+                    expanded.replace_with(|e| !*e);
+                }
+            }))
             .into()
     } else {
         fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
