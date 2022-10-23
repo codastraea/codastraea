@@ -176,11 +176,12 @@ impl<T> LocalBody<T> {
 
 impl LocalBody<String> {
     pub fn parse(input: Span) -> ParseResult<Self> {
+        // TODO: Make sure body is more indented than parent
         map(alt((Self::parse_inline, Self::parse_block)), Self::new)(input)
     }
 
     fn parse_inline(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, statement) = context("inline body", Statement::parse)(input)?;
+        let (input, statement) = context("inline body", Statement::parse(None))(input)?;
 
         Ok((input, vec![statement]))
     }
@@ -191,8 +192,8 @@ impl LocalBody<String> {
 
         // TODO: Is error reporting friendly enough?
         separated_list1(
-            tuple((eol, blank_lines, tag(*prefix.fragment()))),
-            Statement::parse,
+            discard_indent(Some(prefix.fragment())),
+            Statement::parse(Some(prefix.fragment())),
         )(input)
     }
 
@@ -241,28 +242,32 @@ pub enum Statement<FnId> {
 }
 
 impl Statement<String> {
-    fn parse(input: Span) -> ParseResult<Self> {
-        let (input, stmt) = context(
+    fn parse<'a>(prefix: Option<&'a str>) -> impl FnMut(Span<'a>) -> ParseResult<'a, Self> {
+        context(
             "statement",
             alt((
                 map(pass, |_| Statement::Pass),
-                Self::parse_if,
+                move |input| Self::parse_if(prefix, input),
                 map(Expression::parse, Statement::Expression),
             )),
-        )(input)?;
-
-        Ok((input, stmt))
+        )
     }
 
-    fn parse_if(input: Span) -> ParseResult<Self> {
+    fn parse_if<'a>(prefix: Option<&'a str>, input: Span<'a>) -> ParseResult<'a, Self> {
+        // TODO: elif
         let (input, (_if, condition, _colon, then_block, else_clause)) = context(
             "if",
             tuple((
                 r#if,
-                Expression::parse,
-                colon,
+                ws(Expression::parse),
+                ws(colon),
                 LocalBody::parse,
-                opt(tuple((r#else, colon, LocalBody::parse))),
+                opt(tuple((
+                    discard_indent(prefix),
+                    r#else,
+                    ws(colon),
+                    LocalBody::parse,
+                ))),
             )),
         )(input)?;
 
@@ -270,7 +275,9 @@ impl Statement<String> {
             condition,
             then_block,
             else_block: else_clause
-                .map_or_else(LocalBody::empty, |(_else, _colon, else_block)| else_block),
+                .map_or_else(LocalBody::empty, |(_indent, _else, _colon, else_block)| {
+                    else_block
+                }),
         };
 
         Ok((input, statement))
@@ -367,8 +374,8 @@ impl Expression<FunctionId> {
 impl Expression<String> {
     fn parse(input: Span) -> ParseResult<Self> {
         alt((
-            Self::call,
             Self::literal,
+            Self::call,
             Self::variable,
             Self::parenthasized,
         ))(input)
@@ -465,6 +472,7 @@ pub enum Literal {
     String(String),
     Bool(bool),
 }
+
 impl Literal {
     fn run(&self) -> Value {
         match self {
@@ -475,10 +483,26 @@ impl Literal {
 
     fn parse(input: Span) -> ParseResult<Self> {
         // TODO: Support other literal types + full python string literals
-        let (input, contents) =
-            context("literal", delimited(tag("\""), is_not("\""), tag("\"")))(input)?;
+        context("literal", alt((Self::parse_string, Self::parse_bool)))(input)
+    }
+
+    fn parse_string(input: Span) -> ParseResult<Self> {
+        let (input, contents) = delimited(tag("\""), is_not("\""), tag("\""))(input)?;
 
         Ok((input, Self::String(contents.fragment().to_string())))
+    }
+
+    fn parse_bool(input: Span) -> ParseResult<Self> {
+        let (input, contents) = alt((tag("True"), tag("False")))(input)?;
+
+        Ok((
+            input,
+            Self::Bool(match *(contents.fragment()) {
+                "True" => true,
+                "False" => false,
+                _ => unreachable!("Unexpected bool literal value"),
+            }),
+        ))
     }
 }
 
@@ -500,6 +524,16 @@ fn identifier(input: Span) -> ParseResult<Span> {
             many0(alt((alphanumeric1, tag("_")))),
         )),
     )(input)
+}
+
+fn discard_indent<'a>(prefix: Option<&'a str>) -> impl FnMut(Span<'a>) -> ParseResult<'a, ()> {
+    move |input| {
+        if let Some(prefix) = prefix {
+            discard(tuple((eol, blank_lines, tag(prefix))))(input)
+        } else {
+            Ok((input, ()))
+        }
+    }
 }
 
 fn ws<'a, F, O>(inner: F) -> impl FnMut(Span<'a>) -> ParseResult<'a, O>
