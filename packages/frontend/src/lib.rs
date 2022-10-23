@@ -14,10 +14,23 @@ fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     }
 }
 
+fn body_is_expandable(body: &LocalBody<FunctionId>) -> bool {
+    body.iter().any(statement_is_expandable)
+}
+
 pub fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
     match stmt {
         Statement::Pass => false,
         Statement::Expression(e) => expression_is_expandable(e),
+        Statement::If {
+            condition,
+            then_block,
+            else_block,
+        } => {
+            expression_is_expandable(condition)
+                || body_is_expandable(then_block)
+                || body_is_expandable(else_block)
+        }
     }
 }
 

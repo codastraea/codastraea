@@ -173,7 +173,7 @@ pub enum Body {
     Python,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalBody<T>(Arc<Vec<Statement<T>>>);
 
 impl<T> LocalBody<T> {
@@ -187,10 +187,16 @@ impl<T> LocalBody<T> {
 }
 
 impl LocalBody<String> {
-    pub fn translate_ids(&self, id_map: &IdMap) -> LocalBody<FunctionId> {
+    fn translate_ids(&self, id_map: &IdMap) -> LocalBody<FunctionId> {
         LocalBody(Arc::new(
             self.iter().map(|stmt| stmt.translate_ids(id_map)).collect(),
         ))
+    }
+
+    fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
+        self.iter()
+            .flat_map(|stmt| stmt.unresolved_symbols(id_map))
+            .collect()
     }
 }
 
@@ -220,7 +226,11 @@ fn eol(input: Span) -> ParseResult<()> {
 pub enum Statement<FnId> {
     Pass,
     Expression(Expression<FnId>),
-    // TODO: Loops
+    If {
+        condition: Expression<FnId>,
+        then_block: LocalBody<FnId>,
+        else_block: LocalBody<FnId>,
+    },
 }
 
 impl Statement<String> {
@@ -240,13 +250,34 @@ impl Statement<String> {
         match self {
             Self::Pass => Statement::Pass,
             Self::Expression(expression) => Statement::Expression(expression.translate_ids(id_map)),
+            Self::If {
+                condition,
+                then_block,
+                else_block,
+            } => Statement::If {
+                condition: condition.translate_ids(id_map),
+                then_block: then_block.translate_ids(id_map),
+                else_block: else_block.translate_ids(id_map),
+            },
         }
     }
 
     fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
         match self {
-            Statement::Pass => vec![],
-            Statement::Expression(expr) => expr.unresolved_symbols(id_map),
+            Self::Pass => vec![],
+            Self::Expression(expr) => expr.unresolved_symbols(id_map),
+            Self::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                let mut unresolved = condition.unresolved_symbols(id_map);
+
+                unresolved.extend(then_block.unresolved_symbols(id_map));
+                unresolved.extend(else_block.unresolved_symbols(id_map));
+
+                unresolved
+            }
         }
     }
 }
@@ -254,9 +285,20 @@ impl Statement<String> {
 impl Statement<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
         match self {
-            Statement::Pass => (),
-            Statement::Expression(expr) => {
+            Self::Pass => (),
+            Self::Expression(expr) => {
                 expr.run(lib, call_states);
+            }
+            Self::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                if condition.run(lib, call_states).truthy() {
+                    then_block.run(lib, call_states)
+                } else {
+                    else_block.run(lib, call_states)
+                }
             }
         }
     }
@@ -375,17 +417,29 @@ impl Expression<String> {
 #[derive(Debug)]
 pub enum Value {
     String(String),
+    Bool(bool),
     None,
+}
+impl Value {
+    fn truthy(&self) -> bool {
+        match self {
+            Value::String(s) => ! s.is_empty(),
+            Value::Bool(b) => *b,
+            Value::None => false,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Literal {
     String(String),
+    Bool(bool),
 }
 impl Literal {
     fn run(&self) -> Value {
         match self {
-            Literal::String(string) => Value::String(string.clone()),
+            Self::String(string) => Value::String(string.clone()),
+            Self::Bool(b) => Value::Bool(*b),
         }
     }
 

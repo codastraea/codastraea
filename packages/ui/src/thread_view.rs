@@ -321,6 +321,7 @@ fn body_statements<'a>(
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
         Statement::Expression(expr) => expression(expr, is_last, call_stack, view_state),
+        Statement::If { .. } => todo!(),
     })
 }
 
