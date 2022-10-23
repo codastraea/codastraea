@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
 use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
@@ -88,15 +88,15 @@ impl ThreadViewState {
     }
 }
 
-struct ExpandableBody<'a> {
+struct ExpandableBody {
     expanded: Mutable<bool>,
-    body: &'a LocalBody<FunctionId>,
+    body: Arc<LocalBody<FunctionId>>,
 }
 
-impl<'a> ExpandableBody<'a> {
-    fn new(body: &'a Body, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
+impl ExpandableBody {
+    fn new(body: Body, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
         match body {
-            Body::Local(body) => is_expandable(body).then(|| ExpandableBody {
+            Body::Local(body) => is_expandable(&body).then(|| ExpandableBody {
                 expanded: view_state.expanded(call_stack),
                 body,
             }),
@@ -113,7 +113,7 @@ fn function(
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(fn_id);
-    let expandable_body = ExpandableBody::new(f.body(), &call_stack, view_state);
+    let expandable_body = ExpandableBody::new(f.body().clone(), &call_stack, view_state);
     let run_state = view_state.run_state(&call_stack);
     let header = function_header(
         f.name(),
@@ -208,7 +208,7 @@ fn style_min_size(width: f64, height: f64) -> String {
 }
 
 fn function_body(
-    body: &LocalBody<FunctionId>,
+    body: Arc<LocalBody<FunctionId>>,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
     call_stack: CallStack,
@@ -261,7 +261,7 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(body, view_state);
+            clone!(view_state);
 
             move |expanded| {
                 if expanded {

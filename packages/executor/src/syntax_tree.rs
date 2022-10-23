@@ -52,7 +52,7 @@ impl Module {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     name: String,
-    body: Vec<Statement<String>>,
+    body: LocalBody<String>,
 }
 
 impl Function {
@@ -69,7 +69,7 @@ impl Function {
                 identifier,
                 ws(tag("()")),
                 colon,
-                alt((Self::inline_body, Self::block_body)),
+                LocalBody::parse,
             )),
         )(input)?;
 
@@ -80,23 +80,6 @@ impl Function {
                 body,
             },
         ))
-    }
-
-    fn inline_body(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, statement) = context("inline body", Statement::parse)(input)?;
-
-        Ok((input, vec![statement]))
-    }
-
-    fn block_body(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, _) = discard(pair(eol, blank_lines))(input)?;
-        let (input, prefix) = space0(input)?;
-
-        // TODO: Is error reporting friendly enough?
-        separated_list1(
-            tuple((eol, blank_lines, tag(*prefix.fragment()))),
-            Statement::parse,
-        )(input)
     }
 
     pub fn translate_ids(&self, id_map: &IdMap) -> LinkedFunction {
@@ -129,7 +112,7 @@ impl LinkedFunction {
     pub fn local(name: &str, body: impl IntoIterator<Item = Statement<FunctionId>>) -> Self {
         Self {
             name: name.to_owned(),
-            body: Body::Local(LocalBody::new(body)),
+            body: Body::Local(Arc::new(LocalBody::new(body))),
         }
     }
 
@@ -169,16 +152,21 @@ impl LinkedFunction {
 
 #[derive(Clone, Debug)]
 pub enum Body {
-    Local(LocalBody<FunctionId>),
+    Local(Arc<LocalBody<FunctionId>>),
     Python,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LocalBody<T>(Arc<Vec<Statement<T>>>);
+// TODO: Rename (Body -> LinkedBody, LocalBody -> Body)
+#[derive(Debug, Eq, PartialEq)]
+pub struct LocalBody<T>(Vec<Statement<T>>);
 
 impl<T> LocalBody<T> {
     pub fn new(stmts: impl IntoIterator<Item = Statement<T>>) -> Self {
-        Self(Arc::new(stmts.into_iter().collect()))
+        Self(stmts.into_iter().collect())
+    }
+
+    pub fn empty() -> Self {
+        Self(Vec::new())
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Statement<T>> {
@@ -187,10 +175,29 @@ impl<T> LocalBody<T> {
 }
 
 impl LocalBody<String> {
+    pub fn parse(input: Span) -> ParseResult<Self> {
+        map(alt((Self::parse_inline, Self::parse_block)), Self::new)(input)
+    }
+
+    fn parse_inline(input: Span) -> ParseResult<Vec<Statement<String>>> {
+        let (input, statement) = context("inline body", Statement::parse)(input)?;
+
+        Ok((input, vec![statement]))
+    }
+
+    fn parse_block(input: Span) -> ParseResult<Vec<Statement<String>>> {
+        let (input, _) = discard(pair(eol, blank_lines))(input)?;
+        let (input, prefix) = space0(input)?;
+
+        // TODO: Is error reporting friendly enough?
+        separated_list1(
+            tuple((eol, blank_lines, tag(*prefix.fragment()))),
+            Statement::parse,
+        )(input)
+    }
+
     fn translate_ids(&self, id_map: &IdMap) -> LocalBody<FunctionId> {
-        LocalBody(Arc::new(
-            self.iter().map(|stmt| stmt.translate_ids(id_map)).collect(),
-        ))
+        LocalBody(self.iter().map(|stmt| stmt.translate_ids(id_map)).collect())
     }
 
     fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
@@ -239,11 +246,34 @@ impl Statement<String> {
             "statement",
             alt((
                 map(pass, |_| Statement::Pass),
+                Self::parse_if,
                 map(Expression::parse, Statement::Expression),
             )),
         )(input)?;
 
         Ok((input, stmt))
+    }
+
+    fn parse_if(input: Span) -> ParseResult<Self> {
+        let (input, (_if, condition, _colon, then_block, else_clause)) = context(
+            "if",
+            tuple((
+                r#if,
+                Expression::parse,
+                colon,
+                LocalBody::parse,
+                opt(tuple((r#else, colon, LocalBody::parse))),
+            )),
+        )(input)?;
+
+        let statement = Self::If {
+            condition,
+            then_block,
+            else_block: else_clause
+                .map_or_else(LocalBody::empty, |(_else, _colon, else_block)| else_block),
+        };
+
+        Ok((input, statement))
     }
 
     fn translate_ids(&self, id_map: &IdMap) -> Statement<FunctionId> {
@@ -423,7 +453,7 @@ pub enum Value {
 impl Value {
     fn truthy(&self) -> bool {
         match self {
-            Value::String(s) => ! s.is_empty(),
+            Value::String(s) => !s.is_empty(),
             Value::Bool(b) => *b,
             Value::None => false,
         }
@@ -494,16 +524,28 @@ where
 }
 
 macro_rules! keywords {
-    ($($kw:ident),*) => {
+    ($($kw:ident $(($kw_id:ident))?),*) => {
         $(
-            fn $kw(input: Span) -> ParseResult<()> {
-                discard(tag(stringify!($kw)))(input)
-            }
+            keyword!($kw $( ($kw_id) )?);
         )*
-    }
+    };
 }
 
-keywords!(def, pass);
+macro_rules! keyword {
+    ($kw:ident) => {
+        fn $kw(input: Span) -> ParseResult<()> {
+            discard(tag(stringify!($kw)))(input)
+        }
+    };
+    ($kw:ident($kw_id:ident)) => {
+        fn $kw_id(input: Span) -> ParseResult<()> {
+            discard(tag(stringify!($kw)))(input)
+        }
+    };
+}
+
+// TODO: r#if("if")
+keywords!(def, pass, if(r#if), else(r#else));
 
 macro_rules! operators {
     ($(($name:ident, $op:expr)),*) => {
@@ -522,6 +564,7 @@ mod tests {
     use indoc::indoc;
 
     use super::{parse, Expression, Function, Literal, Module, Statement};
+    use crate::syntax_tree::LocalBody;
 
     #[test]
     fn empty_fn() {
@@ -684,7 +727,7 @@ mod tests {
             Module {
                 functions: vec![Function {
                     name: "test".to_owned(),
-                    body: body.into(),
+                    body: LocalBody::new(body),
                 }],
             }
         );
