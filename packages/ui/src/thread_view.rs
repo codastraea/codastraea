@@ -321,8 +321,31 @@ fn body_statements<'a>(
     body.flat_map(move |statement| match statement {
         Statement::Pass => Vec::new(),
         Statement::Expression(expr) => expression(expr, is_last, call_stack, view_state),
-        Statement::If { .. } => todo!(),
+        Statement::If {
+            condition,
+            then_block,
+            else_block,
+        } => if_statement(condition, then_block, else_block, is_last),
     })
+}
+
+fn if_statement(
+    _condition: &Expression<FunctionId>,
+    _then_block: &LocalBody<FunctionId>,
+    _else_block: &LocalBody<FunctionId>,
+    is_last: bool,
+) -> Vec<Element> {
+    let mut main = row().align_items(Align::Center).child(
+        button("button", ButtonStyle::Solid(Colour::Primary))
+            .text("If")
+            .rounded_pill_border(true),
+    );
+
+    if !is_last {
+        main = main.child(horizontal_line()).child(arrow_right());
+    }
+
+    vec![main.into()]
 }
 
 fn function_header(
