@@ -573,7 +573,7 @@ macro_rules! keyword {
     };
     ($kw:ident($kw_text:literal)) => {
         fn $kw(input: Span) -> ParseResult<()> {
-            discard(tag(stringify!($kw_text)))(input)
+            discard(tag($kw_text))(input)
         }
     };
 }
