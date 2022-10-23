@@ -4,31 +4,32 @@ pub mod library;
 pub mod run;
 pub mod syntax_tree;
 
-// TODO: Raw string
-pub const CODE: &str = indoc! {"
+// TODO: We need a way to identify which statement number we're on in the call stack.
+pub const CODE: &str = indoc! {r#"
     def main():
         if True:
-            print(\"true0\")
+            print("true0")
         else:
-            print(\"false0\")
+            print("false0")
 
-        if False: print(\"false1\")
-        else: print(\"true1\")
+        if False: print("false1")
+        else: print("true1")
 
         if True:
-            print(\"true2\")
+            print("true2")
 
         if False:
-            print(\"false2\")
+            print("false2")
 
 
         function1()
+        function2()
         function2()
         function3()
 
     def function1():
         function2(function3())
-        print(\"Hello, world!\")
+        print("Hello, world!")
 
     def function2():
         function3()
@@ -39,4 +40,4 @@ pub const CODE: &str = indoc! {"
 
     def function4():
         pass
-"};
+"#};
