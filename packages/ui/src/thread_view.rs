@@ -1,11 +1,11 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, RunState},
-    syntax_tree::{Body, Expression, LinkedFunction, Statement},
+    syntax_tree::{Body, Expression, LinkedFunction, LocalBody, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
@@ -90,15 +90,15 @@ impl ThreadViewState {
 
 struct ExpandableBody<'a> {
     expanded: Mutable<bool>,
-    statements: &'a Arc<Vec<Statement<FunctionId>>>,
+    body: &'a LocalBody<FunctionId>,
 }
 
 impl<'a> ExpandableBody<'a> {
     fn new(body: &'a Body, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
         match body {
-            Body::Local(statements) => is_expandable(statements).then(|| ExpandableBody {
+            Body::Local(body) => is_expandable(body).then(|| ExpandableBody {
                 expanded: view_state.expanded(call_stack),
-                statements,
+                body,
             }),
             Body::Python => None,
         }
@@ -127,16 +127,12 @@ fn function(
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
-    if let Some(ExpandableBody {
-        expanded,
-        statements,
-    }) = expandable_body
-    {
+    if let Some(ExpandableBody { expanded, body }) = expandable_body {
         column()
             .align_items(Align::Stretch)
             .child(main)
             .child(function_body(
-                statements,
+                body,
                 header_elem,
                 expanded,
                 call_stack,
@@ -212,7 +208,7 @@ fn style_min_size(width: f64, height: f64) -> String {
 }
 
 fn function_body(
-    body: &Arc<Vec<Statement<FunctionId>>>,
+    body: &LocalBody<FunctionId>,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
     call_stack: CallStack,
@@ -279,7 +275,7 @@ fn function_body(
 }
 
 fn expanded_body(
-    body: &Arc<Vec<Statement<FunctionId>>>,
+    body: &LocalBody<FunctionId>,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> DivBuilder {

@@ -129,7 +129,7 @@ impl LinkedFunction {
     pub fn local(name: &str, body: impl IntoIterator<Item = Statement<FunctionId>>) -> Self {
         Self {
             name: name.to_owned(),
-            body: Body::Local(Arc::new(body.into_iter().collect())),
+            body: Body::Local(LocalBody::new(body)),
         }
     }
 
@@ -158,11 +158,7 @@ impl LinkedFunction {
         sleep(Duration::from_secs(1));
 
         match &self.body {
-            Body::Local(local) => {
-                for stmt in local.iter() {
-                    stmt.run(lib, call_states)
-                }
-            }
+            Body::Local(local) => local.run(lib, call_states),
             Body::Python => {
                 // TODO
                 println!("{}({:?})", self.name(), args)
@@ -173,8 +169,37 @@ impl LinkedFunction {
 
 #[derive(Clone, Debug)]
 pub enum Body {
-    Local(Arc<Vec<Statement<FunctionId>>>),
+    Local(LocalBody<FunctionId>),
     Python,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalBody<T>(Arc<Vec<Statement<T>>>);
+
+impl<T> LocalBody<T> {
+    pub fn new(stmts: impl IntoIterator<Item = Statement<T>>) -> Self {
+        Self(Arc::new(stmts.into_iter().collect()))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Statement<T>> {
+        self.0.iter()
+    }
+}
+
+impl LocalBody<String> {
+    pub fn translate_ids(&self, id_map: &IdMap) -> LocalBody<FunctionId> {
+        LocalBody(Arc::new(
+            self.iter().map(|stmt| stmt.translate_ids(id_map)).collect(),
+        ))
+    }
+}
+
+impl LocalBody<FunctionId> {
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
+        for stmt in self.iter() {
+            stmt.run(lib, call_states);
+        }
+    }
 }
 
 pub type IdMap = HashMap<String, FunctionId>;
