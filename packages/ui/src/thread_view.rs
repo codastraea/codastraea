@@ -107,23 +107,33 @@ fn function(
 
     if let Some(body) = body {
         let expanded = view_state.expanded(&call_stack);
-        // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
-        let header = header_row(function_header(name, Some(&expanded), run_state), is_last);
 
-        column()
-            .align_items(Align::Start)
-            .child(header.align_self(Align::Stretch))
-            .animated_expand(
-                {
-                    clone!(body, call_stack, view_state);
-                    move || expanded_body(&body, &call_stack, &view_state).into()
-                },
-                expanded,
-            )
+        // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
+        expandable_node(
+            function_header(name, Some(&expanded), run_state),
+            is_last,
+            expanded,
+            {
+                clone!(body, call_stack, view_state);
+                move || expanded_body(&body, &call_stack, &view_state).into()
+            },
+        )
     } else {
-        header_row(function_header(name, None, run_state), is_last)
+        header_row(function_header(name, None, run_state), is_last).into()
     }
-    .into()
+}
+
+fn expandable_node(
+    header: impl Into<Element>,
+    is_last: bool,
+    is_expanded: Mutable<bool>,
+    expanded: impl FnMut() -> Element + 'static,
+) -> Element {
+    column()
+        .align_items(Align::Start)
+        .child(header_row(header, is_last).align_self(Align::Stretch))
+        .animated_expand(expanded, is_expanded)
+        .into()
 }
 
 fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
