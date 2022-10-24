@@ -13,8 +13,11 @@ pub const CODE: &str = indoc! {r#"
         else:
             print("false0")
 
-        if False: print("false1")
-        else: print("true1")
+        if function1(function2(function3())):
+            function1()
+            print("false1")
+        else:
+            print("true1")
 
         if True:
             print("true2")

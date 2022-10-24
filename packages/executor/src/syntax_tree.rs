@@ -150,7 +150,6 @@ pub enum LinkedBody {
     Python,
 }
 
-// TODO: Rename (Body -> LinkedBody, LocalBody -> Body)
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body<T>(Vec<Statement<T>>);
 
@@ -328,13 +327,23 @@ impl Statement<FunctionId> {
                 then_block,
                 else_block,
             } => {
-                if condition.run(lib, call_states).truthy() {
+                let truthy = {
+                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
+                    defer! {call_states.send_modify(|t| t.pop());}
+                    condition.run(lib, call_states).truthy()
+                };
+
+                if truthy {
                     call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
                     defer! {call_states.send_modify(|t| t.pop());}
                     then_block.run(lib, call_states)
                 } else {
                     // TODO: Don't forget to bump `index` up from 1 when adding `elif`
-                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(1)));
+                    // TODO: Functions to `send_modify` `push` and `pop` stack
+                    let block_index = 1;
+                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
+                    call_states.send_modify(|t| t.pop());
+                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
                     defer! {call_states.send_modify(|t| t.pop());}
                     else_block.run(lib, call_states)
                 }

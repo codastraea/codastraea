@@ -10,6 +10,7 @@ pub enum StackFrame {
     Statement(usize),
     Argument(usize),
     NestedBlock(usize),
+    BlockPredicate(usize),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]

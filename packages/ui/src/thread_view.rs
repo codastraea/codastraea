@@ -119,7 +119,7 @@ fn function(
     let run_state = view_state.run_state(&call_stack);
     let header = function_header(
         f.name(),
-        expandable_body.as_ref().map(|body| body.expanded.clone()),
+        expandable_body.as_ref().map(|body| &body.expanded),
         run_state,
     );
     let header_elem = header.handle().dom_element();
@@ -363,7 +363,6 @@ fn if_statement(
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     // TODO: Expand/contract animation
-    // TODO: Show `condition`
     let expanded = view_state.expanded(call_stack);
 
     let mut main = row().align_items(Align::Center).child(
@@ -410,39 +409,109 @@ fn branch_body(
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Element {
-    // TODO: Push a block predicate on the call stack, and pop before rendering body
-    let condition = if let Some(condition) = condition {
-        if expression_is_expandable(condition) {
-            todo!()
-        } else {
-            // TODO: Condition text (maybe truncated), with tooltip (how does that work on
-            // touch)
-            condition_header("if", None, view_state.run_state(call_stack))
-        }
-    } else {
-        condition_header("else", None, view_state.run_state(call_stack))
-    };
+    let is_expandable = is_expandable(body);
+    let condition = condition_node(
+        condition,
+        nested_block_index,
+        !is_expandable,
+        call_stack,
+        view_state,
+    );
+
+    clone!(mut call_stack);
+    call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
     // TODO: trait for adding arrow
-    let body_elem = row().align_items(Align::Center).child(condition);
+    let body_elem = row().align_items(Align::Start).child(condition);
 
-    if is_expandable(body) {
-        clone!(mut call_stack);
-        call_stack.push(StackFrame::NestedBlock(nested_block_index));
-
-        body_elem
-            .child(horizontal_line())
-            .child(arrow_right())
-            .children(body_statements(body.iter(), &call_stack, view_state))
+    if is_expandable {
+        body_elem.children(body_statements(body.iter(), &call_stack, view_state))
     } else {
         body_elem
     }
     .into()
 }
 
+fn condition_node(
+    condition: Option<&Arc<Expression<FunctionId>>>,
+    block_index: usize,
+    is_last: bool,
+    call_stack: &CallStack,
+    view_state: &ThreadViewState,
+) -> Element {
+    clone!(mut call_stack);
+    call_stack.push(StackFrame::BlockPredicate(block_index));
+
+    // TODO: Factor out expandable node container
+    let container = column().align_items(Align::Stretch);
+
+    if let Some(condition) = condition {
+        if expression_is_expandable(condition) {
+            let expanded = view_state.expanded(&call_stack);
+            container
+                .child(condition_main(
+                    "condition",
+                    is_last,
+                    Some(&expanded),
+                    view_state.run_state(&call_stack),
+                ))
+                .optional_child(Sig(expanded.signal().map({
+                    clone!(condition, call_stack, view_state);
+
+                    move |expanded| {
+                        if expanded {
+                            Some(
+                                row().align_items(Align::Start).speech_bubble().children(
+                                    expression(&condition, true, &call_stack, &view_state),
+                                ),
+                            )
+                        } else {
+                            None
+                        }
+                    }
+                })))
+        } else {
+            // TODO: Condition text (maybe truncated), with tooltip (how does that work on
+            // touch)
+            container.child(condition_main(
+                "condition",
+                is_last,
+                None,
+                view_state.run_state(&call_stack),
+            ))
+        }
+    } else {
+        container.child(condition_main(
+            "else",
+            is_last,
+            None,
+            view_state.run_state(&call_stack),
+        ))
+    }
+    .into()
+}
+
+fn condition_main(
+    name: &str,
+    is_last: bool,
+    expanded: Option<&Mutable<bool>>,
+    run_state: impl Signal<Item = RunState> + 'static,
+) -> Element {
+    let main = row()
+        .align_items(Align::Center)
+        .child(condition_header(name, expanded, run_state));
+
+    if !is_last {
+        main.child(horizontal_line()).child(arrow_right())
+    } else {
+        main
+    }
+    .into()
+}
+
 fn function_header(
     name: &str,
-    expanded: Option<Mutable<bool>>,
+    expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     node_header("Function", name, Colour::Secondary, expanded, run_state)
@@ -450,7 +519,7 @@ fn function_header(
 
 fn condition_header(
     name: &str,
-    expanded: Option<Mutable<bool>>,
+    expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     node_header("Condition", name, Colour::Primary, expanded, run_state)
@@ -460,14 +529,14 @@ fn node_header(
     ty: &str,
     name: &str,
     colour: Colour,
-    expanded: Option<Mutable<bool>>,
+    expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
         button_group(format!("{ty} {name}"))
             .shadow(Shadow::Medium)
             .dropdown(item_dropdown(name, colour, run_state))
-            .button(zoom_button(&expanded))
+            .button(zoom_button(expanded))
             .into()
     } else {
         fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
