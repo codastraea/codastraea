@@ -7,7 +7,9 @@ use serpent_automation_executor::{
     run::{CallStack, RunState, StackFrame},
     syntax_tree::{Body, Expression, LinkedBody, LinkedFunction, Statement},
 };
-use serpent_automation_frontend::{is_expandable, statement_is_expandable};
+use serpent_automation_frontend::{
+    expression_is_expandable, is_expandable, statement_is_expandable,
+};
 use silkenweb::{
     clone,
     elements::{
@@ -341,7 +343,7 @@ fn body_statement<'a>(
             then_block,
             else_block,
         } => if_statement(
-            condition,
+            condition.clone(),
             then_block.clone(),
             else_block.clone(),
             is_last,
@@ -353,7 +355,7 @@ fn body_statement<'a>(
 }
 
 fn if_statement(
-    _condition: &Expression<FunctionId>,
+    condition: Arc<Expression<FunctionId>>,
     then_block: Arc<Body<FunctionId>>,
     else_block: Arc<Body<FunctionId>>,
     is_last: bool,
@@ -388,32 +390,54 @@ fn if_statement(
                     .align_self(Align::Start)
                     .gap(Size3)
                     .speech_bubble()
-                    .optional_child(branch_body(&then_block, 0, &call_stack, &view_state))
-                    .optional_child(branch_body(&else_block, 1, &call_stack, &view_state))
+                    .child(branch_body(
+                        Some(&condition),
+                        &then_block,
+                        0,
+                        &call_stack,
+                        &view_state,
+                    ))
+                    .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
             })
         })))
         .into()]
 }
 
 fn branch_body(
+    condition: Option<&Arc<Expression<FunctionId>>>,
     body: &Arc<Body<FunctionId>>,
     nested_block_index: usize,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
-) -> Option<Element> {
+) -> Element {
+    // TODO: Push a block predicate on the call stack, and pop before rendering body
+    let condition = if let Some(condition) = condition {
+        if expression_is_expandable(condition) {
+            todo!()
+        } else {
+            // TODO: Condition text (maybe truncated), with tooltip (how does that work on
+            // touch)
+            condition_header("if", None, view_state.run_state(call_stack))
+        }
+    } else {
+        condition_header("else", None, view_state.run_state(call_stack))
+    };
+
+    // TODO: trait for adding arrow
+    let body_elem = row().align_items(Align::Center).child(condition);
+
     if is_expandable(body) {
         clone!(mut call_stack);
         call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-        let body_elem = row()
-            .align_items(Align::Start)
+        body_elem
+            .child(horizontal_line())
+            .child(arrow_right())
             .children(body_statements(body.iter(), &call_stack, view_state))
-            .into();
-
-        Some(body_elem)
     } else {
-        None
+        body_elem
     }
+    .into()
 }
 
 fn function_header(
@@ -421,10 +445,28 @@ fn function_header(
     expanded: Option<Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
+    node_header("Function", name, Colour::Secondary, expanded, run_state)
+}
+
+fn condition_header(
+    name: &str,
+    expanded: Option<Mutable<bool>>,
+    run_state: impl Signal<Item = RunState> + 'static,
+) -> Element {
+    node_header("Condition", name, Colour::Primary, expanded, run_state)
+}
+
+fn node_header(
+    ty: &str,
+    name: &str,
+    colour: Colour,
+    expanded: Option<Mutable<bool>>,
+    run_state: impl Signal<Item = RunState> + 'static,
+) -> Element {
     if let Some(expanded) = expanded {
-        button_group(format!("Function {name}"))
+        button_group(format!("{ty} {name}"))
             .shadow(Shadow::Medium)
-            .dropdown(fn_dropdown(name, run_state))
+            .dropdown(item_dropdown(name, colour, run_state))
             .button(zoom_button(&expanded))
             .into()
     } else {
