@@ -122,7 +122,6 @@ fn function(
         expandable_body.as_ref().map(|body| &body.expanded),
         run_state,
     );
-    let header_elem = header.handle().dom_element();
     let mut main = row().align_items(Align::Center).child(header);
 
     if !is_last {
@@ -131,18 +130,14 @@ fn function(
 
     if let Some(ExpandableBody { expanded, body }) = expandable_body {
         column()
-            .align_items(Align::Stretch)
-            .child(main)
-            .child(
-                animated_expand(
-                    {
-                        clone!(body, call_stack, view_state);
-                        move || expanded_body(&body, &call_stack, &view_state).into()
-                    },
-                    header_elem,
-                    expanded,
-                )
-                .align_self(Align::Start),
+            .align_items(Align::Start)
+            .child(main.align_self(Align::Stretch))
+            .animated_expand(
+                {
+                    clone!(body, call_stack, view_state);
+                    move || expanded_body(&body, &call_stack, &view_state).into()
+                },
+                expanded,
             )
             .into()
     } else {
@@ -229,66 +224,82 @@ fn style_min_size(width: f64, height: f64) -> String {
     style_size("min", width, height)
 }
 
-fn animated_expand(
-    mut body: impl FnMut() -> Element + 'static,
-    parent: web_sys::Element,
-    expanded: Mutable<bool>,
-) -> DivBuilder {
-    let style = Mutable::new("".to_owned());
-    let show_body = Mutable::new(false);
+pub trait AnimatedExpand {
+    fn animated_expand(
+        self,
+        child: impl FnMut() -> Element + 'static,
+        expanded: Mutable<bool>,
+    ) -> Self;
+}
 
-    div()
-        .class(css::TRANSITION_ALL)
-        .spawn_future(expanded.signal().for_each({
-            clone!(show_body);
-            move |expanded| {
-                if expanded {
-                    show_body.set(true);
+impl AnimatedExpand for DivBuilder {
+    fn animated_expand(
+        self,
+        mut body: impl FnMut() -> Element + 'static,
+        expanded: Mutable<bool>,
+    ) -> Self {
+        let style = Mutable::new("".to_owned());
+        let show_body = Mutable::new(false);
+        let parent = self.handle().dom_element();
+
+        let expanding_elem = div()
+            .class(css::TRANSITION_ALL)
+            .spawn_future(expanded.signal().for_each({
+                clone!(show_body);
+                move |expanded| {
+                    if expanded {
+                        show_body.set(true);
+                    }
+                    async {}
                 }
-                async {}
-            }
-        }))
-        .effect_signal(expanded.signal(), {
-            clone!(style, show_body);
-            move |elem, expanded| {
-                let elem_bounds = elem.get_bounding_client_rect();
+            }))
+            .effect_signal(expanded.signal(), {
+                clone!(style, show_body);
+                move |elem, expanded| {
+                    let elem_bounds = elem.get_bounding_client_rect();
 
-                if expanded {
-                    let initial_width = parent.get_bounding_client_rect().width();
-                    let final_bounds = elem.get_bounding_client_rect();
-                    style.set(style_max_size(initial_width, 0.0));
+                    if expanded {
+                        let initial_width = parent.get_bounding_client_rect().width();
+                        let final_bounds = elem.get_bounding_client_rect();
+                        style.set(style_max_size(initial_width, 0.0));
 
-                    on_animation_frame({
-                        clone!(style);
-                        move || {
-                            style.set(style_max_size(final_bounds.width(), final_bounds.height()));
-                        }
-                    })
-                } else {
-                    style.set(style_min_size(elem_bounds.width(), elem_bounds.height()));
+                        on_animation_frame({
+                            clone!(style);
+                            move || {
+                                style.set(style_max_size(
+                                    final_bounds.width(),
+                                    final_bounds.height(),
+                                ));
+                            }
+                        })
+                    } else {
+                        style.set(style_min_size(elem_bounds.width(), elem_bounds.height()));
 
-                    on_animation_frame({
-                        clone!(show_body);
-                        move || show_body.set(false)
-                    });
+                        on_animation_frame({
+                            clone!(show_body);
+                            move || show_body.set(false)
+                        });
+                    }
                 }
-            }
-        })
-        .on_transitionend({
-            clone!(style);
-            move |_, _| style.set("".to_owned())
-        })
-        .style(Sig(style.signal_cloned()))
-        .optional_child(Sig(show_body.signal().map({
-            move |expanded| {
-                if expanded {
-                    Some(body())
-                } else {
-                    style.set(style_min_size(0.0, 0.0));
-                    None
+            })
+            .on_transitionend({
+                clone!(style);
+                move |_, _| style.set("".to_owned())
+            })
+            .style(Sig(style.signal_cloned()))
+            .optional_child(Sig(show_body.signal().map({
+                move |expanded| {
+                    if expanded {
+                        Some(body())
+                    } else {
+                        style.set(style_min_size(0.0, 0.0));
+                        None
+                    }
                 }
-            }
-        })))
+            })));
+
+        self.child(expanding_elem)
+    }
 }
 
 fn expanded_body(
@@ -361,50 +372,49 @@ fn if_statement(
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
-    // TODO: Expand/contract animation
     let expanded = view_state.expanded(call_stack);
 
-    let mut main = row().align_items(Align::Center).child(
-        button_group("If")
-            .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
-            .button(zoom_button(&expanded))
-            .rounded_pill_border(true),
-    );
+    // TODO: Draw `If` (i.e. call this) even if it's not expandable.
+    let mut main = row()
+        .align_items(Align::Center)
+        .align_self(Align::Stretch)
+        .child(
+            button_group("If")
+                .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
+                .button(zoom_button(&expanded))
+                .rounded_pill_border(true),
+        );
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
-    let container = column().align_items(Align::Stretch).child(main);
-    let container_elem = container.handle().dom_element();
-
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
 
-    vec![container
-        .child(
-            animated_expand(
-                move || {
-                    column()
-                        .align_items(Align::Start)
-                        .align_self(Align::Start)
-                        .gap(Size3)
-                        .speech_bubble()
-                        .child(branch_body(
-                            Some(&condition),
-                            &then_block,
-                            0,
-                            &call_stack,
-                            &view_state,
-                        ))
-                        .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
-                        .into()
-                },
-                container_elem.into(),
-                expanded,
-            )
-            .align_self(Align::Start),
+    vec![column()
+        .align_items(Align::Start)
+        .child(main)
+        .animated_expand(
+            move || {
+                column()
+                    .align_items(Align::Start)
+                    .align_self(Align::Start)
+                    .gap(Size3)
+                    .speech_bubble()
+                    .child(branch_body(
+                        Some(&condition),
+                        &then_block,
+                        0,
+                        &call_stack,
+                        &view_state,
+                    ))
+                    .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
+                    .into()
+            },
+            expanded,
         )
+        .align_self(Align::Start)
         .into()]
 }
 
@@ -449,12 +459,11 @@ fn condition_node(
     call_stack.push(StackFrame::BlockPredicate(block_index));
 
     // TODO: Factor out expandable node container
-    let container = column().align_items(Align::Stretch);
+    let container = column().align_items(Align::Start);
 
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
-            let parent = container.handle().dom_element();
             clone!(condition, call_stack, view_state);
             container
                 .child(condition_main(
@@ -463,7 +472,7 @@ fn condition_node(
                     Some(&expanded),
                     view_state.run_state(&call_stack),
                 ))
-                .child(animated_expand(
+                .animated_expand(
                     move || {
                         row()
                             .align_items(Align::Start)
@@ -471,9 +480,8 @@ fn condition_node(
                             .children(expression(&condition, true, &call_stack, &view_state))
                             .into()
                     },
-                    parent.into(),
                     expanded,
-                ))
+                )
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
@@ -503,6 +511,7 @@ fn condition_main(
 ) -> Element {
     let main = row()
         .align_items(Align::Center)
+        .align_self(Align::Stretch)
         .child(condition_header(name, expanded, run_state));
 
     if !is_last {
