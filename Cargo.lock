@@ -1260,6 +1260,7 @@ dependencies = [
  "nom 7.1.1",
  "nom-greedyerror",
  "nom_locate 4.0.0",
+ "scopeguard",
  "serde",
  "thiserror",
  "tokio",

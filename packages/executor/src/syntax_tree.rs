@@ -12,6 +12,7 @@ use nom::{
 };
 use nom_greedyerror::{convert_error, GreedyError};
 use nom_locate::LocatedSpan;
+use scopeguard::defer;
 use thiserror::Error;
 use tokio::sync::watch;
 
@@ -211,12 +212,9 @@ impl LocalBody<String> {
 impl LocalBody<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
         for (index, stmt) in self.iter().enumerate() {
-            // TODO: RAII for call_states?
-            // TODO: Visitor for the syntax tree? Need to think about how to send args down
-            // through recursion.
             call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
+            defer! {call_states.send_modify(|t| t.pop());}
             stmt.run(lib, call_states);
-            call_states.send_modify(|t| t.pop());
         }
     }
 }
@@ -368,15 +366,14 @@ impl Expression<FunctionId> {
                     .enumerate()
                     .map(|(index, arg)| {
                         call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
-                        let result = arg.run(lib, call_states);
-                        call_states.send_modify(|t| t.pop());
-                        result
+                        defer! {call_states.send_modify(|t| t.pop());}
+                        arg.run(lib, call_states)
                     })
                     .collect();
 
                 call_states.send_modify(|t| t.push(StackFrame::Function(*name)));
+                defer! {call_states.send_modify(|t| t.pop());}
                 lib.lookup(*name).run(&args, lib, call_states);
-                call_states.send_modify(|t| t.pop());
 
                 Value::None
             }
