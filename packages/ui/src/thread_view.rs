@@ -376,7 +376,7 @@ fn if_statement(
     let expanded = view_state.expanded(call_stack);
 
     // TODO: Draw `If` (i.e. call this) even if it's not expandable.
-    let mut main = row()
+    let header_row = row()
         .align_items(Align::Center)
         .align_self(Align::Stretch)
         .child(
@@ -386,37 +386,25 @@ fn if_statement(
                 .rounded_pill_border(true),
         );
 
-    if !is_last {
-        main = main.child(horizontal_line()).child(arrow_right());
-    }
-
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
 
-    vec![column()
-        .align_items(Align::Start)
-        .child(main)
-        .animated_expand(
-            move || {
-                column()
-                    .align_items(Align::Start)
-                    .align_self(Align::Start)
-                    .gap(Size3)
-                    .speech_bubble()
-                    .child(branch_body(
-                        Some(&condition),
-                        &then_block,
-                        0,
-                        &call_stack,
-                        &view_state,
-                    ))
-                    .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
-                    .into()
-            },
-            expanded,
-        )
-        .align_self(Align::Start)
-        .into()]
+    vec![expandable_node(header_row, is_last, expanded, move || {
+        column()
+            .align_items(Align::Start)
+            .align_self(Align::Start)
+            .gap(Size3)
+            .speech_bubble()
+            .child(branch_body(
+                Some(&condition),
+                &then_block,
+                0,
+                &call_stack,
+                &view_state,
+            ))
+            .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
+            .into()
+    })]
 }
 
 fn branch_body(
