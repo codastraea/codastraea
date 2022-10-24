@@ -328,8 +328,13 @@ impl Statement<FunctionId> {
                 else_block,
             } => {
                 if condition.run(lib, call_states).truthy() {
+                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
+                    defer! {call_states.send_modify(|t| t.pop());}
                     then_block.run(lib, call_states)
                 } else {
+                    // TODO: Don't forget to bump `index` up from 1 when adding `elif`
+                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(1)));
+                    defer! {call_states.send_modify(|t| t.pop());}
                     else_block.run(lib, call_states)
                 }
             }

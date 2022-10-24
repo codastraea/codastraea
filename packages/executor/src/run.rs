@@ -9,6 +9,7 @@ pub enum StackFrame {
     Function(FunctionId),
     Statement(usize),
     Argument(usize),
+    NestedBlock(usize),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
