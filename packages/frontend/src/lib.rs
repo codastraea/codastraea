@@ -4,7 +4,7 @@ use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::FunctionId,
     run::ThreadCallStates,
-    syntax_tree::{Expression, LocalBody, Statement},
+    syntax_tree::{Body, Expression, Statement},
 };
 
 fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
@@ -14,7 +14,7 @@ fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     }
 }
 
-fn body_is_expandable(body: &LocalBody<FunctionId>) -> bool {
+fn body_is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 
@@ -34,7 +34,7 @@ pub fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
     }
 }
 
-pub fn is_expandable(body: &LocalBody<FunctionId>) -> bool {
+pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 

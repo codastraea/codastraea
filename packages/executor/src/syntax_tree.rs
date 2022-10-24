@@ -53,7 +53,7 @@ impl Module {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     name: String,
-    body: LocalBody<String>,
+    body: Body<String>,
 }
 
 impl Function {
@@ -64,14 +64,7 @@ impl Function {
     fn parse(input: Span) -> ParseResult<Self> {
         let (input, (_def, _, name, _params, _colon, body)) = context(
             "function",
-            tuple((
-                def,
-                space1,
-                identifier,
-                ws(tag("()")),
-                colon,
-                LocalBody::parse,
-            )),
+            tuple((def, space1, identifier, ws(tag("()")), colon, Body::parse)),
         )(input)?;
 
         Ok((
@@ -106,21 +99,21 @@ impl Function {
 #[derive(Debug)]
 pub struct LinkedFunction {
     name: String,
-    body: Body,
+    body: LinkedBody,
 }
 
 impl LinkedFunction {
     pub fn local(name: &str, body: impl IntoIterator<Item = Statement<FunctionId>>) -> Self {
         Self {
             name: name.to_owned(),
-            body: Body::Local(Arc::new(LocalBody::new(body))),
+            body: LinkedBody::Local(Arc::new(Body::new(body))),
         }
     }
 
     pub fn python(name: String) -> Self {
         Self {
             name,
-            body: Body::Python,
+            body: LinkedBody::Python,
         }
     }
 
@@ -128,7 +121,7 @@ impl LinkedFunction {
         &self.name
     }
 
-    pub fn body(&self) -> &Body {
+    pub fn body(&self) -> &LinkedBody {
         &self.body
     }
 
@@ -142,8 +135,8 @@ impl LinkedFunction {
         sleep(Duration::from_secs(1));
 
         match &self.body {
-            Body::Local(local) => local.run(lib, call_states),
-            Body::Python => {
+            LinkedBody::Local(local) => local.run(lib, call_states),
+            LinkedBody::Python => {
                 // TODO
                 println!("{}({:?})", self.name(), args)
             }
@@ -152,16 +145,16 @@ impl LinkedFunction {
 }
 
 #[derive(Clone, Debug)]
-pub enum Body {
-    Local(Arc<LocalBody<FunctionId>>),
+pub enum LinkedBody {
+    Local(Arc<Body<FunctionId>>),
     Python,
 }
 
 // TODO: Rename (Body -> LinkedBody, LocalBody -> Body)
 #[derive(Debug, Eq, PartialEq)]
-pub struct LocalBody<T>(Vec<Statement<T>>);
+pub struct Body<T>(Vec<Statement<T>>);
 
-impl<T> LocalBody<T> {
+impl<T> Body<T> {
     pub fn new(stmts: impl IntoIterator<Item = Statement<T>>) -> Self {
         Self(stmts.into_iter().collect())
     }
@@ -175,7 +168,7 @@ impl<T> LocalBody<T> {
     }
 }
 
-impl LocalBody<String> {
+impl Body<String> {
     pub fn parse(input: Span) -> ParseResult<Self> {
         // TODO: Make sure body is more indented than parent
         map(alt((Self::parse_inline, Self::parse_block)), Self::new)(input)
@@ -198,8 +191,8 @@ impl LocalBody<String> {
         )(input)
     }
 
-    fn translate_ids(&self, id_map: &IdMap) -> LocalBody<FunctionId> {
-        LocalBody(self.iter().map(|stmt| stmt.translate_ids(id_map)).collect())
+    fn translate_ids(&self, id_map: &IdMap) -> Body<FunctionId> {
+        Body(self.iter().map(|stmt| stmt.translate_ids(id_map)).collect())
     }
 
     fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
@@ -209,7 +202,7 @@ impl LocalBody<String> {
     }
 }
 
-impl LocalBody<FunctionId> {
+impl Body<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
         for (index, stmt) in self.iter().enumerate() {
             call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
@@ -239,8 +232,8 @@ pub enum Statement<FnId> {
     Expression(Expression<FnId>),
     If {
         condition: Expression<FnId>,
-        then_block: LocalBody<FnId>,
-        else_block: LocalBody<FnId>,
+        then_block: Body<FnId>,
+        else_block: Body<FnId>,
     },
 }
 
@@ -264,12 +257,12 @@ impl Statement<String> {
                 r#if,
                 ws(Expression::parse),
                 ws(colon),
-                LocalBody::parse,
+                Body::parse,
                 opt(tuple((
                     discard_indent(prefix),
                     r#else,
                     ws(colon),
-                    LocalBody::parse,
+                    Body::parse,
                 ))),
             )),
         )(input)?;
@@ -278,7 +271,7 @@ impl Statement<String> {
             condition,
             then_block,
             else_block: else_clause
-                .map_or_else(LocalBody::empty, |(_indent, _else, _colon, else_block)| {
+                .map_or_else(Body::empty, |(_indent, _else, _colon, else_block)| {
                     else_block
                 }),
         };
@@ -608,7 +601,7 @@ mod tests {
     use indoc::indoc;
 
     use super::{parse, Expression, Function, Literal, Module, Statement};
-    use crate::syntax_tree::LocalBody;
+    use crate::syntax_tree::Body;
 
     #[test]
     fn empty_fn() {
@@ -771,7 +764,7 @@ mod tests {
             Module {
                 functions: vec![Function {
                     name: "test".to_owned(),
-                    body: LocalBody::new(body),
+                    body: Body::new(body),
                 }],
             }
         );

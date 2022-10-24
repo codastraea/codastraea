@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, RunState, StackFrame},
-    syntax_tree::{Body, Expression, LinkedFunction, LocalBody, Statement},
+    syntax_tree::{Body, Expression, LinkedBody, LinkedFunction, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
@@ -90,17 +90,17 @@ impl ThreadViewState {
 
 struct ExpandableBody {
     expanded: Mutable<bool>,
-    body: Arc<LocalBody<FunctionId>>,
+    body: Arc<Body<FunctionId>>,
 }
 
 impl ExpandableBody {
-    fn new(body: Body, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
+    fn new(body: LinkedBody, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
         match body {
-            Body::Local(body) => is_expandable(&body).then(|| ExpandableBody {
+            LinkedBody::Local(body) => is_expandable(&body).then(|| ExpandableBody {
                 expanded: view_state.expanded(call_stack),
                 body,
             }),
-            Body::Python => None,
+            LinkedBody::Python => None,
         }
     }
 }
@@ -217,7 +217,7 @@ fn style_min_size(width: f64, height: f64) -> String {
 }
 
 fn function_body(
-    body: Arc<LocalBody<FunctionId>>,
+    body: Arc<Body<FunctionId>>,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
     call_stack: CallStack,
@@ -284,7 +284,7 @@ fn function_body(
 }
 
 fn expanded_body(
-    body: &LocalBody<FunctionId>,
+    body: &Body<FunctionId>,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> DivBuilder {
@@ -346,8 +346,8 @@ fn body_statements<'a>(
 
 fn if_statement(
     _condition: &Expression<FunctionId>,
-    _then_block: &LocalBody<FunctionId>,
-    _else_block: &LocalBody<FunctionId>,
+    _then_block: &Body<FunctionId>,
+    _else_block: &Body<FunctionId>,
     is_last: bool,
 ) -> Vec<Element> {
     let mut main = row().align_items(Align::Center).child(
