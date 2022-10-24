@@ -288,15 +288,6 @@ fn expanded_body(
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> DivBuilder {
-    let body: Vec<_> = body
-        .iter()
-        .enumerate()
-        .filter(|(_index, stmt)| statement_is_expandable(stmt))
-        .collect();
-    assert!(!body.is_empty());
-    let (body_head, body_tail) = body.split_at(body.len() - 1);
-    assert!(body_tail.len() == 1);
-
     let row = row()
         .align_items(Align::Start)
         .class(css::SPEECH_BUBBLE_BELOW)
@@ -307,41 +298,54 @@ fn expanded_body(
         .border_colour(Colour::Secondary)
         .rounded_border(true)
         .shadow(Shadow::Medium)
-        .children(body_statements(
-            body_head.iter().copied(),
-            false,
-            call_stack,
-            view_state,
-        ))
-        .children(body_statements(
-            body_tail.iter().copied(),
-            true,
-            call_stack,
-            view_state,
-        ));
+        .children(body_statements(body.iter(), call_stack, view_state));
     row
 }
 
 fn body_statements<'a>(
-    body: impl Iterator<Item = (usize, &'a Statement<FunctionId>)> + 'a,
+    body: impl Iterator<Item = &'a Statement<FunctionId>>,
+    call_stack: &'a CallStack,
+    view_state: &'a ThreadViewState,
+) -> Vec<Element> {
+    let body: Vec<_> = body
+        .enumerate()
+        .filter(|(_index, stmt)| statement_is_expandable(stmt))
+        .collect();
+    assert!(!body.is_empty());
+    let (body_head, body_tail) = body.split_at(body.len() - 1);
+    assert!(body_tail.len() == 1);
+
+    body_head
+        .iter()
+        .flat_map(move |(stmt_index, statement)| {
+            body_statement(statement, *stmt_index, false, call_stack, view_state)
+        })
+        .chain(body_tail.iter().flat_map(move |(stmt_index, statement)| {
+            body_statement(statement, *stmt_index, true, call_stack, view_state)
+        }))
+        .collect()
+}
+
+fn body_statement<'a>(
+    statement: &'a Statement<FunctionId>,
+    stmt_index: usize,
     is_last: bool,
     call_stack: &'a CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
-    body.flat_map(move |(stmt_index, statement)| {
-        clone!(mut call_stack);
-        call_stack.push(StackFrame::Statement(stmt_index));
+    clone!(mut call_stack);
+    call_stack.push(StackFrame::Statement(stmt_index));
 
-        match statement {
-            Statement::Pass => Vec::new(),
-            Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
-            Statement::If {
-                condition,
-                then_block,
-                else_block,
-            } => if_statement(condition, then_block, else_block, is_last),
-        }
-    })
+    match statement {
+        Statement::Pass => Vec::new(),
+        Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
+        Statement::If {
+            condition,
+            then_block,
+            else_block,
+        } => if_statement(condition, then_block, else_block, is_last),
+    }
+    .into_iter()
 }
 
 fn if_statement(
