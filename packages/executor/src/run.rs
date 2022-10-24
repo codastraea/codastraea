@@ -4,7 +4,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::library::FunctionId;
 
-pub type CallStack = Vec<FunctionId>;
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum StackFrame {
+    Function(FunctionId),
+    Statement(usize),
+    Argument(usize),
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct CallStack(Vec<StackFrame>);
+
+impl CallStack {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push(&mut self, item: StackFrame) {
+        self.0.push(item)
+    }
+
+    pub fn pop(&mut self) {
+        self.0.pop();
+    }
+
+    pub fn is_descendant_or_equal(&self, ancestor: &Self) -> bool {
+        self.0.starts_with(&ancestor.0)
+    }
+}
 
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct ThreadCallStates {
@@ -18,7 +44,7 @@ impl ThreadCallStates {
     }
 
     pub fn run_state(&self, call_stack: &CallStack) -> RunState {
-        if self.running.starts_with(call_stack) {
+        if self.running.is_descendant_or_equal(call_stack) {
             RunState::Running
         } else if self.completed.contains(call_stack) {
             RunState::Successful
@@ -27,8 +53,8 @@ impl ThreadCallStates {
         }
     }
 
-    pub fn push(&mut self, id: FunctionId) {
-        self.running.push(id);
+    pub fn push(&mut self, item: StackFrame) {
+        self.running.push(item);
     }
 
     pub fn pop(&mut self) {

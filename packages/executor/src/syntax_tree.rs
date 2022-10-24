@@ -17,7 +17,7 @@ use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
-    run::ThreadCallStates,
+    run::{StackFrame, ThreadCallStates},
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
@@ -210,8 +210,13 @@ impl LocalBody<String> {
 
 impl LocalBody<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
-        for stmt in self.iter() {
+        for (index, stmt) in self.iter().enumerate() {
+            // TODO: RAII for call_states?
+            // TODO: Visitor for the syntax tree? Need to think about how to send args down
+            // through recursion.
+            call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
             stmt.run(lib, call_states);
+            call_states.send_modify(|t| t.pop());
         }
     }
 }
@@ -358,9 +363,18 @@ impl Expression<FunctionId> {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args } => {
-                let args: Vec<_> = args.iter().map(|arg| arg.run(lib, call_states)).collect();
+                let args: Vec<_> = args
+                    .iter()
+                    .enumerate()
+                    .map(|(index, arg)| {
+                        call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
+                        let result = arg.run(lib, call_states);
+                        call_states.send_modify(|t| t.pop());
+                        result
+                    })
+                    .collect();
 
-                call_states.send_modify(|t| t.push(*name));
+                call_states.send_modify(|t| t.push(StackFrame::Function(*name)));
                 lib.lookup(*name).run(&args, lib, call_states);
                 call_states.send_modify(|t| t.pop());
 

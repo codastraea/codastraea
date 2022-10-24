@@ -4,7 +4,6 @@ pub mod library;
 pub mod run;
 pub mod syntax_tree;
 
-// TODO: We need a way to identify which statement number we're on in the call stack.
 pub const CODE: &str = indoc! {r#"
     def main():
         if True:

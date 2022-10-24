@@ -4,7 +4,7 @@ use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, RunState},
+    run::{CallStack, RunState, StackFrame},
     syntax_tree::{Body, Expression, LinkedFunction, LocalBody, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable};
@@ -51,7 +51,7 @@ impl ThreadView {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
-        Self(function(fn_id, true, vec![], &view_state).into())
+        Self(function(fn_id, true, CallStack::new(), &view_state).into())
     }
 }
 
@@ -112,7 +112,7 @@ fn function(
     view_state: &ThreadViewState,
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
-    call_stack.push(fn_id);
+    call_stack.push(StackFrame::Function(fn_id));
     let expandable_body = ExpandableBody::new(f.body().clone(), &call_stack, view_state);
     let run_state = view_state.run_state(&call_stack);
     let header = function_header(
@@ -190,7 +190,13 @@ fn call(
 ) -> Vec<Element> {
     let mut elems: Vec<Element> = args
         .iter()
-        .flat_map(|arg| expression(arg, false, &call_stack, view_state))
+        .enumerate()
+        .flat_map(|(arg_index, arg)| {
+            // TODO: Push and pop call stack for efficiency
+            clone!(mut call_stack);
+            call_stack.push(StackFrame::Argument(arg_index));
+            expression(arg, false, &call_stack, view_state)
+        })
         .collect();
 
     elems.push(function(name, is_last, call_stack, view_state));
@@ -284,7 +290,8 @@ fn expanded_body(
 ) -> DivBuilder {
     let body: Vec<_> = body
         .iter()
-        .filter(|stmt| statement_is_expandable(stmt))
+        .enumerate()
+        .filter(|(_index, stmt)| statement_is_expandable(stmt))
         .collect();
     assert!(!body.is_empty());
     let (body_head, body_tail) = body.split_at(body.len() - 1);
@@ -316,19 +323,24 @@ fn expanded_body(
 }
 
 fn body_statements<'a>(
-    body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
+    body: impl Iterator<Item = (usize, &'a Statement<FunctionId>)> + 'a,
     is_last: bool,
     call_stack: &'a CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
-    body.flat_map(move |statement| match statement {
-        Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => expression(expr, is_last, call_stack, view_state),
-        Statement::If {
-            condition,
-            then_block,
-            else_block,
-        } => if_statement(condition, then_block, else_block, is_last),
+    body.flat_map(move |(stmt_index, statement)| {
+        clone!(mut call_stack);
+        call_stack.push(StackFrame::Statement(stmt_index));
+
+        match statement {
+            Statement::Pass => Vec::new(),
+            Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
+            Statement::If {
+                condition,
+                then_block,
+                else_block,
+            } => if_statement(condition, then_block, else_block, is_last),
+        }
     })
 }
 
