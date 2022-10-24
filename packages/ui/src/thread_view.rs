@@ -90,23 +90,6 @@ impl ThreadViewState {
     }
 }
 
-struct ExpandableBody {
-    expanded: Mutable<bool>,
-    body: Arc<Body<FunctionId>>,
-}
-
-impl ExpandableBody {
-    fn new(body: LinkedBody, call_stack: &CallStack, view_state: &ThreadViewState) -> Option<Self> {
-        match body {
-            LinkedBody::Local(body) => is_expandable(&body).then(|| ExpandableBody {
-                expanded: view_state.expanded(call_stack),
-                body,
-            }),
-            LinkedBody::Python => None,
-        }
-    }
-}
-
 fn function(
     fn_id: FunctionId,
     is_last: bool,
@@ -115,23 +98,21 @@ fn function(
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(StackFrame::Function(fn_id));
-    let expandable_body = ExpandableBody::new(f.body().clone(), &call_stack, view_state);
+    let name = f.name();
+    let body = match f.body() {
+        LinkedBody::Local(body) => is_expandable(body).then_some(body),
+        LinkedBody::Python => None,
+    };
     let run_state = view_state.run_state(&call_stack);
-    let header = function_header(
-        f.name(),
-        expandable_body.as_ref().map(|body| &body.expanded),
-        run_state,
-    );
-    let mut main = row().align_items(Align::Center).child(header);
 
-    if !is_last {
-        main = main.child(horizontal_line()).child(arrow_right());
-    }
+    if let Some(body) = body {
+        let expanded = view_state.expanded(&call_stack);
+        // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
+        let header = header_row(function_header(name, Some(&expanded), run_state), is_last);
 
-    if let Some(ExpandableBody { expanded, body }) = expandable_body {
         column()
             .align_items(Align::Start)
-            .child(main.align_self(Align::Stretch))
+            .child(header.align_self(Align::Stretch))
             .animated_expand(
                 {
                     clone!(body, call_stack, view_state);
@@ -139,9 +120,19 @@ fn function(
                 },
                 expanded,
             )
-            .into()
     } else {
-        main.into()
+        header_row(function_header(name, None, run_state), is_last)
+    }
+    .into()
+}
+
+fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
+    let main = row().align_items(Align::Center).child(header.into());
+
+    if is_last {
+        main
+    } else {
+        main.child(horizontal_line()).child(arrow_right())
     }
 }
 
