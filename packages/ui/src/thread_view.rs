@@ -31,7 +31,7 @@ use silkenweb_bootstrap::{
     icon::{icon, Icon, IconType},
     row,
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Shadow, Side,
+        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetGap, SetSpacing, Shadow, Side,
         Size::{self, Size3},
     },
 };
@@ -297,14 +297,7 @@ fn expanded_body(
 ) -> DivBuilder {
     let row = row()
         .align_items(Align::Start)
-        .class(css::SPEECH_BUBBLE_BELOW)
-        .margin_on_side((Some(Size3), Side::Top))
-        .margin_on_side((Some(Size3), Side::End))
-        .padding(Size3)
-        .border(true)
-        .border_colour(Colour::Secondary)
-        .rounded_border(true)
-        .shadow(Shadow::Medium)
+        .speech_bubble()
         .children(body_statements(body.iter(), call_stack, view_state));
     row
 }
@@ -391,17 +384,10 @@ fn if_statement(
         .optional_child(Sig(expanded.signal().map(move |expanded| {
             expanded.then(|| {
                 column()
-                    .align_self(Align::Start)
-                    // TODO: Factor some of this out into `speech_bubble`
                     .align_items(Align::Start)
-                    .class(css::SPEECH_BUBBLE_BELOW)
-                    .margin_on_side((Some(Size3), Side::Top))
-                    .margin_on_side((Some(Size3), Side::End))
-                    .padding(Size3)
-                    .border(true)
-                    .border_colour(Colour::Secondary)
-                    .rounded_border(true)
-                    .shadow(Shadow::Medium)
+                    .align_self(Align::Start)
+                    .gap(Size3)
+                    .speech_bubble()
                     .optional_child(branch_body(&then_block, 0, &call_stack, &view_state))
                     .optional_child(branch_body(&else_block, 1, &call_stack, &view_state))
             })
@@ -479,3 +465,18 @@ fn expression(
         }
     }
 }
+
+trait SpeechBubble: HtmlElement {
+    fn speech_bubble(self) -> Self {
+        self.class(css::SPEECH_BUBBLE_BELOW)
+            .margin_on_side((Some(Size3), Side::Top))
+            .margin_on_side((Some(Size3), Side::End))
+            .padding(Size3)
+            .border(true)
+            .border_colour(Colour::Secondary)
+            .rounded_border(true)
+            .shadow(Shadow::Medium)
+    }
+}
+
+impl<T: HtmlElement> SpeechBubble for T {}
