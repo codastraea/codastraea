@@ -232,8 +232,8 @@ pub enum Statement<FnId> {
     Expression(Expression<FnId>),
     If {
         condition: Expression<FnId>,
-        then_block: Body<FnId>,
-        else_block: Body<FnId>,
+        then_block: Arc<Body<FnId>>,
+        else_block: Arc<Body<FnId>>,
     },
 }
 
@@ -269,11 +269,12 @@ impl Statement<String> {
 
         let statement = Self::If {
             condition,
-            then_block,
-            else_block: else_clause
-                .map_or_else(Body::empty, |(_indent, _else, _colon, else_block)| {
+            then_block: Arc::new(then_block),
+            else_block: Arc::new(
+                else_clause.map_or_else(Body::empty, |(_indent, _else, _colon, else_block)| {
                     else_block
                 }),
+            ),
         };
 
         Ok((input, statement))
@@ -289,8 +290,8 @@ impl Statement<String> {
                 else_block,
             } => Statement::If {
                 condition: condition.translate_ids(id_map),
-                then_block: then_block.translate_ids(id_map),
-                else_block: else_block.translate_ids(id_map),
+                then_block: Arc::new(then_block.translate_ids(id_map)),
+                else_block: Arc::new(else_block.translate_ids(id_map)),
             },
         }
     }

@@ -340,26 +340,88 @@ fn body_statement<'a>(
             condition,
             then_block,
             else_block,
-        } => if_statement(condition, then_block, else_block, is_last),
+        } => if_statement(
+            condition,
+            then_block.clone(),
+            else_block.clone(),
+            is_last,
+            &call_stack,
+            view_state,
+        ),
     }
     .into_iter()
 }
 
 fn if_statement(
     _condition: &Expression<FunctionId>,
-    _then_block: &Body<FunctionId>,
-    _else_block: &Body<FunctionId>,
+    then_block: Arc<Body<FunctionId>>,
+    else_block: Arc<Body<FunctionId>>,
     is_last: bool,
+    call_stack: &CallStack,
+    view_state: &ThreadViewState,
 ) -> Vec<Element> {
+    // TODO: Expand/contract animation
+    // TODO: Run status for `If` statements
+    // TODO: Show `condition`
+    let expanded = view_state.expanded(call_stack);
+
     let mut main = row().align_items(Align::Center).child(
-        button("button", "If", ButtonStyle::Solid(Colour::Primary)).rounded_pill_border(true),
+        button_group("If")
+            // TODO: Dropdown for `If`?
+            .button(button("button", "If", ButtonStyle::Solid(Colour::Primary)))
+            .button(zoom_button(&expanded))
+            .rounded_pill_border(true),
     );
 
     if !is_last {
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
-    vec![main.into()]
+    // TODO: Make call stack cheap to clone.
+    clone!(call_stack, view_state);
+
+    vec![div()
+        // TODO: Factor some of this out into `speech_bubble`
+        .child(main)
+        .optional_child(Sig(expanded.signal().map(move |expanded| {
+            expanded.then(|| {
+                column()
+                    .align_items(Align::Start)
+                    .class(css::SPEECH_BUBBLE_BELOW)
+                    .margin_on_side((Some(Size3), Side::Top))
+                    .margin_on_side((Some(Size3), Side::End))
+                    .padding(Size3)
+                    .border(true)
+                    .border_colour(Colour::Secondary)
+                    .rounded_border(true)
+                    .shadow(Shadow::Medium)
+                    .optional_child(branch_body(&then_block, 0, &call_stack, &view_state))
+                    .optional_child(branch_body(&else_block, 1, &call_stack, &view_state))
+                // TODO: `else`
+            })
+        })))
+        .into()]
+}
+
+fn branch_body(
+    body: &Arc<Body<FunctionId>>,
+    nested_block_index: usize,
+    call_stack: &CallStack,
+    view_state: &ThreadViewState,
+) -> Option<Element> {
+    if is_expandable(body) {
+        clone!(mut call_stack);
+        call_stack.push(StackFrame::NestedBlock(nested_block_index));
+
+        let body_elem = row()
+            .align_items(Align::Start)
+            .children(body_statements(body.iter(), &call_stack, view_state))
+            .into();
+
+        Some(body_elem)
+    } else {
+        None
+    }
 }
 
 fn function_header(
@@ -368,27 +430,34 @@ fn function_header(
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
-        let icon = icon(Sig(expanded.signal().map(|expanded| {
+        button_group(format!("Function {name}"))
+            .shadow(Shadow::Medium)
+            .dropdown(fn_dropdown(name, run_state))
+            .button(zoom_button(&expanded))
+            .into()
+    } else {
+        fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
+    }
+}
+
+fn zoom_button(expanded: &Mutable<bool>) -> silkenweb_bootstrap::button::ButtonBuilder {
+    icon_button(
+        "button",
+        icon(Sig(expanded.signal().map(|expanded| {
             if expanded {
                 IconType::ZoomOut
             } else {
                 IconType::ZoomIn
             }
-        })));
-
-        button_group(format!("Function {name}"))
-            .shadow(Shadow::Medium)
-            .dropdown(fn_dropdown(name, run_state))
-            .button(icon_button("button", icon, BUTTON_STYLE).on_click({
-                clone!(expanded);
-                move |_, _| {
-                    expanded.replace_with(|e| !*e);
-                }
-            }))
-            .into()
-    } else {
-        fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
-    }
+        }))),
+        BUTTON_STYLE,
+    )
+    .on_click({
+        clone!(expanded);
+        move |_, _| {
+            expanded.replace_with(|e| !*e);
+        }
+    })
 }
 
 fn expression(
