@@ -8,6 +8,8 @@ pub const CODE: &str = indoc! {r#"
     def main():
         if True:
             print("true0")
+            print("true0")
+            print("true0")
         else:
             print("false0")
 

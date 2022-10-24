@@ -24,7 +24,7 @@ use silkenweb::{
     Value,
 };
 use silkenweb_bootstrap::{
-    button::{button, icon_button, ButtonStyle},
+    button::{icon_button, ButtonStyle},
     button_group::button_group,
     column,
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
@@ -144,7 +144,19 @@ fn function(
     }
 }
 
+fn if_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
+    item_dropdown(name, Colour::Primary, run_state)
+}
+
 fn fn_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
+    item_dropdown(name, Colour::Secondary, run_state)
+}
+
+fn item_dropdown(
+    name: &str,
+    colour: Colour,
+    run_state: impl Signal<Item = RunState> + 'static,
+) -> DropdownBuilder {
     let run_state = run_state.map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
@@ -156,12 +168,7 @@ fn fn_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) ->
     });
 
     dropdown(
-        icon_button(
-            "button",
-            Sig(run_state),
-            ButtonStyle::Outline(Colour::Secondary),
-        )
-        .text(name),
+        icon_button("button", Sig(run_state), ButtonStyle::Outline(colour)).text(name),
         dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
     )
 }
@@ -361,14 +368,12 @@ fn if_statement(
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     // TODO: Expand/contract animation
-    // TODO: Run status for `If` statements
     // TODO: Show `condition`
     let expanded = view_state.expanded(call_stack);
 
     let mut main = row().align_items(Align::Center).child(
         button_group("If")
-            // TODO: Dropdown for `If`?
-            .button(button("button", "If", ButtonStyle::Solid(Colour::Primary)))
+            .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
             .button(zoom_button(&expanded))
             .rounded_pill_border(true),
     );
@@ -380,12 +385,14 @@ fn if_statement(
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
 
-    vec![div()
-        // TODO: Factor some of this out into `speech_bubble`
+    vec![column()
+        .align_items(Align::Stretch)
         .child(main)
         .optional_child(Sig(expanded.signal().map(move |expanded| {
             expanded.then(|| {
                 column()
+                    .align_self(Align::Start)
+                    // TODO: Factor some of this out into `speech_bubble`
                     .align_items(Align::Start)
                     .class(css::SPEECH_BUBBLE_BELOW)
                     .margin_on_side((Some(Size3), Side::Top))
@@ -397,7 +404,6 @@ fn if_statement(
                     .shadow(Shadow::Medium)
                     .optional_child(branch_body(&then_block, 0, &call_stack, &view_state))
                     .optional_child(branch_body(&else_block, 1, &call_stack, &view_state))
-                // TODO: `else`
             })
         })))
         .into()]
