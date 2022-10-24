@@ -312,17 +312,14 @@ fn body_statements<'a>(
         .filter(|(_index, stmt)| statement_is_expandable(stmt))
         .collect();
     assert!(!body.is_empty());
-    let (body_head, body_tail) = body.split_at(body.len() - 1);
-    assert!(body_tail.len() == 1);
+    let last_index = body.len() - 1;
 
-    body_head
-        .iter()
-        .flat_map(move |(stmt_index, statement)| {
-            body_statement(statement, *stmt_index, false, call_stack, view_state)
+    body.iter()
+        .enumerate()
+        .flat_map(move |(index, (stmt_index, statement))| {
+            let is_last = index == last_index;
+            body_statement(statement, *stmt_index, is_last, call_stack, view_state)
         })
-        .chain(body_tail.iter().flat_map(move |(stmt_index, statement)| {
-            body_statement(statement, *stmt_index, true, call_stack, view_state)
-        }))
         .collect()
 }
 
