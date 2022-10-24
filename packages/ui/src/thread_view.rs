@@ -133,13 +133,17 @@ fn function(
         column()
             .align_items(Align::Stretch)
             .child(main)
-            .child(function_body(
-                body,
-                header_elem,
-                expanded,
-                call_stack,
-                view_state,
-            ))
+            .child(
+                animated_expand(
+                    {
+                        clone!(body, call_stack, view_state);
+                        move || expanded_body(&body, &call_stack, &view_state).into()
+                    },
+                    header_elem,
+                    expanded,
+                )
+                .align_self(Align::Start),
+            )
             .into()
     } else {
         main.into()
@@ -225,18 +229,15 @@ fn style_min_size(width: f64, height: f64) -> String {
     style_size("min", width, height)
 }
 
-fn function_body(
-    body: Arc<Body<FunctionId>>,
+fn animated_expand(
+    mut body: impl FnMut() -> Element + 'static,
     parent: web_sys::Element,
     expanded: Mutable<bool>,
-    call_stack: CallStack,
-    view_state: &ThreadViewState,
 ) -> DivBuilder {
     let style = Mutable::new("".to_owned());
     let show_body = Mutable::new(false);
 
     div()
-        .align_self(Align::Start)
         .class(css::TRANSITION_ALL)
         .spawn_future(expanded.signal().for_each({
             clone!(show_body);
@@ -279,11 +280,9 @@ fn function_body(
         })
         .style(Sig(style.signal_cloned()))
         .optional_child(Sig(show_body.signal().map({
-            clone!(view_state);
-
             move |expanded| {
                 if expanded {
-                    Some(expanded_body(&body, &call_stack, &view_state))
+                    Some(body())
                 } else {
                     style.set(style_min_size(0.0, 0.0));
                     None
@@ -376,29 +375,36 @@ fn if_statement(
         main = main.child(horizontal_line()).child(arrow_right());
     }
 
+    let container = column().align_items(Align::Stretch).child(main);
+    let container_elem = container.handle().dom_element();
+
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
 
-    vec![column()
-        .align_items(Align::Stretch)
-        .child(main)
-        .optional_child(Sig(expanded.signal().map(move |expanded| {
-            expanded.then(|| {
-                column()
-                    .align_items(Align::Start)
-                    .align_self(Align::Start)
-                    .gap(Size3)
-                    .speech_bubble()
-                    .child(branch_body(
-                        Some(&condition),
-                        &then_block,
-                        0,
-                        &call_stack,
-                        &view_state,
-                    ))
-                    .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
-            })
-        })))
+    vec![container
+        .child(
+            animated_expand(
+                move || {
+                    column()
+                        .align_items(Align::Start)
+                        .align_self(Align::Start)
+                        .gap(Size3)
+                        .speech_bubble()
+                        .child(branch_body(
+                            Some(&condition),
+                            &then_block,
+                            0,
+                            &call_stack,
+                            &view_state,
+                        ))
+                        .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
+                        .into()
+                },
+                container_elem.into(),
+                expanded,
+            )
+            .align_self(Align::Start),
+        )
         .into()]
 }
 
@@ -448,6 +454,8 @@ fn condition_node(
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
+            let parent = container.handle().dom_element();
+            clone!(condition, call_stack, view_state);
             container
                 .child(condition_main(
                     "condition",
@@ -455,21 +463,17 @@ fn condition_node(
                     Some(&expanded),
                     view_state.run_state(&call_stack),
                 ))
-                .optional_child(Sig(expanded.signal().map({
-                    clone!(condition, call_stack, view_state);
-
-                    move |expanded| {
-                        if expanded {
-                            Some(
-                                row().align_items(Align::Start).speech_bubble().children(
-                                    expression(&condition, true, &call_stack, &view_state),
-                                ),
-                            )
-                        } else {
-                            None
-                        }
-                    }
-                })))
+                .child(animated_expand(
+                    move || {
+                        row()
+                            .align_items(Align::Start)
+                            .speech_bubble()
+                            .children(expression(&condition, true, &call_stack, &view_state))
+                            .into()
+                    },
+                    parent.into(),
+                    expanded,
+                ))
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
