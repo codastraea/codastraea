@@ -106,21 +106,20 @@ fn function(
 
     if let Some(body) = body {
         let expanded = view_state.expanded(&call_stack);
+        clone!(body, call_stack, view_state);
+        let body = move || {
+            row()
+                .align_items(Align::Start)
+                .speech_bubble()
+                .children(body_statements(body.iter(), &call_stack, &view_state))
+        };
 
         // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
         expandable_node(
             function_header(name, Some(&expanded), run_state),
             is_last,
             expanded,
-            {
-                clone!(body, call_stack, view_state);
-                move || {
-                    row()
-                        .align_items(Align::Start)
-                        .speech_bubble()
-                        .children(body_statements(body.iter(), &call_stack, &view_state))
-                }
-            },
+            body,
         )
     } else {
         header_row(function_header(name, None, run_state), is_last).into()
@@ -149,7 +148,11 @@ fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
     if is_last {
         main
     } else {
-        main.child(horizontal_line()).child(arrow_right())
+        let horizontal_line = div().class(css::HORIZONTAL_LINE);
+        let arrow_head = div()
+            .class(css::ARROW_HEAD_RIGHT)
+            .background_colour(Colour::Secondary);
+        main.child(horizontal_line).child(arrow_head)
     }
 }
 
@@ -184,17 +187,6 @@ fn item_dropdown(
 
 fn dropdown_item(name: &str) -> ABuilder {
     a().href("#").text(name)
-}
-
-fn horizontal_line() -> Element {
-    div().class(css::HORIZONTAL_LINE).into()
-}
-
-fn arrow_right() -> Element {
-    div()
-        .class(css::ARROW_HEAD_RIGHT)
-        .background_colour(Colour::Secondary)
-        .into()
 }
 
 fn call(
