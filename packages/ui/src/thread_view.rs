@@ -167,7 +167,10 @@ fn item_dropdown(
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
             RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
-            RunState::Successful => Icon::check_circle_fill().colour(Colour::Success),
+            RunState::Successful | RunState::PredicateSuccessful(true) => {
+                Icon::check_circle_fill().colour(Colour::Success)
+            }
+            RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size::Size2), Side::End))
