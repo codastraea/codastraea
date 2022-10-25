@@ -114,7 +114,12 @@ fn function(
             expanded,
             {
                 clone!(body, call_stack, view_state);
-                move || expanded_body(&body, &call_stack, &view_state)
+                move || {
+                    row()
+                        .align_items(Align::Start)
+                        .speech_bubble()
+                        .children(body_statements(body.iter(), &call_stack, &view_state))
+                }
             },
         )
     } else {
@@ -213,18 +218,6 @@ fn call(
     elems.push(function(name, is_last, call_stack, view_state));
 
     elems
-}
-
-fn expanded_body(
-    body: &Body<FunctionId>,
-    call_stack: &CallStack,
-    view_state: &ThreadViewState,
-) -> DivBuilder {
-    let row = row()
-        .align_items(Align::Start)
-        .speech_bubble()
-        .children(body_statements(body.iter(), call_stack, view_state));
-    row
 }
 
 fn body_statements<'a>(
