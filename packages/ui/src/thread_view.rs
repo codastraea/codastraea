@@ -20,7 +20,7 @@ use silkenweb::{
         element::{Element, ElementBuilder},
         Node,
     },
-    prelude::{HtmlElement, ParentBuilder},
+    prelude::ParentBuilder,
     value::Sig,
     Value,
 };
@@ -457,7 +457,11 @@ fn expression(
     }
 }
 
-trait SpeechBubble: HtmlElement {
+trait SpeechBubble {
+    fn speech_bubble(self) -> Self;
+}
+
+impl SpeechBubble for DivBuilder {
     fn speech_bubble(self) -> Self {
         self.class(css::SPEECH_BUBBLE_BELOW)
             .margin_on_side((Some(Size3), Side::Top))
@@ -469,5 +473,3 @@ trait SpeechBubble: HtmlElement {
             .shadow(Shadow::Medium)
     }
 }
-
-impl<T: HtmlElement> SpeechBubble for T {}
