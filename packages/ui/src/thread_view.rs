@@ -37,7 +37,7 @@ use silkenweb_bootstrap::{
     },
 };
 
-use crate::{animation::AnimatedExpand, css, ViewCallStates};
+use crate::{animation::AnimatedExpand, css, speech_bubble::SpeechBubble, ViewCallStates};
 
 const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
 
@@ -454,22 +454,5 @@ fn expression(
         Expression::Call { name, args } => {
             call(*name, args, is_last, call_stack.clone(), view_state)
         }
-    }
-}
-
-trait SpeechBubble {
-    fn speech_bubble(self) -> Self;
-}
-
-impl SpeechBubble for DivBuilder {
-    fn speech_bubble(self) -> Self {
-        self.class(css::SPEECH_BUBBLE_BELOW)
-            .margin_on_side((Some(Size3), Side::Top))
-            .margin_on_side((Some(Size3), Side::End))
-            .padding(Size3)
-            .border(true)
-            .border_colour(Colour::Secondary)
-            .rounded_border(true)
-            .shadow(Shadow::Medium)
     }
 }
