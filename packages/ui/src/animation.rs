@@ -23,19 +23,24 @@ fn style_min_size(width: f64, height: f64) -> String {
 }
 
 pub trait AnimatedExpand {
-    fn animated_expand(
+    fn animated_expand<Elem>(
         self,
-        child: impl FnMut() -> Element + 'static,
+        child: impl FnMut() -> Elem + 'static,
         expanded: Mutable<bool>,
-    ) -> Self;
+    ) -> Self
+    where
+        Elem: Into<Element>;
 }
 
 impl AnimatedExpand for DivBuilder {
-    fn animated_expand(
+    fn animated_expand<Elem>(
         self,
-        mut body: impl FnMut() -> Element + 'static,
+        mut child: impl FnMut() -> Elem + 'static,
         expanded: Mutable<bool>,
-    ) -> Self {
+    ) -> Self
+    where
+        Elem: Into<Element>,
+    {
         let style = Mutable::new("".to_owned());
         let show_body = Mutable::new(false);
         let parent = self.handle().dom_element();
@@ -88,7 +93,7 @@ impl AnimatedExpand for DivBuilder {
             .optional_child(Sig(show_body.signal().map({
                 move |expanded| {
                     if expanded {
-                        Some(body())
+                        Some(child().into())
                     } else {
                         style.set(style_min_size(0.0, 0.0));
                         None

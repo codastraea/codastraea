@@ -114,7 +114,7 @@ fn function(
             expanded,
             {
                 clone!(body, call_stack, view_state);
-                move || expanded_body(&body, &call_stack, &view_state).into()
+                move || expanded_body(&body, &call_stack, &view_state)
             },
         )
     } else {
@@ -122,12 +122,15 @@ fn function(
     }
 }
 
-fn expandable_node(
+fn expandable_node<Elem>(
     header: impl Into<Element>,
     is_last: bool,
     is_expanded: Mutable<bool>,
-    expanded: impl FnMut() -> Element + 'static,
-) -> Element {
+    expanded: impl FnMut() -> Elem + 'static,
+) -> Element
+where
+    Elem: Into<Element>,
+{
     column()
         .align_items(Align::Start)
         .child(header_row(header, is_last).align_self(Align::Stretch))
@@ -312,7 +315,6 @@ fn if_statement(
                 &view_state,
             ))
             .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
-            .into()
     })]
 }
 
@@ -368,7 +370,6 @@ fn condition_node(
                     .align_items(Align::Start)
                     .speech_bubble()
                     .children(expression(&condition, true, &call_stack, &view_state))
-                    .into()
             })
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
