@@ -273,8 +273,7 @@ fn if_statement(
         .child(
             button_group("If")
                 .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
-                .button(zoom_button(&expanded, ButtonStyle::Solid(Colour::Info)))
-                .rounded_pill_border(true),
+                .button(zoom_button(&expanded, ButtonStyle::Solid(Colour::Info))),
         );
 
     // TODO: Make call stack cheap to clone.
