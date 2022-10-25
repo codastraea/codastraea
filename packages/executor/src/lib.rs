@@ -14,7 +14,7 @@ pub const CODE: &str = indoc! {r#"
         else:
             pass
 
-        if function1(function2(function3())):
+        if function1(function2(long_named_function3())):
             function1()
             print("false1")
         else:
@@ -30,17 +30,17 @@ pub const CODE: &str = indoc! {r#"
         function1()
         function2()
         function2()
-        function3()
+        long_named_function3()
 
     def function1():
-        function2(function3())
+        function2(long_named_function3())
         print("Hello, world!")
 
     def function2():
-        function3()
+        long_named_function3()
         function4()
 
-    def function3():
+    def long_named_function3():
         function4()
 
     def function4():
