@@ -32,7 +32,7 @@ use silkenweb_bootstrap::{
     icon::{icon, Icon, IconType},
     row,
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetGap, SetSpacing, Shadow, Side,
+        Align, Colour, SetBorder, SetColour, SetFlex, SetGap, SetSpacing, Shadow, Side,
         Size::{self, Size3},
     },
 };
@@ -113,15 +113,7 @@ fn function(
             ))
         };
 
-        // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
-        expandable_node(
-            name,
-            FUNCTION_STYLE,
-            run_state,
-            is_last,
-            expanded,
-            body,
-        )
+        expandable_node(name, FUNCTION_STYLE, run_state, is_last, expanded, body)
     } else {
         header_row(leaf_node(name, FUNCTION_STYLE, run_state), is_last).into()
     }
@@ -139,17 +131,14 @@ where
     Elem: Into<Element>,
 {
     column()
-        .align_items(Align::Start)
-        .child(
-            header_row(
-                button_group(type_name)
-                    .shadow(Shadow::Medium)
-                    .dropdown(item_dropdown(type_name, style, run_state))
-                    .button(zoom_button(&is_expanded, style)),
-                is_last,
-            )
-            .align_self(Align::Stretch),
-        )
+        .align_items(Align::Stretch)
+        .child(header_row(
+            button_group(type_name)
+                .shadow(Shadow::Medium)
+                .dropdown(item_dropdown(type_name, style, run_state))
+                .button(zoom_button(&is_expanded, style)),
+            is_last,
+        ))
         .animated_expand(
             move || div().speech_bubble().child(expanded().into()),
             is_expanded,
