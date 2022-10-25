@@ -17,6 +17,7 @@ use silkenweb_bootstrap::{
 };
 use thread_view::ThreadView;
 
+mod animation;
 mod thread_view;
 mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
