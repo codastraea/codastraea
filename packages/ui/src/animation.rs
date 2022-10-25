@@ -13,14 +13,6 @@ use web_sys::DomRect;
 
 use crate::css;
 
-fn set_style_size(style: &Mutable<Option<String>>, limit: &str, bounds: &DomRect) {
-    let width = bounds.width();
-    let height = bounds.height();
-    style.set(Some(format!(
-        "overflow: hidden; {limit}-width: {width}px; {limit}-height: {height}px",
-    )));
-}
-
 pub trait AnimatedExpand {
     fn animated_expand<Elem>(
         self,
@@ -70,4 +62,12 @@ impl AnimatedExpand for DivBuilder {
 
         self.child(expanding_elem)
     }
+}
+
+fn set_style_size(style: &Mutable<Option<String>>, limit: &str, bounds: &DomRect) {
+    let width = bounds.width();
+    let height = bounds.height();
+    style.set(Some(format!(
+        "overflow: hidden; {limit}-width: {width}px; {limit}-height: {height}px",
+    )));
 }
