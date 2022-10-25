@@ -446,12 +446,11 @@ fn condition_node(
 ) -> Element {
     clone!(mut call_stack);
     call_stack.push(StackFrame::BlockPredicate(block_index));
+    let run_state = view_state.run_state(&call_stack);
 
-    // TODO: Factor out expandable node container
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
-            let run_state = view_state.run_state(&call_stack);
             let header = condition_header("condition", Some(&expanded), run_state);
 
             clone!(condition, call_stack, view_state);
@@ -465,26 +464,10 @@ fn condition_node(
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            column()
-                .align_items(Align::Stretch)
-                .child(condition_main(
-                    "condition",
-                    is_last,
-                    None,
-                    view_state.run_state(&call_stack),
-                ))
-                .into()
+            condition_main("condition", is_last, None, run_state)
         }
     } else {
-        column()
-            .align_items(Align::Stretch)
-            .child(condition_main(
-                "else",
-                is_last,
-                None,
-                view_state.run_state(&call_stack),
-            ))
-            .into()
+        condition_main("else", is_last, None, run_state)
     }
 }
 
