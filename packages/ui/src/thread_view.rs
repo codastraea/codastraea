@@ -466,7 +466,7 @@ fn condition_node(
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
             column()
-                .align_items(Align::Start)
+                .align_items(Align::Stretch)
                 .child(condition_main(
                     "condition",
                     is_last,
@@ -477,7 +477,7 @@ fn condition_node(
         }
     } else {
         column()
-            .align_items(Align::Start)
+            .align_items(Align::Stretch)
             .child(condition_main(
                 "else",
                 is_last,
@@ -494,17 +494,7 @@ fn condition_main(
     expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    let main = row()
-        .align_items(Align::Center)
-        .align_self(Align::Stretch)
-        .child(condition_header(name, expanded, run_state));
-
-    if !is_last {
-        main.child(horizontal_line()).child(arrow_right())
-    } else {
-        main
-    }
-    .into()
+    header_row(condition_header(name, expanded, run_state), is_last).into()
 }
 
 fn function_header(
