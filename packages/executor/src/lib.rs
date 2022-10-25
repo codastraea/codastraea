@@ -7,11 +7,12 @@ pub mod syntax_tree;
 pub const CODE: &str = indoc! {r#"
     def main():
         if True:
-            print("true0")
-            print("true0")
-            print("true0")
+            pass
+
+        if True:
+            pass
         else:
-            print("false0")
+            pass
 
         if function1(function2(function3())):
             function1()
