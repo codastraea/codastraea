@@ -448,48 +448,44 @@ fn condition_node(
     call_stack.push(StackFrame::BlockPredicate(block_index));
 
     // TODO: Factor out expandable node container
-    let container = column().align_items(Align::Start);
-
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
+            let run_state = view_state.run_state(&call_stack);
+            let header = condition_header("condition", Some(&expanded), run_state);
+
             clone!(condition, call_stack, view_state);
-            container
-                .child(condition_main(
-                    "condition",
-                    is_last,
-                    Some(&expanded),
-                    view_state.run_state(&call_stack),
-                ))
-                .animated_expand(
-                    move || {
-                        row()
-                            .align_items(Align::Start)
-                            .speech_bubble()
-                            .children(expression(&condition, true, &call_stack, &view_state))
-                            .into()
-                    },
-                    expanded,
-                )
+            expandable_node(header, is_last, expanded, move || {
+                row()
+                    .align_items(Align::Start)
+                    .speech_bubble()
+                    .children(expression(&condition, true, &call_stack, &view_state))
+                    .into()
+            })
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            container.child(condition_main(
-                "condition",
+            column()
+                .align_items(Align::Start)
+                .child(condition_main(
+                    "condition",
+                    is_last,
+                    None,
+                    view_state.run_state(&call_stack),
+                ))
+                .into()
+        }
+    } else {
+        column()
+            .align_items(Align::Start)
+            .child(condition_main(
+                "else",
                 is_last,
                 None,
                 view_state.run_state(&call_stack),
             ))
-        }
-    } else {
-        container.child(condition_main(
-            "else",
-            is_last,
-            None,
-            view_state.run_state(&call_stack),
-        ))
+            .into()
     }
-    .into()
 }
 
 fn condition_main(
