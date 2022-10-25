@@ -115,15 +115,15 @@ fn function(
 
         // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
         expandable_node(
-            "Function",
-            ButtonStyle::Outline(Colour::Secondary),
+            name,
+            FUNCTION_STYLE,
             run_state,
             is_last,
             expanded,
             body,
         )
     } else {
-        header_row(function_header(name, None, run_state), is_last).into()
+        header_row(leaf_node(name, FUNCTION_STYLE, run_state), is_last).into()
     }
 }
 
@@ -289,7 +289,7 @@ fn if_statement(
 
     vec![expandable_node(
         "If",
-        ButtonStyle::Solid(Colour::Info),
+        CONDITION_STYLE,
         run_state,
         is_last,
         expanded,
@@ -359,7 +359,7 @@ fn condition_node(
             clone!(condition, call_stack, view_state);
             expandable_node(
                 "condition",
-                ButtonStyle::Solid(Colour::Info),
+                CONDITION_STYLE,
                 run_state,
                 is_last,
                 expanded,
@@ -375,67 +375,29 @@ fn condition_node(
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            condition_main("condition", is_last, run_state)
+            condition_header("condition", is_last, run_state)
         }
     } else {
-        condition_main("else", is_last, run_state)
+        condition_header("else", is_last, run_state)
     }
-}
-
-fn condition_main(
-    name: &str,
-    is_last: bool,
-    run_state: impl Signal<Item = RunState> + 'static,
-) -> Element {
-    header_row(condition_header(name, None, run_state), is_last).into()
-}
-
-fn function_header(
-    name: &str,
-    expanded: Option<&Mutable<bool>>,
-    run_state: impl Signal<Item = RunState> + 'static,
-) -> Element {
-    node_header(
-        "Function",
-        name,
-        ButtonStyle::Outline(Colour::Secondary),
-        expanded,
-        run_state,
-    )
 }
 
 fn condition_header(
     name: &str,
-    expanded: Option<&Mutable<bool>>,
+    is_last: bool,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    node_header(
-        "Condition",
-        name,
-        ButtonStyle::Solid(Colour::Info),
-        expanded,
-        run_state,
-    )
+    header_row(leaf_node(name, CONDITION_STYLE, run_state), is_last).into()
 }
 
-fn node_header(
-    ty: &str,
+fn leaf_node(
     name: &str,
     style: ButtonStyle,
-    expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    if let Some(expanded) = expanded {
-        button_group(format!("{ty} {name}"))
-            .shadow(Shadow::Medium)
-            .dropdown(item_dropdown(name, style, run_state))
-            .button(zoom_button(expanded, style))
-            .into()
-    } else {
-        item_dropdown(name, style, run_state)
-            .shadow(Shadow::Medium)
-            .into()
-    }
+    item_dropdown(name, style, run_state)
+        .shadow(Shadow::Medium)
+        .into()
 }
 
 fn zoom_button(
@@ -474,3 +436,6 @@ fn expression(
         }
     }
 }
+
+const CONDITION_STYLE: ButtonStyle = ButtonStyle::Solid(Colour::Info);
+const FUNCTION_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
