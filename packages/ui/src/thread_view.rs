@@ -373,20 +373,19 @@ fn condition_node(
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            condition_main("condition", is_last, None, run_state)
+            condition_main("condition", is_last, run_state)
         }
     } else {
-        condition_main("else", is_last, None, run_state)
+        condition_main("else", is_last, run_state)
     }
 }
 
 fn condition_main(
     name: &str,
     is_last: bool,
-    expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    header_row(condition_header(name, expanded, run_state), is_last).into()
+    header_row(condition_header(name, None, run_state), is_last).into()
 }
 
 fn function_header(
