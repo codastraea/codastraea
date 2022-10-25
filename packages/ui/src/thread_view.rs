@@ -154,10 +154,6 @@ fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
     }
 }
 
-fn if_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
-    item_dropdown(name, ButtonStyle::Solid(Colour::Info), run_state)
-}
-
 fn item_dropdown(
     name: &str,
     style: ButtonStyle,
@@ -270,19 +266,12 @@ fn if_statement(
     let expanded = view_state.expanded(call_stack);
 
     // TODO: Draw `If` (i.e. call this) even if it's not expandable.
-    let header_row = row()
-        .align_items(Align::Center)
-        .align_self(Align::Stretch)
-        .child(
-            button_group("If")
-                .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
-                .button(zoom_button(&expanded, ButtonStyle::Solid(Colour::Info))),
-        );
+    let header = condition_header("If", Some(&expanded), view_state.run_state(call_stack));
 
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
 
-    vec![expandable_node(header_row, is_last, expanded, move || {
+    vec![expandable_node(header, is_last, expanded, move || {
         column()
             .align_items(Align::Start)
             .align_self(Align::Start)
