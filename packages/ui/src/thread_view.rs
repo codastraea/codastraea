@@ -36,6 +36,7 @@ use silkenweb_bootstrap::{
         Size::{self, Size3},
     },
 };
+use silkenweb_signals_ext::SignalProduct;
 
 use crate::{animation::AnimatedExpand, css, speech_bubble::SpeechBubble, ViewCallStates};
 
@@ -155,20 +156,27 @@ fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
 }
 
 fn if_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
-    item_dropdown(name, ButtonStyle::Solid(Colour::Info), run_state)
+    item_dropdown(
+        name,
+        ButtonStyle::Solid(Colour::Info),
+        run_state.map(ConditionState::State),
+    )
 }
 
 fn item_dropdown(
     name: &str,
     style: ButtonStyle,
-    run_state: impl Signal<Item = RunState> + 'static,
+    run_state: impl Signal<Item = ConditionState> + 'static,
 ) -> DropdownBuilder {
     let run_state = run_state.map(|run_state| {
         match run_state {
-            RunState::NotRun => Icon::circle().colour(Colour::Secondary),
-            RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
-            RunState::Successful => Icon::check_circle_fill().colour(Colour::Success),
-            RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+            ConditionState::State(run_state) => match run_state {
+                RunState::NotRun => Icon::circle().colour(Colour::Secondary),
+                RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
+                RunState::Successful => Icon::check_circle_fill().colour(Colour::Success),
+                RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+            },
+            ConditionState::PredicateFalse => Icon::circle_fill().colour(Colour::Success),
         }
         .margin_on_side((Some(Size::Size2), Side::End))
     });
@@ -326,6 +334,11 @@ fn branch_body(
     .into()
 }
 
+enum ConditionState {
+    PredicateFalse,
+    State(RunState),
+}
+
 fn condition_node(
     condition: Option<&Arc<Expression<FunctionId>>>,
     block_index: usize,
@@ -334,8 +347,18 @@ fn condition_node(
     view_state: &ThreadViewState,
 ) -> Element {
     clone!(mut call_stack);
+    call_stack.push(StackFrame::NestedBlock(block_index));
+    let block_run_state = view_state.run_state(&call_stack);
+    call_stack.pop();
     call_stack.push(StackFrame::BlockPredicate(block_index));
-    let run_state = view_state.run_state(&call_stack);
+    let predicate_run_state = view_state.run_state(&call_stack);
+
+    let run_state = (predicate_run_state, block_run_state).signal_ref(|pred_state, block_state| {
+        match (pred_state, block_state) {
+            (RunState::Successful, RunState::NotRun) => ConditionState::PredicateFalse,
+            _ => ConditionState::State(*pred_state),
+        }
+    });
 
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
@@ -362,7 +385,7 @@ fn condition_node(
 fn condition_main(
     name: &str,
     is_last: bool,
-    run_state: impl Signal<Item = RunState> + 'static,
+    run_state: impl Signal<Item = ConditionState> + 'static,
 ) -> Element {
     header_row(condition_header(name, None, run_state), is_last).into()
 }
@@ -377,14 +400,14 @@ fn function_header(
         name,
         ButtonStyle::Outline(Colour::Secondary),
         expanded,
-        run_state,
+        run_state.map(ConditionState::State),
     )
 }
 
 fn condition_header(
     name: &str,
     expanded: Option<&Mutable<bool>>,
-    run_state: impl Signal<Item = RunState> + 'static,
+    run_state: impl Signal<Item = ConditionState> + 'static,
 ) -> Element {
     node_header(
         "Condition",
@@ -400,7 +423,7 @@ fn node_header(
     name: &str,
     style: ButtonStyle,
     expanded: Option<&Mutable<bool>>,
-    run_state: impl Signal<Item = RunState> + 'static,
+    run_state: impl Signal<Item = ConditionState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
         button_group(format!("{ty} {name}"))

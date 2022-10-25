@@ -1298,6 +1298,7 @@ dependencies = [
  "serpent-automation-frontend",
  "silkenweb",
  "silkenweb-bootstrap",
+ "silkenweb-signals-ext",
  "web-sys",
 ]
 
