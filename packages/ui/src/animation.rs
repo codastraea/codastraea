@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use futures_signals::signal::{Mutable, SignalExt};
 use silkenweb::{
     clone,
@@ -7,19 +9,14 @@ use silkenweb::{
     task::on_animation_frame,
     value::Sig,
 };
+use web_sys::DomRect;
 
 use crate::css;
 
-fn style_size(bound: &str, width: f64, height: f64) -> String {
-    format!("overflow: hidden; {bound}-width: {width}px; {bound}-height: {height}px",)
-}
-
-fn style_max_size(width: f64, height: f64) -> String {
-    style_size("max", width, height)
-}
-
-fn style_min_size(width: f64, height: f64) -> String {
-    style_size("min", width, height)
+fn style_size(limit: &str, bounds: &DomRect) -> String {
+    let width = bounds.width();
+    let height = bounds.height();
+    format!("overflow: hidden; {limit}-width: {width}px; {limit}-height: {height}px",)
 }
 
 pub trait AnimatedExpand {
@@ -42,46 +39,27 @@ impl AnimatedExpand for DivBuilder {
         Elem: Into<Element>,
     {
         let style = Mutable::new("".to_owned());
-        let show_body = Mutable::new(false);
-        let parent = self.handle().dom_element();
+        let initial_bounds: Rc<Cell<Option<DomRect>>> = Rc::new(Cell::new(None));
 
         let expanding_elem = div()
             .class(css::TRANSITION_ALL)
-            .spawn_future(expanded.signal().for_each({
-                clone!(show_body);
-                move |expanded| {
-                    if expanded {
-                        show_body.set(true);
-                    }
-                    async {}
-                }
-            }))
             .effect_signal(expanded.signal(), {
-                clone!(style, show_body);
+                clone!(style);
                 move |elem, expanded| {
-                    let elem_bounds = elem.get_bounding_client_rect();
+                    let final_bounds = elem.get_bounding_client_rect();
 
-                    if expanded {
-                        let initial_width = parent.get_bounding_client_rect().width();
-                        let final_bounds = elem.get_bounding_client_rect();
-                        style.set(style_max_size(initial_width, 0.0));
+                    if let Some(initial_bounds) = initial_bounds.replace(Some(final_bounds.clone()))
+                    {
+                        let limit = if expanded { "max" } else { "min" };
+
+                        style.set(style_size(limit, &initial_bounds));
 
                         on_animation_frame({
                             clone!(style);
                             move || {
-                                style.set(style_max_size(
-                                    final_bounds.width(),
-                                    final_bounds.height(),
-                                ));
+                                style.set(style_size(limit, &final_bounds));
                             }
                         })
-                    } else {
-                        style.set(style_min_size(elem_bounds.width(), elem_bounds.height()));
-
-                        on_animation_frame({
-                            clone!(show_body);
-                            move || show_body.set(false)
-                        });
                     }
                 }
             })
@@ -90,16 +68,9 @@ impl AnimatedExpand for DivBuilder {
                 move |_, _| style.set("".to_owned())
             })
             .style(Sig(style.signal_cloned()))
-            .optional_child(Sig(show_body.signal().map({
-                move |expanded| {
-                    if expanded {
-                        Some(child().into())
-                    } else {
-                        style.set(style_min_size(0.0, 0.0));
-                        None
-                    }
-                }
-            })));
+            .optional_child(Sig(expanded
+                .signal()
+                .map(move |expanded| expanded.then(|| child().into()))));
 
         self.child(expanding_elem)
     }
