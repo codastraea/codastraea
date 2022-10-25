@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, iter, rc::Rc, sync::Arc};
 
 use derive_more::Into;
 use futures_signals::signal::{Mutable, Signal, SignalExt};
@@ -188,34 +188,32 @@ fn dropdown_item(name: &str) -> ABuilder {
     a().href("#").text(name)
 }
 
-fn call(
+fn call<'a>(
     name: FunctionId,
-    args: &[Expression<FunctionId>],
+    args: &'a [Expression<FunctionId>],
     is_last: bool,
     call_stack: CallStack,
-    view_state: &ThreadViewState,
-) -> Vec<Element> {
-    let mut elems: Vec<Element> = args
-        .iter()
+    view_state: &'a ThreadViewState,
+) -> impl Iterator<Item = Element> + 'a {
+    args.iter()
         .enumerate()
-        .flat_map(|(arg_index, arg)| {
-            // TODO: Push and pop call stack for efficiency
+        .flat_map({
             clone!(mut call_stack);
-            call_stack.push(StackFrame::Argument(arg_index));
-            expression(arg, false, &call_stack, view_state)
+
+            move |(arg_index, arg)| {
+                // TODO: Push and pop call stack for efficiency
+                call_stack.push(StackFrame::Argument(arg_index));
+                expression(arg, false, &call_stack, view_state)
+            }
         })
-        .collect();
-
-    elems.push(function(name, is_last, call_stack, view_state));
-
-    elems
+        .chain(iter::once(function(name, is_last, call_stack, view_state)))
 }
 
 fn body_statements<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>>,
     call_stack: &'a CallStack,
     view_state: &'a ThreadViewState,
-) -> Vec<Element> {
+) -> impl Iterator<Item = Element> + 'a {
     let body: Vec<_> = body
         .enumerate()
         .filter(|(_index, stmt)| statement_is_expandable(stmt))
@@ -223,13 +221,12 @@ fn body_statements<'a>(
     assert!(!body.is_empty());
     let last_index = body.len() - 1;
 
-    body.iter()
+    body.into_iter()
         .enumerate()
         .flat_map(move |(index, (stmt_index, statement))| {
             let is_last = index == last_index;
-            body_statement(statement, *stmt_index, is_last, call_stack, view_state)
+            body_statement(statement, stmt_index, is_last, call_stack, view_state)
         })
-        .collect()
 }
 
 fn body_statement<'a>(
@@ -249,14 +246,14 @@ fn body_statement<'a>(
             condition,
             then_block,
             else_block,
-        } => if_statement(
+        } => vec![if_statement(
             condition.clone(),
             then_block.clone(),
             else_block.clone(),
             is_last,
             &call_stack,
             view_state,
-        ),
+        )],
     }
     .into_iter()
 }
@@ -268,7 +265,7 @@ fn if_statement(
     is_last: bool,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
-) -> Vec<Element> {
+) -> Element {
     let expanded = view_state.expanded(call_stack);
     let run_state = view_state.run_state(call_stack);
 
@@ -276,7 +273,7 @@ fn if_statement(
     clone!(call_stack, view_state);
     let has_else = !else_block.is_empty();
 
-    vec![expandable_node(
+    expandable_node(
         "If",
         CONDITION_STYLE,
         run_state,
@@ -297,7 +294,7 @@ fn if_statement(
                     has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
                 )
         },
-    )]
+    )
 }
 
 fn branch_body(
@@ -421,7 +418,7 @@ fn expression(
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
         Expression::Call { name, args } => {
-            call(*name, args, is_last, call_stack.clone(), view_state)
+            call(*name, args, is_last, call_stack.clone(), view_state).collect()
         }
     }
 }
