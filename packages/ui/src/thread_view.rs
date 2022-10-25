@@ -115,7 +115,9 @@ fn function(
 
         // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
         expandable_node(
-            function_header(name, Some(&expanded), run_state),
+            "Function",
+            ButtonStyle::Outline(Colour::Secondary),
+            run_state,
             is_last,
             expanded,
             body,
@@ -126,7 +128,9 @@ fn function(
 }
 
 fn expandable_node<Elem>(
-    header: impl Into<Element>,
+    type_name: &str,
+    style: ButtonStyle,
+    run_state: impl Signal<Item = RunState> + 'static,
     is_last: bool,
     is_expanded: Mutable<bool>,
     mut expanded: impl FnMut() -> Elem + 'static,
@@ -136,7 +140,16 @@ where
 {
     column()
         .align_items(Align::Start)
-        .child(header_row(header, is_last).align_self(Align::Stretch))
+        .child(
+            header_row(
+                button_group(type_name)
+                    .shadow(Shadow::Medium)
+                    .dropdown(item_dropdown(type_name, style, run_state))
+                    .button(zoom_button(&is_expanded, style)),
+                is_last,
+            )
+            .align_self(Align::Stretch),
+        )
         .animated_expand(
             move || div().speech_bubble().child(expanded().into()),
             is_expanded,
@@ -268,27 +281,34 @@ fn if_statement(
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     let expanded = view_state.expanded(call_stack);
-    let header = condition_header("If", Some(&expanded), view_state.run_state(call_stack));
+    let run_state = view_state.run_state(call_stack);
 
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
     let has_else = !else_block.is_empty();
 
-    vec![expandable_node(header, is_last, expanded, move || {
-        column()
-            .align_items(Align::Start)
-            .gap(Size3)
-            .child(branch_body(
-                Some(&condition),
-                &then_block,
-                0,
-                &call_stack,
-                &view_state,
-            ))
-            .optional_child(
-                has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
-            )
-    })]
+    vec![expandable_node(
+        "If",
+        ButtonStyle::Solid(Colour::Info),
+        run_state,
+        is_last,
+        expanded,
+        move || {
+            column()
+                .align_items(Align::Start)
+                .gap(Size3)
+                .child(branch_body(
+                    Some(&condition),
+                    &then_block,
+                    0,
+                    &call_stack,
+                    &view_state,
+                ))
+                .optional_child(
+                    has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
+                )
+        },
+    )]
 }
 
 fn branch_body(
@@ -335,17 +355,23 @@ fn condition_node(
     if let Some(condition) = condition {
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
-            let header = condition_header("condition", Some(&expanded), run_state);
 
             clone!(condition, call_stack, view_state);
-            expandable_node(header, is_last, expanded, move || {
-                row().align_items(Align::Start).children(expression(
-                    &condition,
-                    true,
-                    &call_stack,
-                    &view_state,
-                ))
-            })
+            expandable_node(
+                "condition",
+                ButtonStyle::Solid(Colour::Info),
+                run_state,
+                is_last,
+                expanded,
+                move || {
+                    row().align_items(Align::Start).children(expression(
+                        &condition,
+                        true,
+                        &call_stack,
+                        &view_state,
+                    ))
+                },
+            )
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
