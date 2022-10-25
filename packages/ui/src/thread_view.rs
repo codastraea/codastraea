@@ -106,10 +106,11 @@ fn function(
         let expanded = view_state.expanded(&call_stack);
         clone!(body, call_stack, view_state);
         let body = move || {
-            row()
-                .align_items(Align::Start)
-                .speech_bubble()
-                .children(body_statements(body.iter(), &call_stack, &view_state))
+            row().align_items(Align::Start).children(body_statements(
+                body.iter(),
+                &call_stack,
+                &view_state,
+            ))
         };
 
         // TODO: Split `function_header` into `expandable_header` and `leaf_header`?
@@ -128,7 +129,7 @@ fn expandable_node<Elem>(
     header: impl Into<Element>,
     is_last: bool,
     is_expanded: Mutable<bool>,
-    expanded: impl FnMut() -> Elem + 'static,
+    mut expanded: impl FnMut() -> Elem + 'static,
 ) -> Element
 where
     Elem: Into<Element>,
@@ -136,7 +137,10 @@ where
     column()
         .align_items(Align::Start)
         .child(header_row(header, is_last).align_self(Align::Stretch))
-        .animated_expand(expanded, is_expanded)
+        .animated_expand(
+            move || div().speech_bubble().child(expanded().into()),
+            is_expanded,
+        )
         .into()
 }
 
@@ -273,9 +277,7 @@ fn if_statement(
     vec![expandable_node(header, is_last, expanded, move || {
         column()
             .align_items(Align::Start)
-            .align_self(Align::Start)
             .gap(Size3)
-            .speech_bubble()
             .child(branch_body(
                 Some(&condition),
                 &then_block,
@@ -337,10 +339,12 @@ fn condition_node(
 
             clone!(condition, call_stack, view_state);
             expandable_node(header, is_last, expanded, move || {
-                row()
-                    .align_items(Align::Start)
-                    .speech_bubble()
-                    .children(expression(&condition, true, &call_stack, &view_state))
+                row().align_items(Align::Start).children(expression(
+                    &condition,
+                    true,
+                    &call_stack,
+                    &view_state,
+                ))
             })
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
