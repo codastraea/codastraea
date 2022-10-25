@@ -13,10 +13,12 @@ use web_sys::DomRect;
 
 use crate::css;
 
-fn style_size(limit: &str, bounds: &DomRect) -> String {
+fn set_style_size(style: &Mutable<Option<String>>, limit: &str, bounds: &DomRect) {
     let width = bounds.width();
     let height = bounds.height();
-    format!("overflow: hidden; {limit}-width: {width}px; {limit}-height: {height}px",)
+    style.set(Some(format!(
+        "overflow: hidden; {limit}-width: {width}px; {limit}-height: {height}px",
+    )));
 }
 
 pub trait AnimatedExpand {
@@ -38,39 +40,33 @@ impl AnimatedExpand for DivBuilder {
     where
         Elem: Into<Element>,
     {
-        let style = Mutable::new("".to_owned());
+        let style = Mutable::new(Some("".to_owned()));
         let initial_bounds: Rc<Cell<Option<DomRect>>> = Rc::new(Cell::new(None));
 
         let expanding_elem = div()
             .class(css::TRANSITION_ALL)
-            .effect_signal(expanded.signal(), {
-                clone!(style);
-                move |elem, expanded| {
-                    let final_bounds = elem.get_bounding_client_rect();
-
-                    if let Some(initial_bounds) = initial_bounds.replace(Some(final_bounds.clone()))
-                    {
-                        let limit = if expanded { "max" } else { "min" };
-
-                        style.set(style_size(limit, &initial_bounds));
-
-                        on_animation_frame({
-                            clone!(style);
-                            move || {
-                                style.set(style_size(limit, &final_bounds));
-                            }
-                        })
-                    }
-                }
-            })
-            .on_transitionend({
-                clone!(style);
-                move |_, _| style.set("".to_owned())
-            })
             .style(Sig(style.signal_cloned()))
             .optional_child(Sig(expanded
                 .signal()
-                .map(move |expanded| expanded.then(|| child().into()))));
+                .map(move |expanded| expanded.then(|| child().into()))))
+            .on_transitionend({
+                clone!(style);
+                move |_, _| style.set(None)
+            })
+            .effect_signal(expanded.signal(), move |elem, expanded| {
+                let final_bounds = elem.get_bounding_client_rect();
+
+                if let Some(initial_bounds) = initial_bounds.replace(Some(final_bounds.clone())) {
+                    let limit = if expanded { "max" } else { "min" };
+
+                    set_style_size(&style, limit, &initial_bounds);
+
+                    on_animation_frame({
+                        clone!(style);
+                        move || set_style_size(&style, limit, &final_bounds)
+                    })
+                }
+            });
 
         self.child(expanding_elem)
     }
