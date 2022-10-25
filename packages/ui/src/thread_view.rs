@@ -264,12 +264,11 @@ fn if_statement(
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     let expanded = view_state.expanded(call_stack);
-
-    // TODO: Draw `If` (i.e. call this) even if it's not expandable.
     let header = condition_header("If", Some(&expanded), view_state.run_state(call_stack));
 
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
+    let has_else = !else_block.is_empty();
 
     vec![expandable_node(header, is_last, expanded, move || {
         column()
@@ -284,7 +283,9 @@ fn if_statement(
                 &call_stack,
                 &view_state,
             ))
-            .child(branch_body(None, &else_block, 1, &call_stack, &view_state))
+            .optional_child(
+                has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
+            )
     })]
 }
 

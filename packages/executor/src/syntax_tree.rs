@@ -162,6 +162,10 @@ impl<T> Body<T> {
         Self(Vec::new())
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Statement<T>> {
         self.0.iter()
     }
