@@ -39,8 +39,6 @@ use silkenweb_bootstrap::{
 
 use crate::{animation::AnimatedExpand, css, speech_bubble::SpeechBubble, ViewCallStates};
 
-const BUTTON_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
-
 #[derive(Into, Value)]
 pub struct ThreadView(Node);
 
@@ -157,16 +155,12 @@ fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
 }
 
 fn if_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
-    item_dropdown(name, Colour::Primary, run_state)
-}
-
-fn fn_dropdown(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> DropdownBuilder {
-    item_dropdown(name, Colour::Secondary, run_state)
+    item_dropdown(name, ButtonStyle::Solid(Colour::Info), run_state)
 }
 
 fn item_dropdown(
     name: &str,
-    colour: Colour,
+    style: ButtonStyle,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> DropdownBuilder {
     let run_state = run_state.map(|run_state| {
@@ -180,7 +174,7 @@ fn item_dropdown(
     });
 
     dropdown(
-        icon_button("button", Sig(run_state), ButtonStyle::Outline(colour)).text(name),
+        icon_button("button", Sig(run_state), style).text(name),
         dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
     )
 }
@@ -279,7 +273,7 @@ fn if_statement(
         .child(
             button_group("If")
                 .dropdown(if_dropdown("If", view_state.run_state(call_stack)))
-                .button(zoom_button(&expanded))
+                .button(zoom_button(&expanded, ButtonStyle::Solid(Colour::Info)))
                 .rounded_pill_border(true),
         );
 
@@ -379,7 +373,13 @@ fn function_header(
     expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    node_header("Function", name, Colour::Secondary, expanded, run_state)
+    node_header(
+        "Function",
+        name,
+        ButtonStyle::Outline(Colour::Secondary),
+        expanded,
+        run_state,
+    )
 }
 
 fn condition_header(
@@ -387,28 +387,39 @@ fn condition_header(
     expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    node_header("Condition", name, Colour::Primary, expanded, run_state)
+    node_header(
+        "Condition",
+        name,
+        ButtonStyle::Solid(Colour::Info),
+        expanded,
+        run_state,
+    )
 }
 
 fn node_header(
     ty: &str,
     name: &str,
-    colour: Colour,
+    style: ButtonStyle,
     expanded: Option<&Mutable<bool>>,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     if let Some(expanded) = expanded {
         button_group(format!("{ty} {name}"))
             .shadow(Shadow::Medium)
-            .dropdown(item_dropdown(name, colour, run_state))
-            .button(zoom_button(expanded))
+            .dropdown(item_dropdown(name, style, run_state))
+            .button(zoom_button(expanded, style))
             .into()
     } else {
-        fn_dropdown(name, run_state).shadow(Shadow::Medium).into()
+        item_dropdown(name, style, run_state)
+            .shadow(Shadow::Medium)
+            .into()
     }
 }
 
-fn zoom_button(expanded: &Mutable<bool>) -> silkenweb_bootstrap::button::ButtonBuilder {
+fn zoom_button(
+    expanded: &Mutable<bool>,
+    style: ButtonStyle,
+) -> silkenweb_bootstrap::button::ButtonBuilder {
     icon_button(
         "button",
         icon(Sig(expanded.signal().map(|expanded| {
@@ -418,7 +429,7 @@ fn zoom_button(expanded: &Mutable<bool>) -> silkenweb_bootstrap::button::ButtonB
                 IconType::ZoomIn
             }
         }))),
-        BUTTON_STYLE,
+        style,
     )
     .on_click({
         clone!(expanded);
