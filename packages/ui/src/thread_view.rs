@@ -130,7 +130,7 @@ fn expandable_node<Elem>(
 where
     Elem: Into<Element>,
 {
-    header_row(
+    node_column(
         button_group(type_name)
             .shadow(Shadow::Medium)
             .dropdown(item_dropdown(type_name, style, run_state))
@@ -149,7 +149,7 @@ where
     .into()
 }
 
-fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
+fn node_column(header: impl Into<Element>, is_last: bool) -> DivBuilder {
     let main = row().align_items(Align::Center).child(header.into());
 
     column().align_items(Align::Stretch).child(if is_last {
@@ -386,7 +386,7 @@ fn leaf_node(
     run_state: impl Signal<Item = RunState> + 'static,
     is_last: bool,
 ) -> Element {
-    header_row(
+    node_column(
         item_dropdown(name, style, run_state).shadow(Shadow::Medium),
         is_last,
     )
