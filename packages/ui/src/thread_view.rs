@@ -240,7 +240,7 @@ fn body_statements<'a>(
                     condition,
                     then_block,
                     else_block,
-                } => vec![if_statement(
+                } => vec![if_node(
                     condition.clone(),
                     then_block.clone(),
                     else_block.clone(),
@@ -253,7 +253,7 @@ fn body_statements<'a>(
         })
 }
 
-fn if_statement(
+fn if_node(
     condition: Arc<Expression<FunctionId>>,
     then_block: Arc<Body<FunctionId>>,
     else_block: Arc<Body<FunctionId>>,
