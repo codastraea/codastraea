@@ -115,7 +115,7 @@ fn function_node(
 
         expandable_node(name, FUNCTION_STYLE, run_state, is_last, expanded, body)
     } else {
-        header_row(leaf_node(name, FUNCTION_STYLE, run_state), is_last).into()
+        leaf_node(name, FUNCTION_STYLE, run_state, is_last)
     }
 }
 
@@ -209,7 +209,9 @@ fn call<'a>(
                 expression(arg, false, &call_stack, view_state)
             }
         })
-        .chain(iter::once(function_node(name, is_last, call_stack, view_state)))
+        .chain(iter::once(function_node(
+            name, is_last, call_stack, view_state,
+        )))
 }
 
 fn body_statements<'a>(
@@ -375,17 +377,20 @@ fn condition_header(
     is_last: bool,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    header_row(leaf_node(name, CONDITION_STYLE, run_state), is_last).into()
+    leaf_node(name, CONDITION_STYLE, run_state, is_last)
 }
 
 fn leaf_node(
     name: &str,
     style: ButtonStyle,
     run_state: impl Signal<Item = RunState> + 'static,
+    is_last: bool,
 ) -> Element {
-    item_dropdown(name, style, run_state)
-        .shadow(Shadow::Medium)
-        .into()
+    header_row(
+        item_dropdown(name, style, run_state).shadow(Shadow::Medium),
+        is_last,
+    )
+    .into()
 }
 
 fn zoom_button(
