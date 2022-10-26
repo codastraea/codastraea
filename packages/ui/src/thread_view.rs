@@ -230,37 +230,27 @@ fn body_statements<'a>(
         .enumerate()
         .flat_map(move |(index, (stmt_index, statement))| {
             let is_last = index == last_index;
-            body_statement(statement, stmt_index, is_last, call_stack, view_state)
+            clone!(mut call_stack);
+            call_stack.push(StackFrame::Statement(stmt_index));
+
+            match statement {
+                Statement::Pass => Vec::new(),
+                Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
+                Statement::If {
+                    condition,
+                    then_block,
+                    else_block,
+                } => vec![if_statement(
+                    condition.clone(),
+                    then_block.clone(),
+                    else_block.clone(),
+                    is_last,
+                    &call_stack,
+                    view_state,
+                )],
+            }
+            .into_iter()
         })
-}
-
-fn body_statement<'a>(
-    statement: &'a Statement<FunctionId>,
-    stmt_index: usize,
-    is_last: bool,
-    call_stack: &'a CallStack,
-    view_state: &'a ThreadViewState,
-) -> impl Iterator<Item = Element> + 'a {
-    clone!(mut call_stack);
-    call_stack.push(StackFrame::Statement(stmt_index));
-
-    match statement {
-        Statement::Pass => Vec::new(),
-        Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
-        Statement::If {
-            condition,
-            then_block,
-            else_block,
-        } => vec![if_statement(
-            condition.clone(),
-            then_block.clone(),
-            else_block.clone(),
-            is_last,
-            &call_stack,
-            view_state,
-        )],
-    }
-    .into_iter()
 }
 
 fn if_statement(
