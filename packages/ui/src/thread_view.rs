@@ -50,7 +50,7 @@ impl ThreadView {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
-        Self(function(fn_id, true, CallStack::new(), &view_state).into())
+        Self(function_node(fn_id, true, CallStack::new(), &view_state).into())
     }
 }
 
@@ -87,7 +87,7 @@ impl ThreadViewState {
     }
 }
 
-fn function(
+fn function_node(
     fn_id: FunctionId,
     is_last: bool,
     mut call_stack: CallStack,
@@ -209,7 +209,7 @@ fn call<'a>(
                 expression(arg, false, &call_stack, view_state)
             }
         })
-        .chain(iter::once(function(name, is_last, call_stack, view_state)))
+        .chain(iter::once(function_node(name, is_last, call_stack, view_state)))
 }
 
 fn body_statements<'a>(
