@@ -10,8 +10,9 @@
     min-height: 200px;
 }
 
-.transition-all {
-    display: flex;
+.expandable-node {
+    width: 100%;
+    height: 100%;
     transition: all 200ms;
 }
 

@@ -106,7 +106,7 @@ fn function(
         let expanded = view_state.expanded(&call_stack);
         clone!(body, call_stack, view_state);
         let body = move || {
-            row().align_items(Align::Start).children(body_statements(
+            row().align_items(Align::Stretch).children(body_statements(
                 body.iter(),
                 &call_stack,
                 &view_state,
@@ -130,26 +130,29 @@ fn expandable_node<Elem>(
 where
     Elem: Into<Element>,
 {
-    column()
-        .align_items(Align::Stretch)
-        .child(header_row(
-            button_group(type_name)
-                .shadow(Shadow::Medium)
-                .dropdown(item_dropdown(type_name, style, run_state))
-                .button(zoom_button(&is_expanded, style)),
-            is_last,
-        ))
-        .animated_expand(
-            move || div().speech_bubble().child(expanded().into()),
-            is_expanded,
-        )
-        .into()
+    header_row(
+        button_group(type_name)
+            .shadow(Shadow::Medium)
+            .dropdown(item_dropdown(type_name, style, run_state))
+            .button(zoom_button(&is_expanded, style)),
+        is_last,
+    )
+    .child(
+        row()
+            .align_items(Align::Start)
+            .class(css::EXPANDABLE_NODE)
+            .animated_expand(
+                move || div().speech_bubble().child(expanded().into()),
+                is_expanded,
+            ),
+    )
+    .into()
 }
 
 fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
     let main = row().align_items(Align::Center).child(header.into());
 
-    if is_last {
+    column().align_items(Align::Stretch).child(if is_last {
         main
     } else {
         let horizontal_line = div().class(css::HORIZONTAL_LINE);
@@ -157,7 +160,7 @@ fn header_row(header: impl Into<Element>, is_last: bool) -> DivBuilder {
             .class(css::ARROW_HEAD_RIGHT)
             .background_colour(Colour::Secondary);
         main.child(horizontal_line).child(arrow_head)
-    }
+    })
 }
 
 fn item_dropdown(
@@ -316,8 +319,7 @@ fn branch_body(
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-    // TODO: trait for adding arrow
-    let body_elem = row().align_items(Align::Start).child(condition);
+    let body_elem = row().align_items(Align::Stretch).child(condition);
 
     if is_expandable {
         body_elem.children(body_statements(body.iter(), &call_stack, view_state))
@@ -350,7 +352,7 @@ fn condition_node(
                 is_last,
                 expanded,
                 move || {
-                    row().align_items(Align::Start).children(expression(
+                    row().align_items(Align::Stretch).children(expression(
                         &condition,
                         true,
                         &call_stack,

@@ -3,15 +3,13 @@ use std::{cell::Cell, rc::Rc};
 use futures_signals::signal::{Mutable, SignalExt};
 use silkenweb::{
     clone,
-    elements::html::{div, DivBuilder},
+    elements::html::DivBuilder,
     node::element::{Element, ElementBuilder},
     prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
     task::on_animation_frame,
     value::Sig,
 };
 use web_sys::DomRect;
-
-use crate::css;
 
 pub trait AnimatedExpand {
     fn animated_expand<Elem>(
@@ -35,9 +33,7 @@ impl AnimatedExpand for DivBuilder {
         let style = Mutable::new(Some("".to_owned()));
         let initial_bounds: Rc<Cell<Option<DomRect>>> = Rc::new(Cell::new(None));
 
-        let expanding_elem = div()
-            .class(css::TRANSITION_ALL)
-            .style(Sig(style.signal_cloned()))
+        self.style(Sig(style.signal_cloned()))
             .optional_child(Sig(expanded
                 .signal()
                 .map(move |expanded| expanded.then(|| child().into()))))
@@ -58,9 +54,7 @@ impl AnimatedExpand for DivBuilder {
                         move || set_style_size(&style, limit, &final_bounds)
                     })
                 }
-            });
-
-        self.child(expanding_elem)
+            })
     }
 }
 
