@@ -365,14 +365,14 @@ fn condition_node(
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            condition_header("condition", is_last, run_state)
+            condition_leaf_node("condition", is_last, run_state)
         }
     } else {
-        condition_header("else", is_last, run_state)
+        condition_leaf_node("else", is_last, run_state)
     }
 }
 
-fn condition_header(
+fn condition_leaf_node(
     name: &str,
     is_last: bool,
     run_state: impl Signal<Item = RunState> + 'static,
