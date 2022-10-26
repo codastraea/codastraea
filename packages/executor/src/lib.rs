@@ -18,6 +18,7 @@ pub const CODE: &str = indoc! {r#"
             function1()
             print("false1")
         else:
+            function2()
             print("true1")
 
         if True:
