@@ -29,14 +29,12 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2,
+        Align, Colour, SetAlign, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side,
+        Size::{Size2, Size3, Size5},
     },
 };
 
-use crate::{
-    animation::AnimatedExpand, css, speech_bubble::SpeechBubble, thread_view::conditional::if_node,
-    ViewCallStates,
-};
+use crate::{animation::AnimatedExpand, css, thread_view::conditional::if_node, ViewCallStates};
 
 mod conditional;
 
@@ -141,7 +139,18 @@ where
                 .align_items(Align::Start)
                 .class(css::EXPANDABLE_NODE)
                 .animated_expand(
-                    move || div().speech_bubble().child(expanded().into()),
+                    move || {
+                        div()
+                            .class(css::SPEECH_BUBBLE_BELOW)
+                            .margin_on_side((Some(Size5), Side::Start))
+                            .margin_on_side((Some(Size3), Side::Top))
+                            .padding(Size3)
+                            .border(true)
+                            .border_colour(Colour::Secondary)
+                            .rounded_border(true)
+                            .shadow(Shadow::Medium)
+                            .child(expanded().into())
+                    },
                     is_expanded,
                 ),
         )
