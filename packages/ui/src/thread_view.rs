@@ -28,10 +28,7 @@ use silkenweb_bootstrap::{
     column,
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
-    row,
-    utility::{
-        Align, Colour, SetBorder, SetColour, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2,
-    },
+    utility::{Align, Colour, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2},
 };
 
 use crate::{
@@ -52,7 +49,7 @@ impl ThreadView {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
-        Self(function_node(fn_id, true, CallStack::new(), &view_state).into())
+        Self(function_node(fn_id, CallStack::new(), &view_state).into())
     }
 }
 
@@ -91,7 +88,6 @@ impl ThreadViewState {
 
 fn function_node(
     fn_id: FunctionId,
-    is_last: bool,
     mut call_stack: CallStack,
     view_state: &ThreadViewState,
 ) -> Element {
@@ -114,9 +110,9 @@ fn function_node(
                 .children(body_statements(body.iter(), &call_stack, &view_state))
         };
 
-        expandable_node(name, FUNCTION_STYLE, run_state, is_last, expanded, body)
+        expandable_node(name, FUNCTION_STYLE, run_state, expanded, body)
     } else {
-        leaf_node(name, FUNCTION_STYLE, run_state, is_last)
+        leaf_node(name, FUNCTION_STYLE, run_state)
     }
 }
 
@@ -124,7 +120,6 @@ fn expandable_node<Elem>(
     type_name: &str,
     style: ButtonStyle,
     run_state: impl Signal<Item = RunState> + 'static,
-    is_last: bool,
     is_expanded: Mutable<bool>,
     mut expanded: impl FnMut() -> Elem + 'static,
 ) -> Element
@@ -136,7 +131,6 @@ where
             .shadow(Shadow::Medium)
             .dropdown(item_dropdown(type_name, style, run_state))
             .button(zoom_button(&is_expanded, style)),
-        is_last,
     )
     .child(
         column()
@@ -154,7 +148,6 @@ fn leaf_node(
     name: &str,
     style: ButtonStyle,
     run_state: impl Signal<Item = RunState> + 'static,
-    is_last: bool,
 ) -> Element {
     item_dropdown(name, style, run_state)
         .shadow(Shadow::Medium)
@@ -162,7 +155,7 @@ fn leaf_node(
 }
 
 // TODO Inline this
-fn node_column(header: impl Into<Element>, is_last: bool) -> DivBuilder {
+fn node_column(header: impl Into<Element>) -> DivBuilder {
     column().align_items(Align::Start).child(header.into())
 }
 
@@ -220,7 +213,6 @@ fn zoom_button(
 fn call<'a>(
     name: FunctionId,
     args: &'a [Expression<FunctionId>],
-    is_last: bool,
     call_stack: CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
@@ -232,50 +224,39 @@ fn call<'a>(
             move |(arg_index, arg)| {
                 // TODO: Push and pop call stack for efficiency
                 call_stack.push(StackFrame::Argument(arg_index));
-                expression(arg, false, &call_stack, view_state)
+                expression(arg, &call_stack, view_state)
             }
         })
-        .chain(iter::once(function_node(
-            name, is_last, call_stack, view_state,
-        )))
+        .chain(iter::once(function_node(name, call_stack, view_state)))
 }
 
 fn expression(
     expr: &Expression<FunctionId>,
-    is_last: bool,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
         Expression::Call { name, args } => {
-            call(*name, args, is_last, call_stack.clone(), view_state).collect()
+            call(*name, args, call_stack.clone(), view_state).collect()
         }
     }
 }
 
 fn body_statements<'a>(
-    body: impl Iterator<Item = &'a Statement<FunctionId>>,
+    body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     call_stack: &'a CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
-    let body: Vec<_> = body
+    body.filter(|stmt| statement_is_expandable(stmt))
         .enumerate()
-        .filter(|(_index, stmt)| statement_is_expandable(stmt))
-        .collect();
-    assert!(!body.is_empty());
-    let last_index = body.len() - 1;
-
-    body.into_iter()
-        .enumerate()
-        .flat_map(move |(index, (stmt_index, statement))| {
-            let is_last = index == last_index;
+        .flat_map(move |(stmt_index, statement)| {
             clone!(mut call_stack);
             call_stack.push(StackFrame::Statement(stmt_index));
 
             match statement {
                 Statement::Pass => Vec::new(),
-                Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
+                Statement::Expression(expr) => expression(expr, &call_stack, view_state),
                 Statement::If {
                     condition,
                     then_block,
@@ -284,7 +265,6 @@ fn body_statements<'a>(
                     condition.clone(),
                     then_block.clone(),
                     else_block.clone(),
-                    is_last,
                     &call_stack,
                     view_state,
                 )],
