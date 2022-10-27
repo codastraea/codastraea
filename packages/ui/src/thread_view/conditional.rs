@@ -13,7 +13,7 @@ use silkenweb_bootstrap::{
     column,
     utility::{
         Align, Colour, SetFlex, SetGap,
-        Size::{Size2, Size4},
+        Size::{Size2, Size4}, SetAlign,
     },
 };
 
@@ -73,7 +73,6 @@ fn condition_node(
                 expanded,
                 move || {
                     column()
-                        .align_items(Align::Stretch)
                         .gap(Size2)
                         .children(expression(&condition, &call_stack, &view_state))
                 },
@@ -106,7 +105,7 @@ fn branch_body(
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
     let body_elem = column()
-        .align_items(Align::Stretch)
+        .align_self(Align::Stretch)
         .gap(Size2)
         .child(condition);
 

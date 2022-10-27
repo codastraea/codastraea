@@ -28,7 +28,9 @@ use silkenweb_bootstrap::{
     column,
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
-    utility::{Align, Colour, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2, SetAlign},
+    utility::{
+        Align, Colour, SetAlign, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2,
+    },
 };
 
 use crate::{
@@ -105,7 +107,6 @@ fn function_node(
         clone!(body, call_stack, view_state);
         let body = move || {
             column()
-                .align_items(Align::Stretch)
                 .gap(Size2)
                 .children(body_statements(body.iter(), &call_stack, &view_state))
         };
@@ -127,6 +128,7 @@ where
     Elem: Into<Element>,
 {
     column()
+        .align_self(Align::Stretch)
         .align_items(Align::Start)
         .child(
             button_group(type_name)
