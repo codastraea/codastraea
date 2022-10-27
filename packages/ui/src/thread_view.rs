@@ -11,7 +11,7 @@ use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
     clone,
     elements::{
-        html::{a, div, ABuilder, DivBuilder},
+        html::{a, div, ABuilder},
         ElementEvents,
     },
     node::{
@@ -126,22 +126,24 @@ fn expandable_node<Elem>(
 where
     Elem: Into<Element>,
 {
-    node_column(
-        button_group(type_name)
-            .shadow(Shadow::Medium)
-            .dropdown(item_dropdown(type_name, style, run_state))
-            .button(zoom_button(&is_expanded, style)),
-    )
-    .child(
-        column()
-            .align_items(Align::Start)
-            .class(css::EXPANDABLE_NODE)
-            .animated_expand(
-                move || div().speech_bubble().child(expanded().into()),
-                is_expanded,
-            ),
-    )
-    .into()
+    column()
+        .align_items(Align::Start)
+        .child(
+            button_group(type_name)
+                .shadow(Shadow::Medium)
+                .dropdown(item_dropdown(type_name, style, run_state))
+                .button(zoom_button(&is_expanded, style)),
+        )
+        .child(
+            column()
+                .align_items(Align::Start)
+                .class(css::EXPANDABLE_NODE)
+                .animated_expand(
+                    move || div().speech_bubble().child(expanded().into()),
+                    is_expanded,
+                ),
+        )
+        .into()
 }
 
 fn leaf_node(
@@ -152,11 +154,6 @@ fn leaf_node(
     item_dropdown(name, style, run_state)
         .shadow(Shadow::Medium)
         .into()
-}
-
-// TODO Inline this
-fn node_column(header: impl Into<Element>) -> DivBuilder {
-    column().align_items(Align::Start).child(header.into())
 }
 
 fn item_dropdown(
