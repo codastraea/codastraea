@@ -28,7 +28,7 @@ use silkenweb_bootstrap::{
     column,
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
-    utility::{Align, Colour, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2},
+    utility::{Align, Colour, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2, SetAlign},
 };
 
 use crate::{
@@ -152,6 +152,7 @@ fn leaf_node(
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     item_dropdown(name, style, run_state)
+        .align_self(Align::Start)
         .shadow(Shadow::Medium)
         .into()
 }
