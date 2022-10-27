@@ -10,8 +10,11 @@ use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
     button::ButtonStyle,
-    column, row,
-    utility::{Align, Colour, SetFlex, SetGap, Size::Size3},
+    column,
+    utility::{
+        Align, Colour, SetFlex, SetGap,
+        Size::{Size2, Size4},
+    },
 };
 
 use super::{leaf_node, ThreadViewState};
@@ -41,7 +44,7 @@ pub(super) fn if_node(
         move || {
             column()
                 .align_items(Align::Start)
-                .gap(Size3)
+                .gap(Size4)
                 .child(branch_body(
                     Some(&condition),
                     &then_block,
@@ -79,12 +82,10 @@ fn condition_node(
                 is_last,
                 expanded,
                 move || {
-                    row().align_items(Align::Stretch).children(expression(
-                        &condition,
-                        true,
-                        &call_stack,
-                        &view_state,
-                    ))
+                    column()
+                        .align_items(Align::Stretch)
+                        .gap(Size2)
+                        .children(expression(&condition, true, &call_stack, &view_state))
                 },
             )
         } else {
@@ -124,7 +125,10 @@ fn branch_body(
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-    let body_elem = row().align_items(Align::Stretch).child(condition);
+    let body_elem = column()
+        .align_items(Align::Stretch)
+        .gap(Size2)
+        .child(condition);
 
     if is_expandable {
         body_elem.children(body_statements(body.iter(), &call_stack, view_state))

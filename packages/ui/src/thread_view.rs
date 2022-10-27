@@ -30,8 +30,7 @@ use silkenweb_bootstrap::{
     icon::{icon, Icon, IconType},
     row,
     utility::{
-        Align, Colour, SetBorder, SetColour, SetFlex, SetSpacing, Shadow, Side,
-        Size::{self},
+        Align, Colour, SetBorder, SetColour, SetFlex, SetGap, SetSpacing, Shadow, Side, Size::Size2,
     },
 };
 
@@ -109,11 +108,10 @@ fn function_node(
         let expanded = view_state.expanded(&call_stack);
         clone!(body, call_stack, view_state);
         let body = move || {
-            row().align_items(Align::Stretch).children(body_statements(
-                body.iter(),
-                &call_stack,
-                &view_state,
-            ))
+            column()
+                .align_items(Align::Stretch)
+                .gap(Size2)
+                .children(body_statements(body.iter(), &call_stack, &view_state))
         };
 
         expandable_node(name, FUNCTION_STYLE, run_state, is_last, expanded, body)
@@ -141,7 +139,7 @@ where
         is_last,
     )
     .child(
-        row()
+        column()
             .align_items(Align::Start)
             .class(css::EXPANDABLE_NODE)
             .animated_expand(
@@ -158,25 +156,14 @@ fn leaf_node(
     run_state: impl Signal<Item = RunState> + 'static,
     is_last: bool,
 ) -> Element {
-    node_column(
-        item_dropdown(name, style, run_state).shadow(Shadow::Medium),
-        is_last,
-    )
-    .into()
+    item_dropdown(name, style, run_state)
+        .shadow(Shadow::Medium)
+        .into()
 }
 
+// TODO Inline this
 fn node_column(header: impl Into<Element>, is_last: bool) -> DivBuilder {
-    let main = row().align_items(Align::Center).child(header.into());
-
-    column().align_items(Align::Stretch).child(if is_last {
-        main
-    } else {
-        let horizontal_line = div().class(css::HORIZONTAL_LINE);
-        let arrow_head = div()
-            .class(css::ARROW_HEAD_RIGHT)
-            .background_colour(Colour::Secondary);
-        main.child(horizontal_line).child(arrow_head)
-    })
+    column().align_items(Align::Start).child(header.into())
 }
 
 fn item_dropdown(
@@ -194,7 +181,7 @@ fn item_dropdown(
             RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
-        .margin_on_side((Some(Size::Size2), Side::End))
+        .margin_on_side((Some(Size2), Side::End))
     });
 
     dropdown(
