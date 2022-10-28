@@ -12,8 +12,8 @@ use silkenweb_bootstrap::{
     button::ButtonStyle,
     column,
     utility::{
-        Align, Colour, SetFlex, SetGap,
-        Size::{Size2, Size4}, SetAlign,
+        Align, Colour, SetAlign, SetFlex, SetGap,
+        Size::{Size2, Size4},
     },
 };
 
