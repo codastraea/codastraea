@@ -42,7 +42,6 @@ mod conditional;
 pub struct ThreadView(Node);
 
 impl ThreadView {
-    // TODO: Return Result<Self, LinkError>
     pub fn new(
         fn_id: FunctionId,
         library: &Rc<Library>,

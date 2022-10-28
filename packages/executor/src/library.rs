@@ -56,7 +56,6 @@ impl Library {
     ///
     /// If `id` was not found.
     pub fn lookup(&self, id: FunctionId) -> &LinkedFunction {
-        // TODO: Return LinkError if not found
         &self.lookup_map[id.0]
     }
 
