@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
@@ -83,7 +83,7 @@ impl Library {
         }
     }
 
-    fn symbol_table(module: &Module) -> std::collections::HashMap<String, FunctionId> {
+    fn symbol_table(module: &Module) -> HashMap<String, FunctionId> {
         let mut id_map = IdMap::new();
 
         for function in module.functions() {
