@@ -7,10 +7,7 @@ use serpent_automation_executor::{
     run::{CallStack, RunState, ThreadCallStates},
 };
 use serpent_automation_frontend::ReceiveCallStates;
-use silkenweb::{
-    node::{element::ElementBuilder, Node},
-    prelude::ParentBuilder,
-};
+use silkenweb::{node::Node, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
     row,
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
@@ -28,7 +25,6 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
 
     row()
         .margin(Some(Size3))
-        .class(css::FLOW_DIAGRAMS_CONTAINER)
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .child(ThreadView::new(main_id, library, view_call_states))

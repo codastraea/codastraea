@@ -48,7 +48,12 @@ impl ThreadView {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
-        Self(function_node(fn_id, CallStack::new(), &view_state).into())
+        Self(
+            div()
+                .class(css::THREAD_VIEW)
+                .child(function_node(fn_id, CallStack::new(), &view_state))
+                .into(),
+        )
     }
 }
 
@@ -136,7 +141,6 @@ where
         .child(
             column()
                 .align_items(Align::Start)
-                .class(css::EXPANDABLE_NODE)
                 .animated_expand(
                     move || {
                         div()
