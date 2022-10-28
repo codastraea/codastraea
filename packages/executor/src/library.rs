@@ -78,7 +78,8 @@ impl Library {
             Expression::Call {
                 name: main_id,
                 args: Vec::new(),
-            }
+                span: None
+        }
             .run(self, call_states);
         }
     }

@@ -249,7 +249,7 @@ fn expression(
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
-        Expression::Call { name, args } => {
+        Expression::Call { name, args, .. } => {
             call(*name, args, call_stack.clone(), view_state).collect()
         }
     }

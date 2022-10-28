@@ -361,6 +361,7 @@ pub enum Expression<FnId> {
         name: String,
     },
     Call {
+        span: Option<SrcSpan>,
         name: FnId,
         args: Vec<Expression<FnId>>,
     },
@@ -370,7 +371,7 @@ impl Expression<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) -> Value {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
-            Expression::Call { name, args } => {
+            Expression::Call { name, args, .. } => {
                 let args: Vec<_> = args
                     .iter()
                     .enumerate()
@@ -431,6 +432,7 @@ impl Expression<String> {
             Self::Call {
                 name: name.fragment().to_string(),
                 args,
+                span: Some(SrcSpan::from_span(&name)),
             },
         ))
     }
@@ -446,9 +448,10 @@ impl Expression<String> {
         match self {
             Self::Literal(literal) => Expression::Literal(literal.clone()),
             Self::Variable { name } => Expression::Variable { name: name.clone() },
-            Self::Call { name, args } => Expression::Call {
+            Self::Call { name, args, span } => Expression::Call {
                 name: *id_map.get(name).unwrap(),
                 args: args.iter().map(|arg| arg.translate_ids(id_map)).collect(),
+                span: *span,
             },
         }
     }
@@ -456,7 +459,7 @@ impl Expression<String> {
     fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
         match self {
             Expression::Literal(_) | Expression::Variable { .. } => vec![],
-            Expression::Call { name, args } => {
+            Expression::Call { name, args, .. } => {
                 let args_unresolved = args.iter().flat_map(|arg| arg.unresolved_symbols(id_map));
 
                 if id_map.contains_key(name) {
@@ -613,11 +616,28 @@ macro_rules! operators {
 
 operators!((colon, ":"));
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct SrcSpan {
+    line: usize,
+    column: usize,
+    len: usize,
+}
+
+impl SrcSpan {
+    pub fn from_span(span: &Span) -> Self {
+        Self {
+            line: span.location_line() as usize,
+            column: span.get_utf8_column(),
+            len: span.fragment().len(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use indoc::indoc;
 
-    use super::{parse, Expression, Function, Literal, Module, Statement};
+    use super::{parse, Expression, Function, Literal, Module, SrcSpan, Statement};
     use crate::syntax_tree::Body;
 
     #[test]
@@ -690,6 +710,7 @@ mod tests {
             Expression::Call {
                 name: "x".to_string(),
                 args: Vec::new(),
+                span: src_span(2, 5, 1),
             },
         );
     }
@@ -706,6 +727,7 @@ mod tests {
                 args: vec![Expression::Variable {
                     name: "y".to_string(),
                 }],
+                span: src_span(2, 5, 1),
             },
         );
     }
@@ -727,6 +749,7 @@ mod tests {
                         name: "z".to_string(),
                     },
                 ],
+                span: src_span(2, 5, 1),
             },
         );
     }
@@ -751,6 +774,7 @@ mod tests {
                         name: "z".to_string(),
                     },
                 ],
+                span: src_span(2, 5, 1),
             },
         );
     }
@@ -767,6 +791,7 @@ mod tests {
                 args: vec![Expression::Literal(Literal::String(
                     "Hello, world!".to_string(),
                 ))],
+                span: src_span(2, 5, 5),
             },
         );
     }
@@ -785,5 +810,9 @@ mod tests {
                 }],
             }
         );
+    }
+
+    fn src_span(line: usize, column: usize, len: usize) -> Option<SrcSpan> {
+        Some(SrcSpan { line, column, len })
     }
 }
