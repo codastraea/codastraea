@@ -22,7 +22,10 @@ use crate::{
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
-    match all_consuming(Module::parse)(Span::new(input)).finish() {
+    match all_consuming(Module::parse())
+        .parse(Span::new(input))
+        .finish()
+    {
         Ok((_, module)) => Ok(module),
         Err(e) => Err(ParseError(convert_error(input, e))),
     }
@@ -42,11 +45,9 @@ pub struct Module {
 }
 
 impl Module {
-    fn parse(input: Span) -> ParseResult<Self> {
-        let (input, (functions, _)) =
-            context("module", many_till(multiline_ws(Function::parse), eof))(input)?;
-
-        Ok((input, Module { functions }))
+    fn parse<'a>() -> impl Parser<'a, Self> {
+        context("module", many_till(multiline_ws(Function::parse()), eof))
+            .map(|(functions, _)| Module { functions })
     }
 
     pub fn functions(&self) -> &[Function] {
@@ -65,19 +66,15 @@ impl Function {
         &self.name
     }
 
-    fn parse(input: Span) -> ParseResult<Self> {
-        let (input, (_def, _, name, _params, _colon, body)) = context(
+    fn parse<'a>() -> impl Parser<'a, Self> {
+        context(
             "function",
-            tuple((def, space1, identifier, ws(tag("()")), colon, Body::parse)),
-        )(input)?;
-
-        Ok((
-            input,
-            Function {
-                name: name.fragment().to_string(),
-                body,
-            },
-        ))
+            tuple((def, space1, identifier, ws(tag("()")), colon, Body::parse())),
+        )
+        .map(|(_def, _, name, _params, _colon, body)| Function {
+            name: name.fragment().to_string(),
+            body,
+        })
     }
 
     pub fn translate_ids(&self, id_map: &IdMap) -> LinkedFunction {
@@ -176,15 +173,13 @@ impl<T> Body<T> {
 }
 
 impl Body<String> {
-    pub fn parse(input: Span) -> ParseResult<Self> {
+    fn parse<'a>() -> impl Parser<'a, Self> {
         // TODO: Make sure body is more indented than parent
-        map(alt((Self::parse_inline, Self::parse_block)), Self::new)(input)
+        alt((Self::parse_inline(), Self::parse_block)).map(Self::new)
     }
 
-    fn parse_inline(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, statement) = context("inline body", Statement::parse(None))(input)?;
-
-        Ok((input, vec![statement]))
+    fn parse_inline<'a>() -> impl Parser<'a, Vec<Statement<String>>> {
+        context("inline body", Statement::parse(None)).map(|statement| vec![statement])
     }
 
     fn parse_block(input: Span) -> ParseResult<Vec<Statement<String>>> {
@@ -250,7 +245,7 @@ impl Statement<String> {
         context(
             "statement",
             alt((
-                map(pass, |_| Statement::Pass),
+                pass.map(|_| Statement::Pass),
                 move |input| Self::parse_if(prefix, input),
                 map(Expression::parse, Statement::Expression),
             )),
@@ -265,12 +260,12 @@ impl Statement<String> {
                 r#if,
                 ws(Expression::parse),
                 ws(colon),
-                Body::parse,
+                Body::parse(),
                 opt(tuple((
                     discard_indent(prefix),
                     r#else,
                     ws(colon),
-                    Body::parse,
+                    Body::parse(),
                 ))),
             )),
         )(input)?;
