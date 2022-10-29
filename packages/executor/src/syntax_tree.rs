@@ -7,7 +7,7 @@ use nom::{
     combinator::{all_consuming, eof, map, opt, recognize},
     error::{context, ErrorKind},
     multi::{many0, many_till, separated_list0, separated_list1},
-    sequence::{delimited, pair, separated_pair, tuple},
+    sequence::{delimited, pair, preceded, separated_pair, tuple},
     Finish, IResult, Parser as _,
 };
 use nom_greedyerror::{convert_error, GreedyError};
@@ -69,7 +69,14 @@ impl Function {
     fn parse<'a>() -> impl Parser<'a, Self> {
         context(
             "function",
-            tuple((def, space1, identifier, ws(tag("()")), colon, Body::parse())),
+            tuple((
+                def,
+                space1,
+                identifier(),
+                ws(tag("()")),
+                colon,
+                Body::parse(),
+            )),
         )
         .map(|(_def, _, name, _params, _colon, body)| Function {
             name: name.fragment().to_string(),
@@ -175,22 +182,22 @@ impl<T> Body<T> {
 impl Body<String> {
     fn parse<'a>() -> impl Parser<'a, Self> {
         // TODO: Make sure body is more indented than parent
-        alt((Self::parse_inline(), Self::parse_block)).map(Self::new)
+        alt((Self::parse_inline(), Self::parse_block())).map(Self::new)
     }
 
     fn parse_inline<'a>() -> impl Parser<'a, Vec<Statement<String>>> {
         context("inline body", Statement::parse(None)).map(|statement| vec![statement])
     }
 
-    fn parse_block(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, _) = discard(pair(eol, blank_lines)).parse(input)?;
-        let (input, prefix) = space0(input)?;
+    fn parse_block<'a>() -> impl Parser<'a, Vec<Statement<String>>> {
+        move |input| {
+            let (input, prefix) = preceded(pair(eol(), blank_lines()), space0)
+                .map(|prefix: Span| Some(*(prefix.fragment())))
+                .parse(input)?;
 
-        // TODO: Is error reporting friendly enough?
-        separated_list1(
-            discard_indent(Some(prefix.fragment())),
-            Statement::parse(Some(prefix.fragment())),
-        )(input)
+            // TODO: Is error reporting friendly enough?
+            separated_list1(discard_indent(prefix), Statement::parse(prefix))(input)
+        }
     }
 
     fn translate_ids(&self, id_map: &IdMap) -> Body<FunctionId> {
@@ -216,17 +223,16 @@ impl Body<FunctionId> {
 
 pub type IdMap = HashMap<String, FunctionId>;
 
-fn blank_lines(input: Span) -> ParseResult<()> {
-    discard(many0(pair(space0, eol))).parse(input)
+fn blank_lines<'a>() -> impl Parser<'a, ()> {
+    discard(many0(pair(space0, eol())))
 }
 
-fn eol(input: Span) -> ParseResult<()> {
+fn eol<'a>() -> impl Parser<'a, ()> {
     discard(tuple((
         space0,
         opt(pair(tag("#"), is_not("\r\n"))),
         line_ending,
     )))
-    .parse(input)
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -247,7 +253,7 @@ impl Statement<String> {
             alt((
                 pass.map(|_| Statement::Pass),
                 move |input| Self::parse_if(prefix, input),
-                map(Expression::parse, Statement::Expression),
+                map(Expression::parse(), Statement::Expression),
             )),
         )
     }
@@ -258,7 +264,7 @@ impl Statement<String> {
             "if",
             tuple((
                 r#if,
-                ws(Expression::parse),
+                ws(Expression::parse()),
                 ws(colon),
                 Body::parse(),
                 opt(tuple((
@@ -394,54 +400,56 @@ impl Expression<FunctionId> {
 }
 
 impl Expression<String> {
-    fn parse(input: Span) -> ParseResult<Self> {
+    fn parse<'a>() -> impl Parser<'a, Self> {
         alt((
-            Self::literal,
-            Self::call,
-            Self::variable,
-            Self::parenthasized,
-        ))(input)
-    }
-
-    fn literal(input: Span) -> ParseResult<Self> {
-        map(Literal::parse, Self::Literal)(input)
-    }
-
-    fn variable(input: Span) -> ParseResult<Self> {
-        map(identifier, |name| Self::Variable {
-            name: name.fragment().to_string(),
-        })(input)
-    }
-
-    fn call(input: Span) -> ParseResult<Self> {
-        let (input, (name, args)) = context(
-            "call",
-            separated_pair(
-                identifier,
-                space0,
-                delimited(
-                    tag("("),
-                    separated_list0(tag(","), multiline_ws(Self::parse)),
-                    tag(")"),
-                ),
-            ),
-        )(input)?;
-
-        Ok((
-            input,
-            Self::Call {
-                name: name.fragment().to_string(),
-                args,
-                span: Some(SrcSpan::from_span(&name)),
-            },
+            Self::literal(),
+            Self::call(),
+            Self::variable(),
+            Self::parenthasized(),
         ))
     }
 
-    fn parenthasized(input: Span) -> ParseResult<Self> {
-        context(
-            "parenthesized",
-            delimited(tag("("), multiline_ws(Expression::parse), tag(")")),
-        )(input)
+    fn literal<'a>() -> impl Parser<'a, Self> {
+        Literal::parse().map(Self::Literal)
+    }
+
+    fn variable<'a>() -> impl Parser<'a, Self> {
+        identifier().map(|name| Self::Variable {
+            name: name.fragment().to_string(),
+        })
+    }
+
+    fn call<'a>() -> impl Parser<'a, Self> {
+        move |input| {
+            context(
+                "call",
+                separated_pair(
+                    identifier(),
+                    space0,
+                    delimited(
+                        tag("("),
+                        separated_list0(tag(","), multiline_ws(Self::parse())),
+                        tag(")"),
+                    ),
+                ),
+            )
+            .map(|(name, args)| Self::Call {
+                name: name.fragment().to_string(),
+                args,
+                span: Some(SrcSpan::from_span(&name)),
+            })
+            .parse(input)
+        }
+    }
+
+    fn parenthasized<'a>() -> impl Parser<'a, Self> {
+        move |input| {
+            context(
+                "parenthesized",
+                delimited(tag("("), multiline_ws(Expression::parse()), tag(")")),
+            )
+            .parse(input)
+        }
     }
 
     fn translate_ids(&self, id_map: &IdMap) -> Expression<FunctionId> {
@@ -505,28 +513,24 @@ impl Literal {
         }
     }
 
-    fn parse(input: Span) -> ParseResult<Self> {
+    fn parse<'a>() -> impl Parser<'a, Self> {
         // TODO: Support other literal types + full python string literals
-        context("literal", alt((Self::parse_string, Self::parse_bool)))(input)
+        context("literal", alt((Self::parse_string(), Self::parse_bool())))
     }
 
-    fn parse_string(input: Span) -> ParseResult<Self> {
-        let (input, contents) = delimited(tag("\""), is_not("\""), tag("\""))(input)?;
-
-        Ok((input, Self::String(contents.fragment().to_string())))
+    fn parse_string<'a>() -> impl Parser<'a, Self> {
+        delimited(tag("\""), is_not("\""), tag("\""))
+            .map(|contents: Span| Self::String(contents.fragment().to_string()))
     }
 
-    fn parse_bool(input: Span) -> ParseResult<Self> {
-        let (input, contents) = alt((tag("True"), tag("False")))(input)?;
-
-        Ok((
-            input,
+    fn parse_bool<'a>() -> impl Parser<'a, Self> {
+        alt((tag("True"), tag("False"))).map(|contents: Span| {
             Self::Bool(match *(contents.fragment()) {
                 "True" => true,
                 "False" => false,
                 _ => unreachable!("Unexpected bool literal value"),
-            }),
-        ))
+            })
+        })
     }
 }
 
@@ -540,20 +544,20 @@ impl ParseError {
     }
 }
 
-fn identifier(input: Span) -> ParseResult<Span> {
+fn identifier<'a>() -> impl Parser<'a, Span<'a>> {
     context(
         "identifier",
         recognize(pair(
             alt((alpha1, tag("_"))),
             many0(alt((alphanumeric1, tag("_")))),
         )),
-    )(input)
+    )
 }
 
 fn discard_indent(prefix: Option<&str>) -> impl Parser<()> {
     move |input| {
         if let Some(prefix) = prefix {
-            discard(tuple((eol, blank_lines, tag(prefix)))).parse(input)
+            discard(tuple((eol(), blank_lines(), tag(prefix)))).parse(input)
         } else {
             Ok((input, ()))
         }
