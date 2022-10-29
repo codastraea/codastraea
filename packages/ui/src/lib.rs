@@ -4,7 +4,7 @@ use futures_signals::signal::{Mutable, Signal};
 use gloo_console::log;
 use serpent_automation_executor::{
     library::Library,
-    run::{CallStack, RunState, ThreadCallStates},
+    run::{CallStack, RunState, ThreadCallStates}, CODE,
 };
 use serpent_automation_frontend::ReceiveCallStates;
 use silkenweb::{
@@ -62,7 +62,7 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
     let main_id = library.main_id().unwrap();
 
     let codemirror_container = div();
-    let editor = codemirror_new("print(\"Hello, world!\")\nprint(\"Hello, again!\"\n");
+    let editor = codemirror_new(CODE);
 
     let pos = editor.state().doc().line(2).from();
     set_selection(&editor, pos + 2, pos + 4);
