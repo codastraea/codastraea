@@ -32,8 +32,8 @@ extern "C" {
     #[wasm_bindgen]
     fn codemirror_new(doc: &str) -> Editor;
 
-    #[wasm_bindgen]
-    fn codemirror_dom(editor: &Editor) -> web_sys::Element;
+    #[wasm_bindgen(method, getter)]
+    fn dom(this: &Editor) -> web_sys::HtmlElement;
 }
 
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
@@ -45,7 +45,7 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
     codemirror_container
         .handle()
         .dom_element()
-        .append_child(&codemirror_dom(&editor))
+        .append_child(&editor.dom())
         .unwrap();
 
     row()

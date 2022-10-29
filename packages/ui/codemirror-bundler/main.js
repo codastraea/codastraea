@@ -13,7 +13,3 @@ export function codemirror_new(doc) {
     doc,
   });
 }
-
-export function codemirror_dom(editor) {
-  return editor.dom;
-}
