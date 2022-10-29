@@ -46,8 +46,11 @@ pub struct Module {
 
 impl Module {
     fn parse<'a>() -> impl Parser<'a, Self> {
-        context("module", many_till(multiline_ws(Function::parse()), eof))
-            .map(|(functions, _)| Module { functions })
+        context(
+            "module",
+            many_till(multiline_ws(Function::parse(None)), eof),
+        )
+        .map(|(functions, _)| Module { functions })
     }
 
     pub fn functions(&self) -> &[Function] {
@@ -66,7 +69,7 @@ impl Function {
         &self.name
     }
 
-    fn parse<'a>() -> impl Parser<'a, Self> {
+    fn parse(current_indent: Option<&str>) -> impl Parser<Self> {
         context(
             "function",
             tuple((
@@ -75,7 +78,7 @@ impl Function {
                 identifier(),
                 ws(tag("()")),
                 colon,
-                Body::parse(),
+                Body::parse(current_indent),
             )),
         )
         .map(|(_def, _, name, _params, _colon, body)| Function {
@@ -180,23 +183,25 @@ impl<T> Body<T> {
 }
 
 impl Body<String> {
-    fn parse<'a>() -> impl Parser<'a, Self> {
-        // TODO: Make sure body is more indented than parent
-        alt((Self::parse_inline(), Self::parse_block())).map(Self::new)
+    fn parse(current_indent: Option<&str>) -> impl Parser<Self> {
+        alt((Self::parse_inline(), Self::parse_block(current_indent))).map(Self::new)
     }
 
     fn parse_inline<'a>() -> impl Parser<'a, Vec<Statement<String>>> {
         context("inline body", Statement::parse(None)).map(|statement| vec![statement])
     }
 
-    fn parse_block<'a>() -> impl Parser<'a, Vec<Statement<String>>> {
+    fn parse_block(current_indent: Option<&str>) -> impl Parser<Vec<Statement<String>>> {
         move |input| {
-            let (input, prefix) = preceded(pair(eol(), blank_lines()), space0)
-                .map(|prefix: Span| Some(*(prefix.fragment())))
-                .parse(input)?;
+            let (input, prefix) = preceded(
+                pair(eol(), blank_lines()),
+                recognize(pair(discard_indent(current_indent), space1)),
+            )
+            .map(|prefix: Span| Some(*(prefix.fragment())))
+            .parse(input)?;
 
             // TODO: Is error reporting friendly enough?
-            separated_list1(discard_indent(prefix), Statement::parse(prefix))(input)
+            separated_list1(discard_newline_indent(prefix), Statement::parse(prefix))(input)
         }
     }
 
@@ -258,7 +263,7 @@ impl Statement<String> {
         )
     }
 
-    fn parse_if<'a>(prefix: Option<&'a str>, input: Span<'a>) -> ParseResult<'a, Self> {
+    fn parse_if<'a>(current_indent: Option<&'a str>, input: Span<'a>) -> ParseResult<'a, Self> {
         // TODO: elif
         let (input, (_if, condition, _colon, then_block, else_clause)) = context(
             "if",
@@ -266,12 +271,12 @@ impl Statement<String> {
                 r#if,
                 ws(Expression::parse()),
                 ws(colon),
-                Body::parse(),
+                Body::parse(current_indent),
                 opt(tuple((
-                    discard_indent(prefix),
+                    discard_newline_indent(current_indent),
                     r#else,
                     ws(colon),
-                    Body::parse(),
+                    Body::parse(current_indent),
                 ))),
             )),
         )(input)?;
@@ -554,10 +559,20 @@ fn identifier<'a>() -> impl Parser<'a, Span<'a>> {
     )
 }
 
-fn discard_indent(prefix: Option<&str>) -> impl Parser<()> {
+fn discard_newline_indent(prefix: Option<&str>) -> impl Parser<()> {
     move |input| {
         if let Some(prefix) = prefix {
             discard(tuple((eol(), blank_lines(), tag(prefix)))).parse(input)
+        } else {
+            Ok((input, ()))
+        }
+    }
+}
+
+fn discard_indent(prefix: Option<&str>) -> impl Parser<()> {
+    move |input| {
+        if let Some(prefix) = prefix {
+            discard(tag(prefix)).parse(input)
         } else {
             Ok((input, ()))
         }
