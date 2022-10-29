@@ -7,7 +7,6 @@ export function codemirror_new(doc) {
     extensions: [
       basicSetup,
       EditorState.readOnly.of(true),
-      EditorView.editable.of(false),
       python()
     ],
     doc,
