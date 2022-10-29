@@ -7,17 +7,28 @@ use serpent_automation_executor::{
     run::{CallStack, RunState, ThreadCallStates},
 };
 use serpent_automation_frontend::ReceiveCallStates;
-use silkenweb::{node::Node, prelude::ParentBuilder};
+use silkenweb::{
+    elements::html::div,
+    node::{element::ElementBuilder, Node},
+    prelude::ParentBuilder,
+};
 use silkenweb_bootstrap::{
     row,
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
 };
 use thread_view::ThreadView;
+use wasm_bindgen::{prelude::wasm_bindgen};
 
 mod animation;
 mod thread_view;
 mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
+}
+
+#[wasm_bindgen(raw_module = "/codemirror.esm.js")]
+extern "C" {
+    #[wasm_bindgen]
+    fn codemirror_new(parent: &web_sys::HtmlDivElement);
 }
 
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
@@ -28,6 +39,9 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .child(ThreadView::new(main_id, library, view_call_states))
+        .child(div().effect(move |elem| {
+            codemirror_new(elem);
+        }))
 }
 
 #[derive(Clone, Default)]
