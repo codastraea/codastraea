@@ -1,5 +1,5 @@
 import { EditorView, basicSetup } from "codemirror"
-import { EditorState } from "@codemirror/state"
+import { EditorState, EditorSelection } from "@codemirror/state"
 import { python } from "@codemirror/lang-python"
 
 export function codemirror_new(doc) {
@@ -10,5 +10,12 @@ export function codemirror_new(doc) {
       python()
     ],
     doc,
+  });
+}
+
+export function set_selection(view, from, to) {
+  view.dispatch({
+    selection: EditorSelection.create([EditorSelection.range(from, to)]),
+    scrollIntoView: true,
   });
 }
