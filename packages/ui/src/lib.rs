@@ -17,7 +17,7 @@ use silkenweb_bootstrap::{
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
 };
 use thread_view::ThreadView;
-use wasm_bindgen::{prelude::wasm_bindgen};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 mod animation;
 mod thread_view;
@@ -27,21 +27,33 @@ mod css {
 
 #[wasm_bindgen(raw_module = "/codemirror.esm.js")]
 extern "C" {
+    type Editor;
+
     #[wasm_bindgen]
-    fn codemirror_new(parent: &web_sys::HtmlDivElement);
+    fn codemirror_new(doc: &str) -> Editor;
+
+    #[wasm_bindgen]
+    fn codemirror_dom(editor: &Editor) -> web_sys::Element;
 }
 
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
     let main_id = library.main_id().unwrap();
+
+    let codemirror_container = div();
+    let editor = codemirror_new(r#"print("Hello, world!")"#);
+
+    codemirror_container
+        .handle()
+        .dom_element()
+        .append_child(&codemirror_dom(&editor))
+        .unwrap();
 
     row()
         .margin(Some(Size3))
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
         .child(ThreadView::new(main_id, library, view_call_states))
-        .child(div().effect(move |elem| {
-            codemirror_new(elem);
-        }))
+        .child(codemirror_container)
 }
 
 #[derive(Clone, Default)]
