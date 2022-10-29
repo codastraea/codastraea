@@ -8,7 +8,7 @@ use nom::{
     error::{context, ErrorKind},
     multi::{many0, many_till, separated_list0, separated_list1},
     sequence::{delimited, pair, separated_pair, tuple},
-    Finish, IResult,
+    Finish, IResult, Parser as _,
 };
 use nom_greedyerror::{convert_error, GreedyError};
 use nom_locate::LocatedSpan;
@@ -31,6 +31,10 @@ pub fn parse(input: &str) -> Result<Module, ParseError> {
 type Span<'a> = LocatedSpan<&'a str>;
 
 type ParseResult<'a, T> = IResult<Span<'a>, T, GreedyError<Span<'a>, ErrorKind>>;
+
+trait Parser<'a, O>: nom::Parser<Span<'a>, O, GreedyError<Span<'a>, ErrorKind>> {}
+
+impl<'a, O, P: nom::Parser<Span<'a>, O, GreedyError<Span<'a>, ErrorKind>>> Parser<'a, O> for P {}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
@@ -184,7 +188,7 @@ impl Body<String> {
     }
 
     fn parse_block(input: Span) -> ParseResult<Vec<Statement<String>>> {
-        let (input, _) = discard(pair(eol, blank_lines))(input)?;
+        let (input, _) = discard(pair(eol, blank_lines)).parse(input)?;
         let (input, prefix) = space0(input)?;
 
         // TODO: Is error reporting friendly enough?
@@ -218,7 +222,7 @@ impl Body<FunctionId> {
 pub type IdMap = HashMap<String, FunctionId>;
 
 fn blank_lines(input: Span) -> ParseResult<()> {
-    discard(many0(pair(space0, eol)))(input)
+    discard(many0(pair(space0, eol))).parse(input)
 }
 
 fn eol(input: Span) -> ParseResult<()> {
@@ -226,7 +230,8 @@ fn eol(input: Span) -> ParseResult<()> {
         space0,
         opt(pair(tag("#"), is_not("\r\n"))),
         line_ending,
-    )))(input)
+    )))
+    .parse(input)
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -241,7 +246,7 @@ pub enum Statement<FnId> {
 }
 
 impl Statement<String> {
-    fn parse<'a>(prefix: Option<&'a str>) -> impl FnMut(Span<'a>) -> ParseResult<'a, Self> {
+    fn parse(prefix: Option<&str>) -> impl Parser<Self> {
         context(
             "statement",
             alt((
@@ -550,33 +555,33 @@ fn identifier(input: Span) -> ParseResult<Span> {
     )(input)
 }
 
-fn discard_indent<'a>(prefix: Option<&'a str>) -> impl FnMut(Span<'a>) -> ParseResult<'a, ()> {
+fn discard_indent(prefix: Option<&str>) -> impl Parser<()> {
     move |input| {
         if let Some(prefix) = prefix {
-            discard(tuple((eol, blank_lines, tag(prefix))))(input)
+            discard(tuple((eol, blank_lines, tag(prefix)))).parse(input)
         } else {
             Ok((input, ()))
         }
     }
 }
 
-fn ws<'a, F, O>(inner: F) -> impl FnMut(Span<'a>) -> ParseResult<'a, O>
+fn ws<'a, F, O>(inner: F) -> impl Parser<'a, O>
 where
-    F: 'a + FnMut(Span<'a>) -> ParseResult<'a, O>,
+    F: Parser<'a, O>,
 {
     delimited(space0, inner, space0)
 }
 
-fn multiline_ws<'a, F, O>(inner: F) -> impl FnMut(Span<'a>) -> ParseResult<'a, O>
+fn multiline_ws<'a, F, O>(inner: F) -> impl Parser<'a, O>
 where
-    F: 'a + FnMut(Span<'a>) -> ParseResult<'a, O>,
+    F: Parser<'a, O>,
 {
     delimited(multispace0, inner, multispace0)
 }
 
-fn discard<'a, F, O>(inner: F) -> impl FnMut(Span<'a>) -> ParseResult<'a, ()>
+fn discard<'a, F, O>(inner: F) -> impl Parser<'a, ()>
 where
-    F: 'a + FnMut(Span<'a>) -> ParseResult<'a, O>,
+    F: Parser<'a, O>,
 {
     map(inner, |_| ())
 }
@@ -592,12 +597,12 @@ macro_rules! keywords {
 macro_rules! keyword {
     ($kw:ident) => {
         fn $kw(input: Span) -> ParseResult<()> {
-            discard(tag(stringify!($kw)))(input)
+            discard(tag(stringify!($kw))).parse(input)
         }
     };
     ($kw:ident($kw_text:literal)) => {
         fn $kw(input: Span) -> ParseResult<()> {
-            discard(tag($kw_text))(input)
+            discard(tag($kw_text)).parse(input)
         }
     };
 }
@@ -608,7 +613,7 @@ macro_rules! operators {
     ($(($name:ident, $op:expr)),*) => {
         $(
             fn $name(input: Span) -> ParseResult<()> {
-                ws(discard(tag($op)))(input)
+                ws(discard(tag($op))).parse(input)
             }
         )*
     }
