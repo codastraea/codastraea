@@ -33,6 +33,7 @@ impl Splitter for DivBuilder {
                 })
                 // TODO: These 2 events need to be on the document, but removed when the split bar
                 // is removed.
+                // TODO: Also "touchend" and "touchcancel"
                 .on_mouseup({
                     clone!(is_left_mouse_down);
                     move |event, _| {
@@ -41,6 +42,7 @@ impl Splitter for DivBuilder {
                         }
                     }
                 })
+                // TODO: Also "touchmove"
                 .on_mousemove(move |event, _| {
                     if is_left_mouse_down.get() {
                         style.set(format!("width: {}px", event.client_x()))
