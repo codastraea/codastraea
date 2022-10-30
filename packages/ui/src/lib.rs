@@ -64,7 +64,7 @@ extern "C" {
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
     let main_id = library.main_id().unwrap();
 
-    let codemirror_container = div();
+    let codemirror_container = div().overflow(Overflow::Auto);
     let editor = codemirror_new(CODE);
 
     let pos = editor.state().doc().line(2).from();
@@ -79,9 +79,10 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
     row()
         .margin(Some(Size3))
         .align_items(Align::Start)
-        .overflow(Overflow::Auto)
         .horizontal_splitter(
-            div().child(ThreadView::new(main_id, library, view_call_states)),
+            div()
+                .child(ThreadView::new(main_id, library, view_call_states))
+                .overflow(Overflow::Auto),
             div().class(css::HORIZONTAL_SPLITTER_BAR),
         )
         .child(codemirror_container)
