@@ -41,3 +41,10 @@
     border-bottom-color: var(--bs-white);
     top: calc(-2 * var(--arrow-size) + 1px);
 }
+
+.horizontal_splitter_bar {
+    background-color: var(--bs-secondary);
+    width: 4px;
+    align-self: stretch;
+    cursor: col-resize;
+}

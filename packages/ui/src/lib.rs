@@ -4,7 +4,8 @@ use futures_signals::signal::{Mutable, Signal};
 use gloo_console::log;
 use serpent_automation_executor::{
     library::Library,
-    run::{CallStack, RunState, ThreadCallStates}, CODE,
+    run::{CallStack, RunState, ThreadCallStates},
+    CODE,
 };
 use serpent_automation_frontend::ReceiveCallStates;
 use silkenweb::{
@@ -16,6 +17,7 @@ use silkenweb_bootstrap::{
     row,
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
 };
+use splitter::Splitter;
 use thread_view::ThreadView;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -78,7 +80,10 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
         .margin(Some(Size3))
         .align_items(Align::Start)
         .overflow(Overflow::Auto)
-        .child(ThreadView::new(main_id, library, view_call_states))
+        .horizontal_splitter(
+            div().child(ThreadView::new(main_id, library, view_call_states)),
+            div().class(css::HORIZONTAL_SPLITTER_BAR),
+        )
         .child(codemirror_container)
 }
 
