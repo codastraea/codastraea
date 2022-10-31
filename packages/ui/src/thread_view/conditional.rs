@@ -9,11 +9,10 @@ use serpent_automation_executor::{
 use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
-    button::ButtonStyle,
     column,
     utility::{
         Align, Colour, SetAlign, SetFlex, SetGap,
-        Size::{Size2, Size4},
+        Size::{Size1, Size4},
     },
 };
 
@@ -34,7 +33,7 @@ pub(super) fn if_node(
     clone!(call_stack, view_state);
     let has_else = !else_block.is_empty();
 
-    expandable_node("If", CONDITION_STYLE, run_state, expanded, move || {
+    expandable_node("If", CONDITION_COLOUR, run_state, expanded, move || {
         column()
             .align_items(Align::Start)
             .gap(Size4)
@@ -68,12 +67,12 @@ fn condition_node(
             clone!(condition, call_stack, view_state);
             expandable_node(
                 "condition",
-                CONDITION_STYLE,
+                CONDITION_COLOUR,
                 run_state,
                 expanded,
                 move || {
                     column()
-                        .gap(Size2)
+                        .gap(Size1)
                         .children(expression(&condition, &call_stack, &view_state))
                 },
             )
@@ -88,7 +87,7 @@ fn condition_node(
 }
 
 fn condition_leaf_node(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> Element {
-    leaf_node(name, CONDITION_STYLE, run_state)
+    leaf_node(name, CONDITION_COLOUR, run_state)
 }
 
 fn branch_body(
@@ -106,7 +105,7 @@ fn branch_body(
 
     let body_elem = column()
         .align_self(Align::Stretch)
-        .gap(Size2)
+        .gap(Size1)
         .child(condition);
 
     if is_expandable {
@@ -117,4 +116,4 @@ fn branch_body(
     .into()
 }
 
-const CONDITION_STYLE: ButtonStyle = ButtonStyle::Solid(Colour::Info);
+const CONDITION_COLOUR: Colour = Colour::Info;

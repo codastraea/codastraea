@@ -12,6 +12,15 @@ use silkenweb::{
     clone,
     elements::{
         html::{a, div, ABuilder},
+        svg::{
+            self,
+            attributes::Presentation,
+            path::{
+                Data,
+                Offset::{Abs, Rel},
+            },
+            svg,
+        },
         ElementEvents,
     },
     node::{
@@ -29,8 +38,9 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetFlex, SetGap, SetSpacing, Shadow, Side,
-        Size::{Size2, Size3, Size5},
+        Align, Colour, Position, SetAlign, SetBorder, SetFlex, SetGap, SetPosition, SetSpacing,
+        Shadow, Side,
+        Size::{Size1, Size2, Size3, Size5},
     },
 };
 
@@ -109,19 +119,19 @@ fn function_node(
         clone!(body, call_stack, view_state);
         let body = move || {
             column()
-                .gap(Size2)
+                .gap(Size1)
                 .children(body_statements(body.iter(), &call_stack, &view_state))
         };
 
-        expandable_node(name, FUNCTION_STYLE, run_state, expanded, body)
+        expandable_node(name, FUNCTION_COLOUR, run_state, expanded, body)
     } else {
-        leaf_node(name, FUNCTION_STYLE, run_state)
+        leaf_node(name, FUNCTION_COLOUR, run_state)
     }
 }
 
 fn expandable_node<Elem>(
     type_name: &str,
-    style: ButtonStyle,
+    colour: Colour,
     run_state: impl Signal<Item = RunState> + 'static,
     is_expanded: Mutable<bool>,
     mut expanded: impl FnMut() -> Elem + 'static,
@@ -129,15 +139,18 @@ fn expandable_node<Elem>(
 where
     Elem: Into<Element>,
 {
+    let style = ButtonStyle::Solid(colour);
+
     column()
         .align_self(Align::Stretch)
         .align_items(Align::Start)
+        .child(connector(Connector::Socket, colour))
         .child(
             button_group(type_name)
-                .shadow(Shadow::Medium)
                 .dropdown(item_dropdown(type_name, style, run_state))
                 .button(zoom_button(&is_expanded, style)),
         )
+        .child(connector(Connector::Plug, colour))
         .child(column().align_items(Align::Start).animated_expand(
             move || {
                 div()
@@ -156,14 +169,54 @@ where
         .into()
 }
 
+#[derive(Copy, Clone)]
+enum Connector {
+    Plug,
+    Socket,
+}
+
+fn connector(connector: Connector, colour: Colour) -> Element {
+    // TODO: Shared SVG
+    let width = 32.0;
+    let height = 6.0;
+
+    let connector_class = match connector {
+        Connector::Plug => css::THREAD_VIEW__PLUG,
+        Connector::Socket => css::THREAD_VIEW__SOCKET,
+    };
+
+    div()
+        .class(colour.text())
+        .position(Position::Relative)
+        .child(
+            svg()
+                .classes([css::THREAD_VIEW__CONNECTOR, connector_class])
+                .width(width)
+                .height(height)
+                .stroke_width(1.0)
+                .child(svg::path().d(Data::new().move_to(Abs, 0.0, 0.0).lines_to(
+                    Rel,
+                    [
+                        (height, height),
+                        (width - height * 2.0, 0.0),
+                        (height, -height),
+                        (-width, 0.0),
+                    ],
+                ))),
+        )
+        .into()
+}
+
 fn leaf_node(
     name: &str,
-    style: ButtonStyle,
+    colour: Colour,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
-    item_dropdown(name, style, run_state)
-        .align_self(Align::Start)
-        .shadow(Shadow::Medium)
+    column()
+        .align_items(Align::Start)
+        .child(connector(Connector::Socket, colour))
+        .child(item_dropdown(name, ButtonStyle::Solid(colour), run_state))
+        .child(connector(Connector::Plug, colour))
         .into()
 }
 
@@ -281,4 +334,4 @@ fn body_statements<'a>(
         })
 }
 
-const FUNCTION_STYLE: ButtonStyle = ButtonStyle::Outline(Colour::Secondary);
+const FUNCTION_COLOUR: Colour = Colour::Primary;

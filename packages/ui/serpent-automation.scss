@@ -7,6 +7,21 @@
     touch-action: manipulation;
 }
 
+.thread_view__connector {
+    position: absolute;
+    left: 16px;
+}
+
+.thread-view__socket {
+    z-index: 100;
+    fill: var(--bs-white);
+}
+
+.thread-view__plug {
+    z-index: 101;
+    fill: currentColor;
+}
+
 /// An element with an expanding/contracting animation
 .animated-expanding-node {
     width: 100%;
