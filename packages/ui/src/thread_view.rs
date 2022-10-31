@@ -1,3 +1,4 @@
+// TODO: Rename ThreadView to CallTreeView?
 use std::{cell::RefCell, collections::HashMap, iter, rc::Rc};
 
 use derive_more::Into;
