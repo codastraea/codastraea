@@ -186,6 +186,7 @@ fn connector(connector: Connector, colour: Colour) -> Element {
         Connector::Socket => css::THREAD_VIEW__SOCKET,
     };
 
+    // TODO: Figure out how to make the `plug` change colour on hover over the button.
     div()
         .class(colour.text())
         .position(Position::Relative)
