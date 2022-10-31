@@ -119,7 +119,7 @@ fn function_node(
         clone!(body, call_stack, view_state);
         let body = move || {
             column()
-                .gap(Size1)
+                .class(css::THREAD_VIEW__NODE_LIST)
                 .children(body_statements(body.iter(), &call_stack, &view_state))
         };
 

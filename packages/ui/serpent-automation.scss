@@ -7,19 +7,23 @@
     touch-action: manipulation;
 }
 
-.thread_view__connector {
+.thread_view--connector {
     position: absolute;
     left: 16px;
 }
 
-.thread-view__socket {
+.thread-view--socket {
     z-index: 100;
     fill: var(--bs-white);
 }
 
-.thread-view__plug {
+.thread-view--plug {
     z-index: 101;
     fill: currentColor;
+}
+
+.thread-view--node-list {
+    gap: 1px;
 }
 
 /// An element with an expanding/contracting animation
