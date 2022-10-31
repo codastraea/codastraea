@@ -12,12 +12,12 @@
     left: 40px;
 }
 
-.thread-view--socket {
+.thread-view--connector--socket {
     z-index: 100;
     fill: var(--bs-white);
 }
 
-.thread-view--plug {
+.thread-view--connector--plug {
     z-index: 101;
     fill: currentColor;
 }

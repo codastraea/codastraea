@@ -181,8 +181,8 @@ fn connector(connector: Connector, colour: Colour) -> Element {
     let height = 6.0;
 
     let connector_class = match connector {
-        Connector::Plug => css::THREAD_VIEW__PLUG,
-        Connector::Socket => css::THREAD_VIEW__SOCKET,
+        Connector::Plug => css::THREAD_VIEW__CONNECTOR__PLUG,
+        Connector::Socket => css::THREAD_VIEW__CONNECTOR__SOCKET,
     };
 
     div()
@@ -235,7 +235,8 @@ fn item_dropdown(
             RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
-        .margin_on_side((Some(Size2), Side::End)).class(css::THREAD_VIEW__NODE_STATUS_ICON)
+        .margin_on_side((Some(Size2), Side::End))
+        .class(css::THREAD_VIEW__NODE_STATUS_ICON)
     });
 
     dropdown(
