@@ -157,6 +157,7 @@ where
                     .class(css::SPEECH_BUBBLE_BELOW)
                     .margin_on_side((Some(Size5), Side::Start))
                     .margin_on_side((Some(Size3), Side::Top))
+                    .margin_on_side((Some(Size2), Side::Bottom))
                     .padding(Size3)
                     .border(true)
                     .border_colour(Colour::Secondary)
