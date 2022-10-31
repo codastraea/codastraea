@@ -4,12 +4,10 @@ use futures_signals::signal::Mutable;
 use silkenweb::{
     clone, document,
     elements::html::DivBuilder,
-    node::element::ElementBuilder,
     prelude::{ElementEvents, HtmlElement, ParentBuilder},
     value::Sig,
 };
-use wasm_bindgen::JsCast;
-use web_sys::{Event, MouseEvent};
+use web_sys::MouseEvent;
 
 pub trait Splitter {
     /// Adds `node` as a child, and a splitter bar that adjusts the size of
