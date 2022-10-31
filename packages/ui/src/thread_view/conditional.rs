@@ -14,10 +14,7 @@ use silkenweb::{
 };
 use silkenweb_bootstrap::{
     column,
-    utility::{
-        Align, Colour, SetAlign, SetFlex, SetGap,
-        Size::{Size1, Size4},
-    },
+    utility::{Align, Colour, SetAlign, SetFlex, SetGap, Size::Size4},
 };
 
 use super::{leaf_node, ThreadViewState};

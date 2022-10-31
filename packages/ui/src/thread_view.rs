@@ -38,9 +38,9 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, Position, SetAlign, SetBorder, SetFlex, SetGap, SetPosition, SetSpacing,
-        Shadow, Side,
-        Size::{Size1, Size2, Size3, Size5},
+        Align, Colour, Position, SetAlign, SetBorder, SetFlex, SetPosition, SetSpacing, Shadow,
+        Side,
+        Size::{Size2, Size3, Size5},
     },
 };
 
