@@ -235,7 +235,7 @@ fn item_dropdown(
             RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
-        .margin_on_side((Some(Size2), Side::End))
+        .margin_on_side((Some(Size2), Side::End)).class(css::THREAD_VIEW__NODE_STATUS_ICON)
     });
 
     dropdown(

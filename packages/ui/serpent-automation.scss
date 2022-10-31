@@ -9,7 +9,7 @@
 
 .thread_view--connector {
     position: absolute;
-    left: 16px;
+    left: 40px;
 }
 
 .thread-view--socket {
@@ -24,6 +24,12 @@
 
 .thread-view--node-list {
     gap: 2px;
+}
+
+.thread-view--node-status-icon {
+    background-color: var(--bs-white);
+    clip-path: circle(closest-side);
+    padding: 1px;
 }
 
 /// An element with an expanding/contracting animation
