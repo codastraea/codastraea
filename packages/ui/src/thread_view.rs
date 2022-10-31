@@ -1,4 +1,3 @@
-// TODO: Rename ThreadView to CallTreeView?
 use std::{cell::RefCell, collections::HashMap, iter, rc::Rc};
 
 use derive_more::Into;
@@ -177,7 +176,6 @@ enum Connector {
 }
 
 fn connector(connector: Connector, colour: Colour) -> Element {
-    // TODO: Shared SVG
     let width = 32.0;
     let height = 6.0;
 
@@ -186,7 +184,6 @@ fn connector(connector: Connector, colour: Colour) -> Element {
         Connector::Socket => css::THREAD_VIEW__SOCKET,
     };
 
-    // TODO: Figure out how to make the `plug` change colour on hover over the button.
     div()
         .class(colour.text())
         .position(Position::Relative)
