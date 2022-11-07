@@ -60,8 +60,8 @@
     position: relative;
 }
 
-.speech-bubble-below:before,
-.speech-bubble-below:after {
+.speech-bubble-below::before,
+.speech-bubble-below::after {
     border: var(--arrow-size) solid transparent;
     content: "";
     position: absolute;
@@ -70,12 +70,12 @@
     height: 0;
 }
 
-.speech-bubble-below:before {
+.speech-bubble-below::before {
     border-bottom-color: var(--bs-secondary);
     top: calc(-2 * var(--arrow-size));
 }
 
-.speech-bubble-below:after {
+.speech-bubble-below::after {
     border-bottom-color: var(--bs-white);
     top: calc(-2 * var(--arrow-size) + 1px);
 }
