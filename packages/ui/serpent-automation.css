@@ -7,19 +7,33 @@
     touch-action: manipulation;
 }
 
-.thread_view--connector {
+.thread-view--item {
+    position: relative;
+    clip-path: polygon(
+        0 0,
+        40px 0,
+        46px 6px,
+        66px 6px,
+        72px 0,
+        100% 0, 
+        100% 100%,
+        72px 100%,
+        66px calc(100% + 6px),
+        46px calc(100% + 6px),
+        40px 100%,
+        0 100%,
+        0 0
+    );
+}
+
+.thread-view--item::after {
     position: absolute;
+    content: "";
+    width: 32px;
+    height: 6px;
     left: 40px;
-}
-
-.thread-view--connector--socket {
-    z-index: 100;
-    fill: var(--bs-white);
-}
-
-.thread-view--connector--plug {
-    z-index: 101;
-    fill: currentColor;
+    bottom: -6px;
+    background-color: inherit;
 }
 
 .thread-view--node-list {

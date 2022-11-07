@@ -11,16 +11,7 @@ use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
     clone,
     elements::{
-        html::{a, div, ABuilder},
-        svg::{
-            self,
-            attributes::Presentation,
-            path::{
-                Data,
-                Offset::{Abs, Rel},
-            },
-            svg,
-        },
+        html::{a, div, ABuilder, DivBuilder},
         ElementEvents,
     },
     node::{
@@ -38,8 +29,7 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, Position, SetAlign, SetBorder, SetFlex, SetPosition, SetSpacing, Shadow,
-        Side,
+        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Shadow, Side,
         Size::{Size2, Size3, Size5},
     },
 };
@@ -144,13 +134,13 @@ where
     column()
         .align_self(Align::Stretch)
         .align_items(Align::Start)
-        .child(connector(Connector::Socket, colour))
         .child(
-            button_group(type_name)
-                .dropdown(item_dropdown(type_name, style, run_state))
-                .button(zoom_button(&is_expanded, style)),
+            item(colour).child(
+                button_group(type_name)
+                    .dropdown(item_dropdown(type_name, style, run_state))
+                    .button(zoom_button(&is_expanded, style)),
+            ),
         )
-        .child(connector(Connector::Plug, colour))
         .child(column().align_items(Align::Start).animated_expand(
             move || {
                 div()
@@ -170,41 +160,11 @@ where
         .into()
 }
 
-#[derive(Copy, Clone)]
-enum Connector {
-    Plug,
-    Socket,
-}
-
-fn connector(connector: Connector, colour: Colour) -> Element {
-    let width = 32.0;
-    let height = 6.0;
-
-    let connector_class = match connector {
-        Connector::Plug => css::THREAD_VIEW__CONNECTOR__PLUG,
-        Connector::Socket => css::THREAD_VIEW__CONNECTOR__SOCKET,
-    };
-
+fn item(colour: Colour) -> DivBuilder {
     div()
-        .class(colour.text())
-        .position(Position::Relative)
-        .child(
-            svg()
-                .classes([css::THREAD_VIEW__CONNECTOR, connector_class])
-                .width(width)
-                .height(height)
-                .stroke_width(1.0)
-                .child(svg::path().d(Data::new().move_to(Abs, 0.0, 0.0).lines_to(
-                    Rel,
-                    [
-                        (height, height),
-                        (width - height * 2.0, 0.0),
-                        (height, -height),
-                        (-width, 0.0),
-                    ],
-                ))),
-        )
-        .into()
+        .class(css::THREAD_VIEW__ITEM)
+        .background_colour(colour)
+        .rounded_border(true)
 }
 
 fn leaf_node(
@@ -214,9 +174,7 @@ fn leaf_node(
 ) -> Element {
     column()
         .align_items(Align::Start)
-        .child(connector(Connector::Socket, colour))
-        .child(item_dropdown(name, ButtonStyle::Solid(colour), run_state))
-        .child(connector(Connector::Plug, colour))
+        .child(item(colour).child(item_dropdown(name, ButtonStyle::Solid(colour), run_state)))
         .into()
 }
 
