@@ -1,9 +1,9 @@
-/// The `ThreadView` component
+/* The `ThreadView` component */
 .thread-view {
-    /// Minimum height for dropdown menus
+    /* Minimum height for dropdown menus */
     min-height: 200px;
-    /// Allow panning and zooming, but disallow double tap so there's no delay when
-    /// single clicking on controls.
+    /* Allow panning and zooming, but disallow double tap so there's no delay when
+    /* single clicking on controls. */
     touch-action: manipulation;
 }
 
@@ -32,21 +32,22 @@
     padding: 2px;
 }
 
-/// An element with an expanding/contracting animation
+/* An element with an expanding/contracting animation */
 .animated-expanding-node {
     width: 100%;
     height: 100%;
     transition: all 200ms;
 }
 
-/// A speech bubble with an arrow on top for displaying below another element
+/* A speech bubble with an arrow on top for displaying below another element */
 .speech-bubble-below {
     --arrow-size: 12px;
     --arrow-offset: 24px;
     position: relative;
 }
 
-@mixin speech-bubble-arrow-top {
+.speech-bubble-below:before,
+.speech-bubble-below:after {
     border: var(--arrow-size) solid transparent;
     content: "";
     position: absolute;
@@ -56,13 +57,11 @@
 }
 
 .speech-bubble-below:before {
-    @include speech-bubble-arrow-top;
     border-bottom-color: var(--bs-secondary);
     top: calc(-2 * var(--arrow-size));
 }
 
 .speech-bubble-below:after {
-    @include speech-bubble-arrow-top;
     border-bottom-color: var(--bs-white);
     top: calc(-2 * var(--arrow-size) + 1px);
 }

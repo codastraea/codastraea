@@ -24,7 +24,7 @@ mod animation;
 mod splitter;
 mod thread_view;
 mod css {
-    silkenweb::css_classes!(visibility: pub, path: "serpent-automation.scss");
+    silkenweb::css_classes!(visibility: pub, path: "serpent-automation.css");
 }
 
 #[wasm_bindgen(raw_module = "/codemirror.esm.js")]
