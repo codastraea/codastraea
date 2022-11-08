@@ -132,16 +132,7 @@ where
         if is_expanded {
             Colour::Secondary
         } else {
-            match colour {
-                Colour::Primary => Colour::Dark,
-                Colour::Secondary => Colour::Dark,
-                Colour::Success => Colour::Dark,
-                Colour::Danger => Colour::Dark,
-                Colour::Warning => Colour::Dark,
-                Colour::Info => Colour::Secondary,
-                Colour::Light => Colour::Secondary,
-                Colour::Dark => Colour::Secondary,
-            }
+            border_colour(colour)
         }
     });
 
@@ -180,10 +171,24 @@ where
         .into()
 }
 
+fn border_colour(colour: Colour) -> Colour {
+    match colour {
+        Colour::Primary => Colour::Dark,
+        Colour::Secondary => Colour::Dark,
+        Colour::Success => Colour::Dark,
+        Colour::Danger => Colour::Dark,
+        Colour::Warning => Colour::Dark,
+        Colour::Info => Colour::Secondary,
+        Colour::Light => Colour::Secondary,
+        Colour::Dark => Colour::Secondary,
+    }
+}
+
 fn item(colour: Colour) -> DivBuilder {
     div()
         .position(Position::Relative)
         .classes([css::THREAD_VIEW__ITEM, css::THREAD_VIEW__ITEM__CONNECTED])
+        .border_colour(border_colour(colour))
         .background_colour(colour)
         .rounded_border(true)
 }
