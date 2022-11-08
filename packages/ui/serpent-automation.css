@@ -17,7 +17,6 @@
 }
 
 .thread-view--expanded-items {
-    margin-top: -1px;
     background-color: var(--bs-white);
 }
 
