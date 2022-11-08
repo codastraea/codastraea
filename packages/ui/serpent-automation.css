@@ -5,63 +5,42 @@
     /* Allow panning and zooming, but disallow double tap so there's no delay when
     /* single clicking on controls. */
     touch-action: manipulation;
-    margin-bottom: 6px;
-    --sin_22_5: 0.38268;
+    margin-bottom: 7px;
 }
 
 .thread-view--item {
-    position: relative;
-    clip-path: polygon(0 0,
-            40px 0,
-            46px 6px,
-            66px 6px,
-            72px 0,
-            100% 0,
-            100% 100%,
-            72px 100%,
-            66px calc(100% + 6px),
-            46px calc(100% + 6px),
-            40px 100%,
-            0 100%,
-            0 0);
+    border-bottom: 1px solid;
 }
 
 .thread-view--expanded-items {
-    margin-top: 2px;
-}
-
-.thread-view--expanded-items--inset {
-    position: relative;
-    border-radius: calc(var(--bs-border-radius) - 1px);
+    top: -1px;
+    margin-bottom: -1px;
     background-color: var(--bs-white);
-    clip-path: polygon(0 0,
-            calc(39px - 1px * var(--sin_22_5)) 0,
-            calc(45px - 1px * var(--sin_22_5)) 6px,
-            calc(65px + 1px * var(--sin_22_5)) 6px,
-            calc(71px + 1px * var(--sin_22_5)) 0,
-            100% 0,
-            100% 100%,
-            calc(71px - 1px * var(--sin_22_5)) 100%,
-            calc(65px - 1px * var(--sin_22_5)) calc(100% + 6px),
-            calc(45px + 1px * var(--sin_22_5)) calc(100% + 6px),
-            calc(39px + 1px * var(--sin_22_5)) 100%,
-            0 100%,
-            0 0);
 }
 
-.thread-view--item::before,
-.thread-view--expanded-items--inset::after {
+.thread-view--item--connected::before,
+.thread-view--item--connected::after {
     position: absolute;
     content: "";
-    width: 34px;
+    width: 20px;
     height: 7px;
-    left: 39px;
     bottom: -7px;
+    z-index: 100;
     background-color: inherit;
+    border: 1px solid;
+    border-color: inherit;
+    border-top: 0;
 }
 
-.thread-view--node-list {
-    gap: 2px;
+.thread-view--item--connected::before {
+    left: 40px;
+    transform: skewX(45deg);
+}
+
+.thread-view--item--connected::after {
+    left: 47px;
+    border-left: 0;
+    transform: skewX(-45deg);
 }
 
 .thread-view--node-status-icon {

@@ -29,8 +29,9 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Side,
-        Size::{Size1, Size2, Size4},
+        Align, Colour, Position, SetAlign, SetBorder, SetColour, SetFlex, SetPosition, SetSpacing,
+        Shadow, Side,
+        Size::{Size1, Size2, Size3, Size4},
     },
 };
 
@@ -107,11 +108,8 @@ fn function_node(
     if let Some(body) = body {
         let expanded = view_state.expanded(&call_stack);
         clone!(body, call_stack, view_state);
-        let body = move || {
-            column()
-                .class(css::THREAD_VIEW__NODE_LIST)
-                .children(body_statements(body.iter(), &call_stack, &view_state))
-        };
+        let body =
+            move || column().children(body_statements(body.iter(), &call_stack, &view_state));
 
         expandable_node(name, FUNCTION_COLOUR, run_state, expanded, body)
     } else {
@@ -130,12 +128,28 @@ where
     Elem: Into<Element>,
 {
     let style = ButtonStyle::Solid(colour);
+    let border_colour = is_expanded.signal().map(move |is_expanded| {
+        if is_expanded {
+            Colour::Secondary
+        } else {
+            match colour {
+                Colour::Primary => Colour::Dark,
+                Colour::Secondary => Colour::Dark,
+                Colour::Success => Colour::Dark,
+                Colour::Danger => Colour::Dark,
+                Colour::Warning => Colour::Dark,
+                Colour::Info => Colour::Secondary,
+                Colour::Light => Colour::Secondary,
+                Colour::Dark => Colour::Secondary,
+            }
+        }
+    });
 
     column()
         .align_self(Align::Stretch)
         .align_items(Align::Start)
         .child(
-            item(colour).child(
+            item(colour).border_colour(Sig(border_colour)).child(
                 button_group(type_name)
                     .dropdown(item_dropdown(type_name, style, run_state))
                     .button(zoom_button(&is_expanded, style)),
@@ -143,15 +157,21 @@ where
         )
         .child(column().align_items(Align::Start).animated_expand(
             move || {
-                item(Colour::Secondary)
-                    .class(css::THREAD_VIEW__EXPANDED_ITEMS)
-                    .border(true)
+                div()
+                    .classes([
+                        css::THREAD_VIEW__ITEM__CONNECTED,
+                        css::THREAD_VIEW__EXPANDED_ITEMS,
+                    ])
+                    .shadow(Shadow::Medium)
+                    .position(Position::Relative)
+                    .rounded_border(true)
                     .border_colour(Colour::Secondary)
+                    .border(true)
                     .border_width(Size1)
                     .child(
                         div()
-                            .padding(Size4)
-                            .class(css::THREAD_VIEW__EXPANDED_ITEMS__INSET)
+                            .padding(Size3)
+                            .padding_on_side((Size4, Side::Start))
                             .child(expanded().into()),
                     )
             },
@@ -162,7 +182,8 @@ where
 
 fn item(colour: Colour) -> DivBuilder {
     div()
-        .class(css::THREAD_VIEW__ITEM)
+        .position(Position::Relative)
+        .classes([css::THREAD_VIEW__ITEM, css::THREAD_VIEW__ITEM__CONNECTED])
         .background_colour(colour)
         .rounded_border(true)
 }

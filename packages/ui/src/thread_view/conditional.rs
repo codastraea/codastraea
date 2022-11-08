@@ -7,21 +7,14 @@ use serpent_automation_executor::{
     syntax_tree::{Body, Expression},
 };
 use serpent_automation_frontend::{expression_is_expandable, is_expandable};
-use silkenweb::{
-    clone,
-    node::element::{Element, ElementBuilder},
-    prelude::ParentBuilder,
-};
+use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
     column,
     utility::{Align, Colour, SetAlign, SetFlex, SetGap, Size::Size4},
 };
 
 use super::{leaf_node, ThreadViewState};
-use crate::{
-    css,
-    thread_view::{body_statements, expandable_node, expression},
-};
+use crate::thread_view::{body_statements, expandable_node, expression};
 
 pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
@@ -74,11 +67,7 @@ fn condition_node(
                 CONDITION_COLOUR,
                 run_state,
                 expanded,
-                move || {
-                    column()
-                        .class(css::THREAD_VIEW__NODE_LIST)
-                        .children(expression(&condition, &call_stack, &view_state))
-                },
+                move || column().children(expression(&condition, &call_stack, &view_state)),
             )
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
@@ -107,10 +96,7 @@ fn branch_body(
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-    let body_elem = column()
-        .align_self(Align::Stretch)
-        .class(css::THREAD_VIEW__NODE_LIST)
-        .child(condition);
+    let body_elem = column().align_self(Align::Stretch).child(condition);
 
     if is_expandable {
         body_elem.children(body_statements(body.iter(), &call_stack, view_state))
