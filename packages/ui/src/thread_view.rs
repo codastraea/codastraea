@@ -29,8 +29,8 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Shadow, Side,
-        Size::{Size2, Size3, Size5},
+        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Side,
+        Size::{Size1, Size2, Size4},
     },
 };
 
@@ -143,17 +143,17 @@ where
         )
         .child(column().align_items(Align::Start).animated_expand(
             move || {
-                div()
-                    .class(css::SPEECH_BUBBLE_BELOW)
-                    .margin_on_side((Some(Size5), Side::Start))
-                    .margin_on_side((Some(Size3), Side::Top))
-                    .margin_on_side((Some(Size2), Side::Bottom))
-                    .padding(Size3)
+                item(Colour::Secondary)
+                    .class(css::THREAD_VIEW__EXPANDED_ITEMS)
                     .border(true)
                     .border_colour(Colour::Secondary)
-                    .rounded_border(true)
-                    .shadow(Shadow::Medium)
-                    .child(expanded().into())
+                    .border_width(Size1)
+                    .child(
+                        div()
+                            .padding(Size4)
+                            .class(css::THREAD_VIEW__EXPANDED_ITEMS__INSET)
+                            .child(expanded().into()),
+                    )
             },
             is_expanded,
         ))

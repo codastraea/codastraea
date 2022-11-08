@@ -5,39 +5,63 @@
     /* Allow panning and zooming, but disallow double tap so there's no delay when
     /* single clicking on controls. */
     touch-action: manipulation;
+    margin-bottom: 6px;
+    --sin_22_5: 0.38268;
 }
 
 .thread-view--item {
     position: relative;
-    clip-path: polygon(
-        0 0,
-        40px 0,
-        46px 6px,
-        66px 6px,
-        72px 0,
-        100% 0, 
-        100% 100%,
-        72px 100%,
-        66px calc(100% + 6px),
-        46px calc(100% + 6px),
-        40px 100%,
-        0 100%,
-        0 0
-    );
+    clip-path: polygon(0 0,
+            40px 0,
+            46px 6px,
+            66px 6px,
+            72px 0,
+            100% 0,
+            100% 100%,
+            72px 100%,
+            66px calc(100% + 6px),
+            46px calc(100% + 6px),
+            40px 100%,
+            0 100%,
+            0 0);
 }
 
-.thread-view--item::after {
+.thread-view--expanded-items {
+    margin-top: 2px;
+}
+
+.thread-view--expanded-items--inset {
+    position: relative;
+    border-radius: calc(var(--bs-border-radius) - 1px);
+    background-color: var(--bs-white);
+    clip-path: polygon(0 0,
+            calc(39px - 1px * var(--sin_22_5)) 0,
+            calc(45px - 1px * var(--sin_22_5)) 6px,
+            calc(65px + 1px * var(--sin_22_5)) 6px,
+            calc(71px + 1px * var(--sin_22_5)) 0,
+            100% 0,
+            100% 100%,
+            calc(71px - 1px * var(--sin_22_5)) 100%,
+            calc(65px - 1px * var(--sin_22_5)) calc(100% + 6px),
+            calc(45px + 1px * var(--sin_22_5)) calc(100% + 6px),
+            calc(39px + 1px * var(--sin_22_5)) 100%,
+            0 100%,
+            0 0);
+}
+
+.thread-view--item::before,
+.thread-view--expanded-items--inset::after {
     position: absolute;
     content: "";
-    width: 32px;
-    height: 6px;
-    left: 40px;
-    bottom: -6px;
+    width: 34px;
+    height: 7px;
+    left: 39px;
+    bottom: -7px;
     background-color: inherit;
 }
 
 .thread-view--node-list {
-    gap: 1px;
+    gap: 2px;
 }
 
 .thread-view--node-status-icon {
@@ -51,33 +75,6 @@
     width: 100%;
     height: 100%;
     transition: all 200ms;
-}
-
-/* A speech bubble with an arrow on top for displaying below another element */
-.speech-bubble-below {
-    --arrow-size: 12px;
-    --arrow-offset: 24px;
-    position: relative;
-}
-
-.speech-bubble-below::before,
-.speech-bubble-below::after {
-    border: var(--arrow-size) solid transparent;
-    content: "";
-    position: absolute;
-    left: var(--arrow-offset);
-    width: 0;
-    height: 0;
-}
-
-.speech-bubble-below::before {
-    border-bottom-color: var(--bs-secondary);
-    top: calc(-2 * var(--arrow-size));
-}
-
-.speech-bubble-below::after {
-    border-bottom-color: var(--bs-white);
-    top: calc(-2 * var(--arrow-size) + 1px);
 }
 
 .horizontal_splitter_bar {
