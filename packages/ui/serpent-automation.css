@@ -17,9 +17,13 @@
 }
 
 .thread-view--expanded-items {
-    top: -1px;
-    margin-bottom: -1px;
+    margin-top: -1px;
     background-color: var(--bs-white);
+}
+
+.thread-view--expanded-items.thread-view--item--connected::before,
+.thread-view--expanded-items.thread-view--item--connected::after {
+    margin-bottom: 1px;
 }
 
 .thread-view--item--connected::before,

@@ -31,7 +31,7 @@ use silkenweb_bootstrap::{
     utility::{
         Align, Colour, Position, SetAlign, SetBorder, SetColour, SetFlex, SetPosition, SetSpacing,
         Shadow, Side,
-        Size::{Size1, Size2, Size3, Size4},
+        Size::{Size1, Size2, Size3},
     },
 };
 
@@ -146,28 +146,28 @@ where
                     .button(zoom_button(&is_expanded, style)),
             ),
         )
-        .child(column().align_items(Align::Start).animated_expand(
-            move || {
-                div()
-                    .classes([
-                        css::THREAD_VIEW__ITEM__CONNECTED,
-                        css::THREAD_VIEW__EXPANDED_ITEMS,
-                    ])
-                    .shadow(Shadow::Medium)
-                    .position(Position::Relative)
-                    .rounded_border(true)
-                    .border_colour(Colour::Secondary)
-                    .border(true)
-                    .border_width(Size1)
-                    .child(
+        .child(
+            column()
+                .align_items(Align::Start)
+                .padding_on_side((Size3, Side::Start))
+                .position(Position::Relative)
+                .animated_expand(
+                    move || {
                         div()
-                            .padding(Size3)
-                            .padding_on_side((Size4, Side::Start))
-                            .child(expanded().into()),
-                    )
-            },
-            is_expanded,
-        ))
+                            .classes([
+                                css::THREAD_VIEW__ITEM__CONNECTED,
+                                css::THREAD_VIEW__EXPANDED_ITEMS,
+                            ])
+                            .shadow(Shadow::Medium)
+                            .rounded_border(true)
+                            .border_colour(Colour::Secondary)
+                            .border(true)
+                            .border_width(Size1)
+                            .child(div().padding(Size3).child(expanded().into()))
+                    },
+                    is_expanded,
+                ),
+        )
         .into()
 }
 
