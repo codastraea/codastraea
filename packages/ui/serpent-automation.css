@@ -6,6 +6,7 @@
     /* single clicking on controls. */
     touch-action: manipulation;
     margin-bottom: 7px;
+    --sqrt-2: 1.41421356237;
 }
 
 .thread-view--item {
@@ -27,19 +28,21 @@
     bottom: -7px;
     z-index: 100;
     background-color: inherit;
-    border: 1px solid;
+    border: 0;
+    border-style: solid;
+    border-bottom-width: 1px;
     border-color: inherit;
-    border-top: 0;
 }
 
 .thread-view--item--connected::before {
     left: 40px;
+    border-left-width: calc(1px * var(--sqrt-2));
     transform: skewX(45deg);
 }
 
 .thread-view--item--connected::after {
     left: 47px;
-    border-left: 0;
+    border-right-width: calc(1px * var(--sqrt-2));
     transform: skewX(-45deg);
 }
 
