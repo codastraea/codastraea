@@ -1,3 +1,7 @@
+:root {
+    --sqrt-2: 1.41421356237;
+}
+
 /* The `ThreadView` component */
 .thread-view {
     /* Minimum height for dropdown menus */
@@ -6,7 +10,6 @@
     /* single clicking on controls. */
     touch-action: manipulation;
     margin-bottom: 7px;
-    --sqrt-2: 1.41421356237;
 }
 
 .thread-view--item {
