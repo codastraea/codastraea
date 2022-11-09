@@ -133,14 +133,11 @@ where
         .align_self(Align::Stretch)
         .align_items(Align::Start)
         .child(
-            item(colour)
-                .class(css::THREAD_VIEW__ITEM)
-                .border_colour(border_colour(colour))
-                .child(
-                    button_group(type_name)
-                        .dropdown(item_dropdown(type_name, style, run_state))
-                        .button(zoom_button(&is_expanded, style)),
-                ),
+            item(colour).border_colour(border_colour(colour)).child(
+                button_group(type_name)
+                    .dropdown(item_dropdown(type_name, style, run_state))
+                    .button(zoom_button(&is_expanded, style)),
+            ),
         )
         .animated_expand(
             move || {
@@ -171,7 +168,7 @@ fn border_colour(colour: Colour) -> Colour {
 fn item(colour: Colour) -> DivBuilder {
     div()
         .position(Position::Relative)
-        .class(css::THREAD_VIEW__ITEM__CONNECTED)
+        .class(css::THREAD_VIEW__ITEM)
         .border_colour(border_colour(colour))
         .background_colour(colour)
         .rounded_border(true)
@@ -184,11 +181,7 @@ fn leaf_node(
 ) -> Element {
     column()
         .align_items(Align::Start)
-        .child(
-            item(colour)
-                .class(css::THREAD_VIEW__ITEM)
-                .child(item_dropdown(name, ButtonStyle::Solid(colour), run_state)),
-        )
+        .child(item(colour).child(item_dropdown(name, ButtonStyle::Solid(colour), run_state)))
         .into()
 }
 

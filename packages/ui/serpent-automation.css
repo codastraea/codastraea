@@ -16,8 +16,8 @@
     border-bottom: 1px solid;
 }
 
-.thread-view--item--connected::before,
-.thread-view--item--connected::after {
+.thread-view--item::before,
+.thread-view--item::after {
     position: absolute;
     content: "";
     width: 20px;
@@ -31,13 +31,13 @@
     border-color: inherit;
 }
 
-.thread-view--item--connected::before {
+.thread-view--item::before {
     left: 40px;
     border-left-width: calc(1px * var(--sqrt-2));
     transform: skewX(45deg);
 }
 
-.thread-view--item--connected::after {
+.thread-view--item::after {
     left: 46px;
     border-right-width: calc(1px * var(--sqrt-2));
     transform: skewX(-45deg);
