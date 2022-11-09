@@ -9,20 +9,11 @@
     /* Allow panning and zooming, but disallow double tap so there's no delay when
     /* single clicking on controls. */
     touch-action: manipulation;
-    margin-bottom: 7px;
+    margin-bottom: 6px;
 }
 
 .thread-view--item {
     border-bottom: 1px solid;
-}
-
-.thread-view--expanded-items {
-    background-color: var(--bs-white);
-}
-
-.thread-view--expanded-items.thread-view--item--connected::before,
-.thread-view--expanded-items.thread-view--item--connected::after {
-    margin-bottom: 1px;
 }
 
 .thread-view--item--connected::before,
@@ -30,8 +21,8 @@
     position: absolute;
     content: "";
     width: 20px;
-    height: 7px;
-    bottom: -7px;
+    height: 6px;
+    bottom: -6px;
     z-index: 100;
     background-color: inherit;
     border: 0;
@@ -47,7 +38,7 @@
 }
 
 .thread-view--item--connected::after {
-    left: 47px;
+    left: 46px;
     border-right-width: calc(1px * var(--sqrt-2));
     transform: skewX(-45deg);
 }

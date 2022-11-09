@@ -19,7 +19,7 @@ use silkenweb::{
         Node,
     },
     prelude::ParentBuilder,
-    value::{Sig, SignalOrValue},
+    value::Sig,
     Value,
 };
 use silkenweb_bootstrap::{
@@ -30,8 +30,8 @@ use silkenweb_bootstrap::{
     icon::{icon, Icon, IconType},
     utility::{
         Align, Colour, Position, SetAlign, SetBorder, SetColour, SetFlex, SetPosition, SetSpacing,
-        Shadow, Side,
-        Size::{Size1, Size2, Size3},
+        Side,
+        Size::{Size2, Size3},
     },
 };
 
@@ -52,7 +52,7 @@ impl ThreadView {
         Self(
             div()
                 .class(css::THREAD_VIEW)
-                .child(function_node(fn_id, true, CallStack::new(), &view_state))
+                .child(function_node(fn_id, CallStack::new(), &view_state))
                 .into(),
         )
     }
@@ -93,7 +93,6 @@ impl ThreadViewState {
 
 fn function_node(
     fn_id: FunctionId,
-    is_last: bool,
     mut call_stack: CallStack,
     view_state: &ThreadViewState,
 ) -> Element {
@@ -112,16 +111,15 @@ fn function_node(
         let body =
             move || column().children(body_statements(body.iter(), &call_stack, &view_state));
 
-        expandable_node(name, FUNCTION_COLOUR, is_last, run_state, expanded, body)
+        expandable_node(name, FUNCTION_COLOUR, run_state, expanded, body)
     } else {
-        leaf_node(name, FUNCTION_COLOUR, is_last, run_state)
+        leaf_node(name, FUNCTION_COLOUR, run_state)
     }
 }
 
 fn expandable_node<Elem>(
     type_name: &str,
     colour: Colour,
-    is_last: bool,
     run_state: impl Signal<Item = RunState> + 'static,
     is_expanded: Mutable<bool>,
     mut expanded: impl FnMut() -> Elem + 'static,
@@ -130,57 +128,29 @@ where
     Elem: Into<Element>,
 {
     let style = ButtonStyle::Solid(colour);
-    let border_colour = is_expanded.signal().map(move |is_expanded| {
-        if is_expanded {
-            Colour::Secondary
-        } else {
-            border_colour(colour)
-        }
-    });
-    let add_border = is_expanded.signal().map(move |is_expanded| {
-        if is_expanded || is_last {
-            None
-        } else {
-            Some(css::THREAD_VIEW__ITEM)
-        }
-    });
-
-    let parent_is_last = is_expanded
-        .signal()
-        .map(move |is_expanded| (is_last && !is_expanded));
 
     column()
         .align_self(Align::Stretch)
         .align_items(Align::Start)
         .child(
-            item(colour, Sig(parent_is_last))
-                .classes(Sig(add_border))
-                .border_colour(Sig(border_colour))
+            item(colour)
+                .class(css::THREAD_VIEW__ITEM)
+                .border_colour(border_colour(colour))
                 .child(
                     button_group(type_name)
                         .dropdown(item_dropdown(type_name, style, run_state))
                         .button(zoom_button(&is_expanded, style)),
                 ),
         )
-        .child(
-            column()
-                .align_items(Align::Start)
-                .padding_on_side((Size3, Side::Start))
-                .position(Position::Relative)
-                .animated_expand(
-                    move || {
-                        div()
-                            .classes((!is_last).then_some(css::THREAD_VIEW__ITEM__CONNECTED))
-                            .class(css::THREAD_VIEW__EXPANDED_ITEMS)
-                            .shadow(Shadow::Medium)
-                            .rounded_border(true)
-                            .border_colour(Colour::Secondary)
-                            .border(true)
-                            .border_width(Size1)
-                            .child(div().padding(Size3).child(expanded().into()))
-                    },
-                    is_expanded,
-                ),
+        .animated_expand(
+            move || {
+                column()
+                    .align_items(Align::Start)
+                    .padding_on_side((Size3, Side::Start))
+                    .position(Position::Relative)
+                    .child(expanded().into())
+            },
+            is_expanded,
         )
         .into()
 }
@@ -198,10 +168,10 @@ fn border_colour(colour: Colour) -> Colour {
     }
 }
 
-fn item(colour: Colour, is_last: impl SignalOrValue<Item = bool>) -> DivBuilder {
+fn item(colour: Colour) -> DivBuilder {
     div()
         .position(Position::Relative)
-        .classes(is_last.map(|is_last| (!is_last).then_some(css::THREAD_VIEW__ITEM__CONNECTED)))
+        .class(css::THREAD_VIEW__ITEM__CONNECTED)
         .border_colour(border_colour(colour))
         .background_colour(colour)
         .rounded_border(true)
@@ -210,14 +180,13 @@ fn item(colour: Colour, is_last: impl SignalOrValue<Item = bool>) -> DivBuilder 
 fn leaf_node(
     name: &str,
     colour: Colour,
-    is_last: bool,
     run_state: impl Signal<Item = RunState> + 'static,
 ) -> Element {
     column()
         .align_items(Align::Start)
         .child(
-            item(colour, is_last)
-                .classes((!is_last).then_some(css::THREAD_VIEW__ITEM))
+            item(colour)
+                .class(css::THREAD_VIEW__ITEM)
                 .child(item_dropdown(name, ButtonStyle::Solid(colour), run_state)),
         )
         .into()
@@ -278,7 +247,6 @@ fn zoom_button(
 fn call<'a>(
     name: FunctionId,
     args: &'a [Expression<FunctionId>],
-    is_last: bool,
     call_stack: CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
@@ -290,24 +258,21 @@ fn call<'a>(
             move |(arg_index, arg)| {
                 // TODO: Push and pop call stack for efficiency
                 call_stack.push(StackFrame::Argument(arg_index));
-                expression(arg, false, &call_stack, view_state)
+                expression(arg, &call_stack, view_state)
             }
         })
-        .chain(iter::once(function_node(
-            name, is_last, call_stack, view_state,
-        )))
+        .chain(iter::once(function_node(name, call_stack, view_state)))
 }
 
 fn expression(
     expr: &Expression<FunctionId>,
-    is_last: bool,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
         Expression::Call { name, args, .. } => {
-            call(*name, args, is_last, call_stack.clone(), view_state).collect()
+            call(*name, args, call_stack.clone(), view_state).collect()
         }
     }
 }
@@ -317,20 +282,15 @@ fn body_statements<'a>(
     call_stack: &'a CallStack,
     view_state: &'a ThreadViewState,
 ) -> impl Iterator<Item = Element> + 'a {
-    let stmts: Vec<_> = body.filter(|stmt| statement_is_expandable(stmt)).collect();
-    let len = stmts.len();
-
-    stmts
-        .into_iter()
+    body.filter(|stmt| statement_is_expandable(stmt))
         .enumerate()
         .flat_map(move |(stmt_index, statement)| {
-            let is_last = (stmt_index + 1) == len;
             clone!(mut call_stack);
             call_stack.push(StackFrame::Statement(stmt_index));
 
             match statement {
                 Statement::Pass => Vec::new(),
-                Statement::Expression(expr) => expression(expr, is_last, &call_stack, view_state),
+                Statement::Expression(expr) => expression(expr, &call_stack, view_state),
                 Statement::If {
                     condition,
                     then_block,
@@ -339,7 +299,6 @@ fn body_statements<'a>(
                     condition.clone(),
                     then_block.clone(),
                     else_block.clone(),
-                    is_last,
                     &call_stack,
                     view_state,
                 )],
