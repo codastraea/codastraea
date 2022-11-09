@@ -53,14 +53,20 @@ impl AnimatedExpand for DivBuilder {
                 move |_, _| style.set(None)
             })
             .effect_signal(delayed_is_expanded_signal, move |elem, expanded| {
+                let initial_bounds = initial_bounds.borrow().as_ref().unwrap().clone();
                 let final_bounds = elem.get_bounding_client_rect();
-                let limit = if expanded { "max" } else { "min" };
-                set_style_size(&style, limit, initial_bounds.borrow().as_ref().unwrap());
 
-                on_animation_frame({
-                    clone!(style);
-                    move || set_style_size(&style, limit, &final_bounds)
-                })
+                if final_bounds.width() != initial_bounds.width()
+                    || final_bounds.height() != initial_bounds.height()
+                {
+                    let limit = if expanded { "max" } else { "min" };
+                    set_style_size(&style, limit, &initial_bounds);
+
+                    on_animation_frame({
+                        clone!(style);
+                        move || set_style_size(&style, limit, &final_bounds)
+                    })
+                }
             })
     }
 }
