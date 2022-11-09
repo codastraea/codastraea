@@ -33,7 +33,7 @@ impl AnimatedExpand for DivBuilder {
         Elem: Into<Element>,
     {
         let style = Mutable::new(Some("".to_owned()));
-        let delayed_is_expanded = Mutable::new(is_expanded.get());
+        let delayed_is_expanded = Mutable::<Option<bool>>::new(None);
         let initial_bounds: Rc<RefCell<Option<DomRect>>> = Rc::new(RefCell::new(None));
         let element = self.handle().dom_element();
         let delayed_is_expanded_signal = delayed_is_expanded.signal();
@@ -43,8 +43,13 @@ impl AnimatedExpand for DivBuilder {
             .optional_child(Sig(is_expanded.signal().map({
                 clone!(initial_bounds);
                 move |expanded| {
-                    initial_bounds.replace(Some(element.get_bounding_client_rect()));
-                    delayed_is_expanded.set(expanded);
+                    let existing_initial_bounds =
+                        initial_bounds.replace(Some(element.get_bounding_client_rect()));
+
+                    if existing_initial_bounds.is_some() {
+                        delayed_is_expanded.set(Some(expanded));
+                    }
+
                     expanded.then(|| child().into())
                 }
             })))
@@ -53,12 +58,10 @@ impl AnimatedExpand for DivBuilder {
                 move |_, _| style.set(None)
             })
             .effect_signal(delayed_is_expanded_signal, move |elem, expanded| {
-                let initial_bounds = initial_bounds.borrow().as_ref().unwrap().clone();
-                let final_bounds = elem.get_bounding_client_rect();
+                if let Some(expanded) = expanded {
+                    let initial_bounds = initial_bounds.borrow().as_ref().unwrap().clone();
+                    let final_bounds = elem.get_bounding_client_rect();
 
-                if final_bounds.width() != initial_bounds.width()
-                    || final_bounds.height() != initial_bounds.height()
-                {
                     let limit = if expanded { "max" } else { "min" };
                     set_style_size(&style, limit, &initial_bounds);
 
