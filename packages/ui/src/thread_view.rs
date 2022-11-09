@@ -142,6 +142,9 @@ where
         .animated_expand(
             move || {
                 column()
+                    .border_on(Side::Start)
+                    .rounded_border_on(Side::Start)
+                    .border_colour(Colour::Secondary)
                     .align_items(Align::Start)
                     .padding_on_side((Size3, Side::Start))
                     .position(Position::Relative)
@@ -170,6 +173,7 @@ fn item(colour: Colour) -> DivBuilder {
         .position(Position::Relative)
         .class(css::THREAD_VIEW__ITEM)
         .border_colour(border_colour(colour))
+        .border_on(Side::Bottom)
         .background_colour(colour)
         .rounded_border(true)
 }

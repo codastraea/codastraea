@@ -12,10 +12,6 @@
     margin-bottom: 6px;
 }
 
-.thread-view--item {
-    border-bottom: 1px solid;
-}
-
 .thread-view--item::before,
 .thread-view--item::after {
     position: absolute;
