@@ -20,6 +20,7 @@ pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
     then_block: Arc<Body<FunctionId>>,
     else_block: Arc<Body<FunctionId>>,
+    is_last: bool,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Element {
@@ -30,26 +31,34 @@ pub(super) fn if_node(
     clone!(call_stack, view_state);
     let has_else = !else_block.is_empty();
 
-    expandable_node("If", CONDITION_COLOUR, run_state, expanded, move || {
-        column()
-            .align_items(Align::Start)
-            .gap(Size4)
-            .child(branch_body(
-                Some(&condition),
-                &then_block,
-                0,
-                &call_stack,
-                &view_state,
-            ))
-            .optional_child(
-                has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
-            )
-    })
+    expandable_node(
+        "If",
+        CONDITION_COLOUR,
+        is_last,
+        run_state,
+        expanded,
+        move || {
+            column()
+                .align_items(Align::Start)
+                .gap(Size4)
+                .child(branch_body(
+                    Some(&condition),
+                    &then_block,
+                    0,
+                    &call_stack,
+                    &view_state,
+                ))
+                .optional_child(
+                    has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
+                )
+        },
+    )
 }
 
 fn condition_node(
     condition: Option<&Arc<Expression<FunctionId>>>,
     block_index: usize,
+    is_last: bool,
     call_stack: &CallStack,
     view_state: &ThreadViewState,
 ) -> Element {
@@ -65,22 +74,27 @@ fn condition_node(
             expandable_node(
                 "condition",
                 CONDITION_COLOUR,
+                is_last,
                 run_state,
                 expanded,
-                move || column().children(expression(&condition, &call_stack, &view_state)),
+                move || column().children(expression(&condition, true, &call_stack, &view_state)),
             )
         } else {
             // TODO: Condition text (maybe truncated), with tooltip (how does that work on
             // touch)
-            condition_leaf_node("condition", run_state)
+            condition_leaf_node("condition", is_last, run_state)
         }
     } else {
-        condition_leaf_node("else", run_state)
+        condition_leaf_node("else", is_last, run_state)
     }
 }
 
-fn condition_leaf_node(name: &str, run_state: impl Signal<Item = RunState> + 'static) -> Element {
-    leaf_node(name, CONDITION_COLOUR, run_state)
+fn condition_leaf_node(
+    name: &str,
+    is_last: bool,
+    run_state: impl Signal<Item = RunState> + 'static,
+) -> Element {
+    leaf_node(name, CONDITION_COLOUR, is_last, run_state)
 }
 
 fn branch_body(
@@ -91,7 +105,13 @@ fn branch_body(
     view_state: &ThreadViewState,
 ) -> Element {
     let is_expandable = is_expandable(body);
-    let condition = condition_node(condition, nested_block_index, call_stack, view_state);
+    let condition = condition_node(
+        condition,
+        nested_block_index,
+        !is_expandable,
+        call_stack,
+        view_state,
+    );
 
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
