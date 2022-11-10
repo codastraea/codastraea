@@ -2,8 +2,8 @@
     --sqrt-2: 1.41421356237;
 }
 
-/* The `ThreadView` component */
-.thread-view {
+/* The `CallTree` component */
+.call-tree {
     /* Minimum height for dropdown menus */
     min-height: 200px;
     /* Allow panning and zooming, but disallow double tap so there's no delay when
@@ -12,8 +12,8 @@
     margin-bottom: 6px;
 }
 
-.thread-view--item::before,
-.thread-view--item::after {
+.call-tree--item::before,
+.call-tree--item::after {
     position: absolute;
     content: "";
     width: 20px;
@@ -27,19 +27,19 @@
     border-color: inherit;
 }
 
-.thread-view--item::before {
+.call-tree--item::before {
     left: 40px;
     border-left-width: calc(1px * var(--sqrt-2));
     transform: skewX(45deg);
 }
 
-.thread-view--item::after {
+.call-tree--item::after {
     left: 46px;
     border-right-width: calc(1px * var(--sqrt-2));
     transform: skewX(-45deg);
 }
 
-.thread-view--node-status-icon {
+.call-tree--node-status-icon {
     background-color: var(--bs-white);
     clip-path: circle(closest-side);
     padding: 2px;

@@ -13,15 +13,15 @@ use silkenweb_bootstrap::{
     utility::{Align, Colour, SetAlign, SetFlex},
 };
 
-use super::{leaf_node, ThreadViewState};
-use crate::thread_view::{body_statements, expandable_node, expression};
+use super::{leaf_node, CallTreeState};
+use crate::call_tree_view::{body_statements, expandable_node, expression};
 
 pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
     then_block: Arc<Body<FunctionId>>,
     else_block: Arc<Body<FunctionId>>,
     call_stack: &CallStack,
-    view_state: &ThreadViewState,
+    view_state: &CallTreeState,
 ) -> Element {
     let expanded = view_state.expanded(call_stack);
     let run_state = view_state.run_state(call_stack);
@@ -50,7 +50,7 @@ fn condition_node(
     condition: Option<&Arc<Expression<FunctionId>>>,
     block_index: usize,
     call_stack: &CallStack,
-    view_state: &ThreadViewState,
+    view_state: &CallTreeState,
 ) -> Element {
     clone!(mut call_stack);
     call_stack.push(StackFrame::BlockPredicate(block_index));
@@ -87,7 +87,7 @@ fn branch_body(
     body: &Arc<Body<FunctionId>>,
     nested_block_index: usize,
     call_stack: &CallStack,
-    view_state: &ThreadViewState,
+    view_state: &CallTreeState,
 ) -> Element {
     let is_expandable = is_expandable(body);
     let condition = condition_node(condition, nested_block_index, call_stack, view_state);

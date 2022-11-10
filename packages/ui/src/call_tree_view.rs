@@ -35,23 +35,23 @@ use silkenweb_bootstrap::{
     },
 };
 
-use crate::{animation::AnimatedExpand, css, thread_view::conditional::if_node, ViewCallStates};
+use crate::{animation::AnimatedExpand, css, call_tree_view::conditional::if_node, ViewCallStates};
 
 mod conditional;
 
 #[derive(Into, Value)]
-pub struct ThreadView(Node);
+pub struct CallTree(Node);
 
-impl ThreadView {
+impl CallTree {
     pub fn new(
         fn_id: FunctionId,
         library: &Rc<Library>,
         view_call_states: &ViewCallStates,
     ) -> Self {
-        let view_state = ThreadViewState::new(view_call_states.clone(), library.clone());
+        let view_state = CallTreeState::new(view_call_states.clone(), library.clone());
         Self(
             div()
-                .class(css::THREAD_VIEW)
+                .class(css::CALL_TREE)
                 .child(function_node(fn_id, CallStack::new(), &view_state))
                 .into(),
         )
@@ -59,13 +59,13 @@ impl ThreadView {
 }
 
 #[derive(Clone)]
-struct ThreadViewState {
+struct CallTreeState {
     expanded: Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>,
     view_call_states: ViewCallStates,
     library: Rc<Library>,
 }
 
-impl ThreadViewState {
+impl CallTreeState {
     fn new(view_call_states: ViewCallStates, library: Rc<Library>) -> Self {
         Self {
             expanded: Rc::new(RefCell::new(HashMap::new())),
@@ -94,7 +94,7 @@ impl ThreadViewState {
 fn function_node(
     fn_id: FunctionId,
     mut call_stack: CallStack,
-    view_state: &ThreadViewState,
+    view_state: &CallTreeState,
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(StackFrame::Function(fn_id));
@@ -171,7 +171,7 @@ fn border_colour(colour: Colour) -> Colour {
 fn item(colour: Colour) -> DivBuilder {
     div()
         .position(Position::Relative)
-        .class(css::THREAD_VIEW__ITEM)
+        .class(css::CALL_TREE__ITEM)
         .border_colour(border_colour(colour))
         .border_on(Side::Bottom)
         .background_colour(colour)
@@ -205,7 +205,7 @@ fn item_dropdown(
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size2), Side::End))
-        .class(css::THREAD_VIEW__NODE_STATUS_ICON)
+        .class(css::CALL_TREE__NODE_STATUS_ICON)
     });
 
     dropdown(
@@ -245,7 +245,7 @@ fn call<'a>(
     name: FunctionId,
     args: &'a [Expression<FunctionId>],
     call_stack: CallStack,
-    view_state: &'a ThreadViewState,
+    view_state: &'a CallTreeState,
 ) -> impl Iterator<Item = Element> + 'a {
     args.iter()
         .enumerate()
@@ -264,7 +264,7 @@ fn call<'a>(
 fn expression(
     expr: &Expression<FunctionId>,
     call_stack: &CallStack,
-    view_state: &ThreadViewState,
+    view_state: &CallTreeState,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
@@ -277,7 +277,7 @@ fn expression(
 fn body_statements<'a>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     call_stack: &'a CallStack,
-    view_state: &'a ThreadViewState,
+    view_state: &'a CallTreeState,
 ) -> impl Iterator<Item = Element> + 'a {
     body.filter(|stmt| statement_is_expandable(stmt))
         .enumerate()
