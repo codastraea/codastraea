@@ -17,12 +17,13 @@ use silkenweb_bootstrap::{
     row,
     utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
 };
-use call_tree_view::CallTree;
+use thread_view::ThreadView;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 mod animation;
 mod splitter;
 mod call_tree_view;
+mod thread_view;
 mod css {
     silkenweb::css_classes!(visibility: pub, path: "serpent-automation.css");
 }
@@ -78,7 +79,7 @@ pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Int
     row()
         .margin(Some(Size3))
         .align_items(Align::Start)
-        .child(CallTree::new(main_id, library, view_call_states))
+        .child(ThreadView::new(main_id, library, view_call_states))
         .overflow(Overflow::Auto)
 }
 
