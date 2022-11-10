@@ -1,3 +1,7 @@
+:root {
+    --sqrt-2: 1.41421356237;
+}
+
 /* The `ThreadView` component */
 .thread-view {
     /* Minimum height for dropdown menus */
@@ -6,62 +10,33 @@
     /* single clicking on controls. */
     touch-action: manipulation;
     margin-bottom: 6px;
-    --sin_22_5: 0.38268;
-}
-
-.thread-view--item {
-    position: relative;
-    clip-path: polygon(0 0,
-            40px 0,
-            46px 6px,
-            66px 6px,
-            72px 0,
-            100% 0,
-            100% 100%,
-            72px 100%,
-            66px calc(100% + 6px),
-            46px calc(100% + 6px),
-            40px 100%,
-            0 100%,
-            0 0);
-}
-
-.thread-view--expanded-items {
-    margin-top: 2px;
-}
-
-.thread-view--expanded-items--inset {
-    position: relative;
-    border-radius: calc(var(--bs-border-radius) - 1px);
-    background-color: var(--bs-white);
-    clip-path: polygon(0 0,
-            calc(39px - 1px * var(--sin_22_5)) 0,
-            calc(45px - 1px * var(--sin_22_5)) 6px,
-            calc(65px + 1px * var(--sin_22_5)) 6px,
-            calc(71px + 1px * var(--sin_22_5)) 0,
-            100% 0,
-            100% 100%,
-            calc(71px - 1px * var(--sin_22_5)) 100%,
-            calc(65px - 1px * var(--sin_22_5)) calc(100% + 6px),
-            calc(45px + 1px * var(--sin_22_5)) calc(100% + 6px),
-            calc(39px + 1px * var(--sin_22_5)) 100%,
-            0 100%,
-            0 0);
 }
 
 .thread-view--item::before,
-.thread-view--expanded-items--inset::after {
+.thread-view--item::after {
     position: absolute;
     content: "";
-    width: 34px;
-    height: 7px;
-    left: 39px;
-    bottom: -7px;
+    width: 20px;
+    height: 6px;
+    bottom: -6px;
+    z-index: 100;
     background-color: inherit;
+    border: 0;
+    border-style: solid;
+    border-bottom-width: 1px;
+    border-color: inherit;
 }
 
-.thread-view--node-list {
-    gap: 2px;
+.thread-view--item::before {
+    left: 40px;
+    border-left-width: calc(1px * var(--sqrt-2));
+    transform: skewX(45deg);
+}
+
+.thread-view--item::after {
+    left: 46px;
+    border-right-width: calc(1px * var(--sqrt-2));
+    transform: skewX(-45deg);
 }
 
 .thread-view--node-status-icon {

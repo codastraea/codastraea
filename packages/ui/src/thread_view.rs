@@ -29,8 +29,9 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, SetAlign, SetBorder, SetColour, SetFlex, SetSpacing, Side,
-        Size::{Size1, Size2, Size4},
+        Align, Colour, Position, SetAlign, SetBorder, SetColour, SetFlex, SetPosition, SetSpacing,
+        Side,
+        Size::{Size2, Size3},
     },
 };
 
@@ -107,11 +108,8 @@ fn function_node(
     if let Some(body) = body {
         let expanded = view_state.expanded(&call_stack);
         clone!(body, call_stack, view_state);
-        let body = move || {
-            column()
-                .class(css::THREAD_VIEW__NODE_LIST)
-                .children(body_statements(body.iter(), &call_stack, &view_state))
-        };
+        let body =
+            move || column().children(body_statements(body.iter(), &call_stack, &view_state));
 
         expandable_node(name, FUNCTION_COLOUR, run_state, expanded, body)
     } else {
@@ -135,34 +133,47 @@ where
         .align_self(Align::Stretch)
         .align_items(Align::Start)
         .child(
-            item(colour).child(
+            item(colour).border_colour(border_colour(colour)).child(
                 button_group(type_name)
                     .dropdown(item_dropdown(type_name, style, run_state))
                     .button(zoom_button(&is_expanded, style)),
             ),
         )
-        .child(column().align_items(Align::Start).animated_expand(
+        .animated_expand(
             move || {
-                item(Colour::Secondary)
-                    .class(css::THREAD_VIEW__EXPANDED_ITEMS)
-                    .border(true)
+                column()
+                    .border_on(Side::Start)
+                    .rounded_border_on(Side::Start)
                     .border_colour(Colour::Secondary)
-                    .border_width(Size1)
-                    .child(
-                        div()
-                            .padding(Size4)
-                            .class(css::THREAD_VIEW__EXPANDED_ITEMS__INSET)
-                            .child(expanded().into()),
-                    )
+                    .align_items(Align::Start)
+                    .padding_on_side((Size3, Side::Start))
+                    .position(Position::Relative)
+                    .child(expanded().into())
             },
             is_expanded,
-        ))
+        )
         .into()
+}
+
+fn border_colour(colour: Colour) -> Colour {
+    match colour {
+        Colour::Primary => Colour::Dark,
+        Colour::Secondary => Colour::Dark,
+        Colour::Success => Colour::Dark,
+        Colour::Danger => Colour::Dark,
+        Colour::Warning => Colour::Dark,
+        Colour::Info => Colour::Secondary,
+        Colour::Light => Colour::Secondary,
+        Colour::Dark => Colour::Secondary,
+    }
 }
 
 fn item(colour: Colour) -> DivBuilder {
     div()
+        .position(Position::Relative)
         .class(css::THREAD_VIEW__ITEM)
+        .border_colour(border_colour(colour))
+        .border_on(Side::Bottom)
         .background_colour(colour)
         .rounded_border(true)
 }
