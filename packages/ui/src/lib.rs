@@ -15,7 +15,7 @@ use silkenweb::{
 };
 use silkenweb_bootstrap::{
     row,
-    utility::{Align, Overflow, SetFlex, SetOverflow, SetSpacing, Size::Size3},
+    utility::{Align, Overflow, SetDisplay, SetOverflow, SetSpacing, Size::Size3},
 };
 use thread_view::ThreadView;
 use wasm_bindgen::prelude::wasm_bindgen;

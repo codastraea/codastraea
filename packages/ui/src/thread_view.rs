@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use serpent_automation_executor::library::{FunctionId, Library};
 use silkenweb::{
     clone,
-    elements::html,
+    elements::html::{self, div},
     node::Node,
     prelude::{ElementEvents, ParentBuilder},
     value::Sig,
@@ -14,7 +14,7 @@ use silkenweb::{
 use silkenweb_bootstrap::{
     column,
     tab_bar::{tab_bar, Style},
-    utility::Active,
+    utility::{Active, Display, SetDisplay},
 };
 
 use crate::{call_tree_view::CallTree, ViewCallStates};
@@ -32,28 +32,41 @@ impl ThreadView {
 
         Self(
             column()
-                .child(
-                    tab_bar().style(Style::Tabs).children([
-                        html::button()
-                            .text("Call Tree")
-                            .active(Sig(active.signal().eq(Tab::CallTree)))
-                            .on_click({
-                                clone!(active);
-                                move |_, _| active.set(Tab::CallTree)
-                            }),
-                        html::button()
-                            .text("Source Code")
-                            .active(Sig(active.signal().eq(Tab::SourceCode)))
-                            .on_click({
-                                clone!(active);
-                                move |_, _| active.set(Tab::SourceCode)
-                            }),
-                    ]),
-                )
-                .child(CallTree::new(fn_id, library, view_call_states))
+                .child(tab_bar().style(Style::Tabs).children([
+                    tab(Tab::CallTree, "Call Tree", &active),
+                    tab(Tab::SourceCode, "Source Code", &active),
+                ]))
+                .child(content(
+                    Tab::CallTree,
+                    &active,
+                    CallTree::new(fn_id, library, view_call_states),
+                ))
                 .into(),
         )
     }
+}
+
+fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
+    html::button()
+        .text(name)
+        .active(Sig(active.signal().eq(tab)))
+        .on_click({
+            clone!(active);
+            move |_, _| active.set(tab)
+        })
+}
+
+fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Node {
+    div()
+        .display(Sig(active.signal().map(move |active| {
+            if active == tab {
+                Display::Block
+            } else {
+                Display::None
+            }
+        })))
+        .child(content.into())
+        .into()
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

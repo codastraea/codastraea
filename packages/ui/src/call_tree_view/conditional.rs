@@ -10,7 +10,7 @@ use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
     column,
-    utility::{Align, Colour, SetAlign, SetFlex},
+    utility::{Align, Colour, SetAlign, SetDisplay},
 };
 
 use super::{leaf_node, CallTreeState};
