@@ -143,7 +143,6 @@ where
             move || {
                 column()
                     .border_on(Side::Start)
-                    .rounded_border_on(Side::Start)
                     .border_colour(Colour::Secondary)
                     .align_items(Align::Start)
                     .padding_on_side((Size3, Side::Start))
