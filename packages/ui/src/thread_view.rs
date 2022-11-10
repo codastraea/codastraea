@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use derive_more::Into;
 use futures_signals::signal::{Mutable, SignalExt};
-use serpent_automation_executor::library::{FunctionId, Library};
+use serpent_automation_executor::{
+    library::{FunctionId, Library},
+    CODE,
+};
 use silkenweb::{
     clone,
     elements::html::{self, div},
@@ -14,10 +17,14 @@ use silkenweb::{
 use silkenweb_bootstrap::{
     column,
     tab_bar::{tab_bar, Style},
-    utility::{Active, Display, SetDisplay},
+    utility::{Active, Display, Overflow, SetDisplay, SetGap, SetOverflow, Size::Size3},
 };
 
-use crate::{call_tree_view::CallTree, ViewCallStates};
+use crate::{
+    call_tree_view::CallTree,
+    source_view::{Editor, SourceView},
+    ViewCallStates,
+};
 
 #[derive(Into, Value)]
 pub struct ThreadView(Node);
@@ -32,15 +39,23 @@ impl ThreadView {
 
         Self(
             column()
+                .gap(Size3)
                 .child(tab_bar().style(Style::Tabs).children([
                     tab(Tab::CallTree, "Call Tree", &active),
                     tab(Tab::SourceCode, "Source Code", &active),
                 ]))
-                .child(content(
-                    Tab::CallTree,
-                    &active,
-                    CallTree::new(fn_id, library, view_call_states),
-                ))
+                .children([
+                    content(
+                        Tab::CallTree,
+                        &active,
+                        CallTree::new(fn_id, library, view_call_states),
+                    ),
+                    content(
+                        Tab::SourceCode,
+                        &active,
+                        SourceView::new(&Editor::new(CODE)),
+                    ),
+                ])
                 .into(),
         )
     }
@@ -58,6 +73,7 @@ fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
 
 fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Node {
     div()
+        .overflow(Overflow::Auto)
         .display(Sig(active.signal().map(move |active| {
             if active == tab {
                 Display::Block

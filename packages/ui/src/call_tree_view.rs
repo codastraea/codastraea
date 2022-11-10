@@ -29,13 +29,13 @@ use silkenweb_bootstrap::{
     dropdown::{dropdown, dropdown_menu, DropdownBuilder},
     icon::{icon, Icon, IconType},
     utility::{
-        Align, Colour, Position, SetAlign, SetBorder, SetColour, SetDisplay, SetPosition, SetSpacing,
-        Side,
+        Align, Colour, Position, SetAlign, SetBorder, SetColour, SetDisplay, SetPosition,
+        SetSpacing, Side,
         Size::{Size2, Size3},
     },
 };
 
-use crate::{animation::AnimatedExpand, css, call_tree_view::conditional::if_node, ViewCallStates};
+use crate::{animation::AnimatedExpand, call_tree_view::conditional::if_node, css, ViewCallStates};
 
 mod conditional;
 
