@@ -146,7 +146,6 @@ where
                     .border_colour(Colour::Secondary)
                     .align_items(Align::Start)
                     .padding_on_side((Size3, Side::Start))
-                    .position(Position::Relative)
                     .child(expanded().into())
             },
             is_expanded,
