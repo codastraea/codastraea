@@ -9,12 +9,13 @@ use serpent_automation_executor::{
 use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
+    badge::badge,
     column,
-    utility::{Align, Colour, SetAlign, SetDisplay},
+    utility::{Align, Axis, Colour, SetAlign, SetBorder, SetDisplay, SetSpacing, Side, Size},
 };
 
 use super::{leaf_node, CallTreeState};
-use crate::call_tree_view::{body_statements, expandable_node, expression};
+use crate::call_tree_view::{body_statements, expandable_node, expression, item};
 
 pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
@@ -23,27 +24,23 @@ pub(super) fn if_node(
     call_stack: &CallStack,
     view_state: &CallTreeState,
 ) -> Element {
-    let expanded = view_state.expanded(call_stack);
-    let run_state = view_state.run_state(call_stack);
-
     // TODO: Make call stack cheap to clone.
     clone!(call_stack, view_state);
     let has_else = !else_block.is_empty();
 
-    expandable_node("If", CONDITION_COLOUR, run_state, expanded, move || {
-        column()
-            .align_items(Align::Start)
-            .child(branch_body(
-                Some(&condition),
-                &then_block,
-                0,
-                &call_stack,
-                &view_state,
-            ))
-            .optional_child(
-                has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
-            )
-    })
+    column()
+        .align_items(Align::Start)
+        .child(branch_body(
+            Some(&condition),
+            &then_block,
+            0,
+            &call_stack,
+            &view_state,
+        ))
+        .optional_child(
+            has_else.then(|| branch_body(None, &else_block, 1, &call_stack, &view_state)),
+        )
+        .into()
 }
 
 fn condition_node(
@@ -57,21 +54,28 @@ fn condition_node(
     let run_state = view_state.run_state(&call_stack);
 
     if let Some(condition) = condition {
+        // TODO: Condition text (maybe truncated), with tooltip (how does that work on
+        // touch)
         if expression_is_expandable(condition) {
             let expanded = view_state.expanded(&call_stack);
 
             clone!(condition, call_stack, view_state);
             expandable_node(
-                "condition",
+                "if condition",
                 CONDITION_COLOUR,
                 run_state,
                 expanded,
-                move || column().children(expression(&condition, &call_stack, &view_state)),
+                move || {
+                    column()
+                        .border_on(Side::Start)
+                        .border_colour(Colour::Secondary)
+                        .align_items(Align::Start)
+                        .padding_on_side((Size::Size3, Side::Start))
+                        .children(expression(&condition, &call_stack, &view_state))
+                },
             )
         } else {
-            // TODO: Condition text (maybe truncated), with tooltip (how does that work on
-            // touch)
-            condition_leaf_node("condition", run_state)
+            condition_leaf_node("if condition", run_state)
         }
     } else {
         condition_leaf_node("else", run_state)
@@ -95,14 +99,29 @@ fn branch_body(
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-    let body_elem = column().align_self(Align::Stretch).child(condition);
+    let mut body_elem = column()
+        .border_on(Side::Start)
+        .border_colour(Colour::Secondary)
+        .align_items(Align::Start)
+        .padding_on_side((Size::Size3, Side::Start));
 
-    if is_expandable {
+    body_elem = if is_expandable {
         body_elem.children(body_statements(body.iter(), &call_stack, view_state))
     } else {
-        body_elem
-    }
-    .into()
+        body_elem.child(
+            item(Colour::Secondary).child(
+                badge("pass", Colour::Secondary)
+                    .padding_on_axis((Size::Size5, Axis::X))
+                    .padding_on_axis((Size::Size2, Axis::Y)),
+            ),
+        )
+    };
+
+    column()
+        .align_self(Align::Stretch)
+        .child(condition)
+        .child(body_elem)
+        .into()
 }
 
 const CONDITION_COLOUR: Colour = Colour::Info;
