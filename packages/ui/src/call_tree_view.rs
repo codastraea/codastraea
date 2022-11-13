@@ -140,17 +140,18 @@ where
             ),
         )
         .animated_expand(
-            move || {
-                column()
-                    .border_on(Side::Start)
-                    .border_colour(Colour::Secondary)
-                    .align_items(Align::Start)
-                    .padding_on_side((Size3, Side::Start))
-                    .child(expanded().into())
-            },
+            move || indented_block().child(expanded().into()),
             is_expanded,
         )
         .into()
+}
+
+fn indented_block() -> DivBuilder {
+    column()
+        .border_on(Side::Start)
+        .border_colour(Colour::Secondary)
+        .align_items(Align::Start)
+        .padding_on_side((Size3, Side::Start))
 }
 
 fn border_colour(colour: Colour) -> Colour {

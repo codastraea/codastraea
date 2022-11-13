@@ -11,11 +11,11 @@ use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
     badge::badge,
     column,
-    utility::{Align, Axis, Colour, SetAlign, SetBorder, SetDisplay, SetSpacing, Side, Size},
+    utility::{Align, Axis, Colour, SetAlign, SetDisplay, SetSpacing, Size},
 };
 
 use super::{leaf_node, CallTreeState};
-use crate::call_tree_view::{body_statements, expandable_node, expression, item};
+use crate::call_tree_view::{body_statements, expandable_node, expression, indented_block, item};
 
 pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
@@ -65,14 +65,7 @@ fn condition_node(
                 CONDITION_COLOUR,
                 run_state,
                 expanded,
-                move || {
-                    column()
-                        .border_on(Side::Start)
-                        .border_colour(Colour::Secondary)
-                        .align_items(Align::Start)
-                        .padding_on_side((Size::Size3, Side::Start))
-                        .children(expression(&condition, &call_stack, &view_state))
-                },
+                move || indented_block().children(expression(&condition, &call_stack, &view_state)),
             )
         } else {
             condition_leaf_node("if condition", run_state)
@@ -99,16 +92,10 @@ fn branch_body(
     clone!(mut call_stack);
     call_stack.push(StackFrame::NestedBlock(nested_block_index));
 
-    let mut body_elem = column()
-        .border_on(Side::Start)
-        .border_colour(Colour::Secondary)
-        .align_items(Align::Start)
-        .padding_on_side((Size::Size3, Side::Start));
-
-    body_elem = if is_expandable {
-        body_elem.children(body_statements(body.iter(), &call_stack, view_state))
+    let body_elem = if is_expandable {
+        indented_block().children(body_statements(body.iter(), &call_stack, view_state))
     } else {
-        body_elem.child(
+        indented_block().child(
             item(Colour::Secondary).child(
                 badge("pass", Colour::Secondary)
                     .padding_on_axis((Size::Size5, Axis::X))
