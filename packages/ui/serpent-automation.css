@@ -41,13 +41,13 @@
 }
 
 .call-tree--item::before {
-    left: 40px;
+    left: 48px;
     border-left-width: calc(1px * var(--sqrt-2));
     transform: skewX(45deg);
 }
 
 .call-tree--item::after {
-    left: 46px;
+    left: 54px;
     border-right-width: calc(1px * var(--sqrt-2));
     transform: skewX(-45deg);
 }
