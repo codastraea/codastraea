@@ -57,6 +57,10 @@ impl AnimatedExpand for DivBuilder {
                 clone!(style);
                 move |_, _| style.set_neq(None)
             })
+            .on_transitioncancel({
+                clone!(style);
+                move |_, _| style.set_neq(None)
+            })
             .effect_signal(delayed_is_expanded_signal, move |elem, expanded| {
                 if let Some(expanded) = expanded {
                     let initial_bounds = initial_bounds.borrow().as_ref().unwrap().clone();
