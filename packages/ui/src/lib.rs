@@ -7,11 +7,11 @@ use serpent_automation_executor::{
     run::{CallStack, RunState, ThreadCallStates},
 };
 use serpent_automation_frontend::ReceiveCallStates;
-use silkenweb::{node::Node, prelude::ParentBuilder};
-use silkenweb_bootstrap::{
-    row,
-    utility::{Align, Overflow, SetDisplay, SetOverflow, SetSpacing, Size::Size3},
+use silkenweb::{
+    node::{element::ElementBuilder, Node},
+    prelude::ParentBuilder,
 };
+use silkenweb_bootstrap::column;
 use thread_view::ThreadView;
 
 mod animation;
@@ -26,11 +26,9 @@ mod css {
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
     let main_id = library.main_id().unwrap();
 
-    row()
-        .margin(Some(Size3))
-        .align_items(Align::Start)
+    column()
+        .class(css::HEIGHT_FULLSCREEN)
         .child(ThreadView::new(main_id, library, view_call_states))
-        .overflow(Overflow::Auto)
 }
 
 #[derive(Clone, Default)]

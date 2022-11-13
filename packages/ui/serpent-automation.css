@@ -2,6 +2,19 @@
     --sqrt-2: 1.41421356237;
 }
 
+/* See <https://codemirror.net/examples/styling> */
+.cm-scroller {
+    overflow-y: auto;
+}
+
+.cm-editor {
+    overflow: hidden;
+}
+
+.height-fullscreen {
+    height: 100dvh;
+}
+
 /* The `CallTree` component */
 .call-tree {
     /* Minimum height for dropdown menus */

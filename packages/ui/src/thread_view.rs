@@ -8,7 +8,7 @@ use serpent_automation_executor::{
 };
 use silkenweb::{
     clone,
-    elements::html::{self, div},
+    elements::html::{self, DivBuilder},
     node::Node,
     prelude::{ElementEvents, ParentBuilder},
     value::Sig,
@@ -17,7 +17,9 @@ use silkenweb::{
 use silkenweb_bootstrap::{
     column,
     tab_bar::{tab_bar, Style},
-    utility::{Active, Display, Overflow, SetDisplay, SetGap, SetOverflow, Size::Size3},
+    utility::{
+        Active, Display, Overflow, SetDisplay, SetGap, SetOverflow, SetSpacing, Size::Size3,
+    },
 };
 
 use crate::{
@@ -39,6 +41,8 @@ impl ThreadView {
 
         Self(
             column()
+                .overflow(Overflow::Hidden)
+                .padding(Size3)
                 .gap(Size3)
                 .child(tab_bar().style(Style::Tabs).children([
                     tab(Tab::CallTree, "Call Tree", &active),
@@ -49,12 +53,14 @@ impl ThreadView {
                         Tab::CallTree,
                         &active,
                         CallTree::new(fn_id, library, view_call_states),
-                    ),
+                    )
+                    .overflow(Overflow::Auto),
                     content(
                         Tab::SourceCode,
                         &active,
                         SourceView::new(&Editor::new(CODE)),
-                    ),
+                    )
+                    .overflow(Overflow::Hidden),
                 ])
                 .into(),
         )
@@ -71,9 +77,8 @@ fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
         })
 }
 
-fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Node {
-    div()
-        .overflow(Overflow::Auto)
+fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> DivBuilder {
+    column()
         .display(Sig(active.signal().map(move |active| {
             if active == tab {
                 Display::Block
@@ -82,7 +87,6 @@ fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Node {
             }
         })))
         .child(content.into())
-        .into()
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

@@ -1,9 +1,12 @@
 use derive_more::Into;
 use serpent_automation_executor::syntax_tree::SrcSpan;
 use silkenweb::{
-    elements::html::div,
     node::{element::ElementBuilder, Node},
     Value,
+};
+use silkenweb_bootstrap::{
+    column,
+    utility::{Overflow, SetOverflow},
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -12,7 +15,7 @@ pub struct SourceView(Node);
 
 impl SourceView {
     pub fn new(editor: &Editor) -> Self {
-        let codemirror_container = div();
+        let codemirror_container = column().overflow(Overflow::Hidden);
 
         codemirror_container
             .handle()
