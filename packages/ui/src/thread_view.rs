@@ -8,7 +8,7 @@ use serpent_automation_executor::{
 };
 use silkenweb::{
     clone,
-    elements::html::{self, DivBuilder},
+    elements::html::{self, div, DivBuilder},
     node::Node,
     prelude::{ElementEvents, ParentBuilder},
     value::Sig,
@@ -60,6 +60,7 @@ impl ThreadView {
                         &active,
                         SourceView::new(&Editor::new(CODE)),
                     )
+                    .flex_column()
                     .overflow(Overflow::Hidden),
                 ])
                 .into(),
@@ -78,7 +79,7 @@ fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
 }
 
 fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> DivBuilder {
-    column()
+    div()
         .display(Sig(active.signal().map(move |active| {
             if active == tab {
                 Display::Block
