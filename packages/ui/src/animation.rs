@@ -32,7 +32,7 @@ impl AnimatedExpand for DivBuilder {
     where
         Elem: Into<Element>,
     {
-        let style = Mutable::new(Some("".to_owned()));
+        let style = Mutable::new(None);
         let delayed_is_expanded = Mutable::<Option<bool>>::new(None);
         let initial_bounds: Rc<RefCell<Option<DomRect>>> = Rc::new(RefCell::new(None));
         let element = self.handle().dom_element();
