@@ -9,13 +9,16 @@ use serpent_automation_executor::{
 use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
 use silkenweb_bootstrap::{
-    badge::badge,
+    button::{button, ButtonStyle},
     column,
+    dropdown::{dropdown, dropdown_menu},
     utility::{Align, Axis, Colour, SetAlign, SetDisplay, SetSpacing, Size},
 };
 
 use super::{leaf_node, CallTreeState};
-use crate::call_tree_view::{body_statements, expandable_node, expression, indented_block, item};
+use crate::call_tree_view::{
+    body_statements, dropdown_item, expandable_node, expression, indented_block, item,
+};
 
 pub(super) fn if_node(
     condition: Arc<Expression<FunctionId>>,
@@ -96,11 +99,11 @@ fn branch_body(
         indented_block().children(body_statements(body.iter(), &call_stack, view_state))
     } else {
         indented_block().child(
-            item(Colour::Secondary).child(
-                badge("pass", Colour::Secondary)
-                    .padding_on_axis((Size::Size5, Axis::X))
-                    .padding_on_axis((Size::Size2, Axis::Y)),
-            ),
+            item(Colour::Secondary).child(dropdown(
+                button("button", "pass", ButtonStyle::Solid(Colour::Secondary))
+                    .padding_on_axis((Size::Size4, Axis::X)),
+                dropdown_menu().child(dropdown_item("View code")),
+            )),
         )
     };
 
