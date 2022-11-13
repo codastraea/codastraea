@@ -55,7 +55,7 @@ impl AnimatedExpand for DivBuilder {
             })))
             .on_transitionend({
                 clone!(style);
-                move |_, _| style.set(None)
+                move |_, _| style.set_neq(None)
             })
             .effect_signal(delayed_is_expanded_signal, move |elem, expanded| {
                 if let Some(expanded) = expanded {
