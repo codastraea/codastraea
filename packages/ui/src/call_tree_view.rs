@@ -139,10 +139,10 @@ where
                     .button(zoom_button(&is_expanded, style)),
             ),
         )
-        .animated_expand(
+        .child(div().animated_expand(
             move || indented_block().child(expanded().into()),
             is_expanded,
-        )
+        ))
         .into()
 }
 
