@@ -2,7 +2,10 @@
     --sqrt-2: 1.41421356237;
 }
 
-/* See <https://codemirror.net/examples/styling> */
+/* CodeMirror editor
+
+    See <https://codemirror.net/examples/styling>
+*/
 .cm-scroller {
     overflow-y: auto;
 }
@@ -11,9 +14,7 @@
     overflow: hidden;
 }
 
-.height-fullscreen {
-    height: 100dvh;
-}
+/* Components */
 
 /* The `CallTree` component */
 .call-tree {
@@ -58,13 +59,20 @@
     padding: 2px;
 }
 
-.transition {
-    transition: all 200ms;
-}
-
 .horizontal_splitter_bar {
     background-color: var(--bs-secondary);
     width: 4px;
     align-self: stretch;
     cursor: col-resize;
+}
+
+/* Utilities */
+
+/* A short transition animation */
+.transition {
+    transition: all 200ms;
+}
+
+.height-fullscreen {
+    height: 100dvh;
 }
