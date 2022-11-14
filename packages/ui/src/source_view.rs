@@ -27,6 +27,7 @@ impl SourceView {
     }
 }
 
+#[derive(Clone)]
 pub struct Editor(EditorView);
 
 impl Editor {
@@ -35,7 +36,7 @@ impl Editor {
     }
 
     pub fn set_selection(&self, span: SrcSpan) {
-        let start_pos = self.0.state().doc().line(span.line()).from() + span.column();
+        let start_pos = self.0.state().doc().line(span.line()).from() + span.column() - 1;
         set_selection(&self.0, start_pos, start_pos + span.len());
     }
 }
@@ -43,6 +44,7 @@ impl Editor {
 #[wasm_bindgen(raw_module = "/codemirror.esm.js")]
 extern "C" {
     // TODO: Can any of these throw exceptions?
+    #[derive(Clone)]
     type EditorView;
 
     #[wasm_bindgen]

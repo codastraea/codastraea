@@ -245,9 +245,10 @@ pub enum Statement<FnId> {
     Pass,
     Expression(Expression<FnId>),
     If {
+        if_span: SrcSpan,
         condition: Arc<Expression<FnId>>,
         then_block: Arc<Body<FnId>>,
-        else_block: Arc<Body<FnId>>,
+        else_block: Option<ElseClause<FnId>>,
     },
 }
 
@@ -265,30 +266,22 @@ impl Statement<String> {
 
     fn parse_if<'a>(current_indent: Option<&'a str>, input: Span<'a>) -> ParseResult<'a, Self> {
         // TODO: elif
-        let (input, (_if, condition, _colon, then_block, else_clause)) = context(
+        let (input, (if_keyword, condition, _colon, then_block, else_block)) = context(
             "if",
             tuple((
                 r#if,
                 ws(Expression::parse()),
                 ws(colon),
                 Body::parse(current_indent),
-                opt(tuple((
-                    discard_newline_indent(current_indent),
-                    r#else,
-                    ws(colon),
-                    Body::parse(current_indent),
-                ))),
+                opt(ElseClause::parse(current_indent)),
             )),
         )(input)?;
 
         let statement = Self::If {
+            if_span: SrcSpan::from_span(&if_keyword),
             condition: Arc::new(condition),
             then_block: Arc::new(then_block),
-            else_block: Arc::new(
-                else_clause.map_or_else(Body::empty, |(_indent, _else, _colon, else_block)| {
-                    else_block
-                }),
-            ),
+            else_block,
         };
 
         Ok((input, statement))
@@ -299,13 +292,15 @@ impl Statement<String> {
             Self::Pass => Statement::Pass,
             Self::Expression(expression) => Statement::Expression(expression.translate_ids(id_map)),
             Self::If {
+                if_span,
                 condition,
                 then_block,
                 else_block,
             } => Statement::If {
+                if_span: *if_span,
                 condition: Arc::new(condition.translate_ids(id_map)),
                 then_block: Arc::new(then_block.translate_ids(id_map)),
-                else_block: Arc::new(else_block.translate_ids(id_map)),
+                else_block: else_block.as_ref().map(|e| e.translate_ids(id_map)),
             },
         }
     }
@@ -318,11 +313,15 @@ impl Statement<String> {
                 condition,
                 then_block,
                 else_block,
+                ..
             } => {
                 let mut unresolved = condition.unresolved_symbols(id_map);
 
                 unresolved.extend(then_block.unresolved_symbols(id_map));
-                unresolved.extend(else_block.unresolved_symbols(id_map));
+
+                if let Some(else_block) = else_block {
+                    unresolved.extend(else_block.unresolved_symbols(id_map));
+                }
 
                 unresolved
             }
@@ -341,6 +340,7 @@ impl Statement<FunctionId> {
                 condition,
                 then_block,
                 else_block,
+                ..
             } => {
                 call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
                 let truthy = condition.run(lib, call_states).truthy();
@@ -350,18 +350,71 @@ impl Statement<FunctionId> {
                     call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
                     defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
                     then_block.run(lib, call_states)
-                } else {
-                    // TODO: Don't forget to bump `index` up from 1 when adding `elif`
+                } else if let Some(else_block) = else_block {
                     // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
-                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
-                    call_states.send_modify(|t| t.pop(RunState::Successful));
-                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
-                    defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
-                    else_block.run(lib, call_states)
+                    else_block.run(lib, call_states, block_index)
                 }
             }
         }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub struct ElseClause<FnId> {
+    else_span: SrcSpan,
+    body: Arc<Body<FnId>>,
+}
+
+impl ElseClause<String> {
+    fn parse(current_indent: Option<&str>) -> impl Parser<Self> {
+        context(
+            "else",
+            tuple((
+                discard_newline_indent(current_indent),
+                r#else,
+                ws(colon),
+                Body::parse(current_indent),
+            )),
+        )
+        .map(|(_indent, else_keyword, _colon, body)| Self {
+            else_span: SrcSpan::from_span(&else_keyword),
+            body: Arc::new(body),
+        })
+    }
+
+    fn translate_ids(&self, id_map: &IdMap) -> ElseClause<FunctionId> {
+        ElseClause {
+            else_span: self.else_span,
+            body: Arc::new(self.body.translate_ids(id_map)),
+        }
+    }
+
+    fn unresolved_symbols(&self, id_map: &HashMap<String, FunctionId>) -> Vec<String> {
+        self.body.unresolved_symbols(id_map)
+    }
+}
+
+impl ElseClause<FunctionId> {
+    pub fn run(
+        &self,
+        lib: &Library,
+        call_states: &watch::Sender<ThreadCallStates>,
+        block_index: usize,
+    ) {
+        call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
+        call_states.send_modify(|t| t.pop(RunState::Successful));
+        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
+        defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+        self.body.run(lib, call_states)
+    }
+
+    pub fn span(&self) -> SrcSpan {
+        self.else_span
+    }
+
+    pub fn body(&self) -> &Arc<Body<FunctionId>> {
+        &self.body
     }
 }
 
@@ -372,7 +425,7 @@ pub enum Expression<FnId> {
         name: String,
     },
     Call {
-        span: Option<SrcSpan>,
+        span: SrcSpan,
         name: FnId,
         args: Vec<Expression<FnId>>,
     },
@@ -382,26 +435,31 @@ impl Expression<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) -> Value {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
-            Expression::Call { name, args, .. } => {
-                let args: Vec<_> = args
-                    .iter()
-                    .enumerate()
-                    .map(|(index, arg)| {
-                        call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
-                        defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
-                        arg.run(lib, call_states)
-                    })
-                    .collect();
-
-                call_states.send_modify(|t| t.push(StackFrame::Function(*name)));
-                defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
-                lib.lookup(*name).run(&args, lib, call_states);
-
-                Value::None
-            }
+            Expression::Call { name, args, .. } => run_call(*name, args, lib, call_states),
             Expression::Literal(literal) => literal.run(),
         }
     }
+}
+
+pub(crate) fn run_call(
+    name: FunctionId,
+    args: &[Expression<FunctionId>],
+    lib: &Library,
+    call_states: &watch::Sender<ThreadCallStates>,
+) -> Value {
+    let args: Vec<_> = args
+        .iter()
+        .enumerate()
+        .map(|(index, arg)| {
+            call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
+            defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+            arg.run(lib, call_states)
+        })
+        .collect();
+    call_states.send_modify(|t| t.push(StackFrame::Function(name)));
+    defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+    lib.lookup(name).run(&args, lib, call_states);
+    Value::None
 }
 
 impl Expression<String> {
@@ -441,7 +499,7 @@ impl Expression<String> {
             .map(|(name, args)| Self::Call {
                 name: name.fragment().to_string(),
                 args,
-                span: Some(SrcSpan::from_span(&name)),
+                span: SrcSpan::from_span(&name),
             })
             .parse(input)
         }
@@ -610,13 +668,13 @@ macro_rules! keywords {
 
 macro_rules! keyword {
     ($kw:ident) => {
-        fn $kw(input: Span) -> ParseResult<()> {
-            discard(tag(stringify!($kw))).parse(input)
+        fn $kw(input: Span) -> ParseResult<Span> {
+            tag(stringify!($kw)).parse(input)
         }
     };
     ($kw:ident($kw_text:literal)) => {
-        fn $kw(input: Span) -> ParseResult<()> {
-            discard(tag($kw_text)).parse(input)
+        fn $kw(input: Span) -> ParseResult<Span> {
+            tag($kw_text).parse(input)
         }
     };
 }
@@ -648,6 +706,15 @@ impl SrcSpan {
             line: span.location_line() as usize,
             column: span.get_utf8_column(),
             len: span.fragment().len(),
+        }
+    }
+
+    // TODO: Remove this
+    pub fn todo() -> Self {
+        Self {
+            line: 0,
+            column: 0,
+            len: 0,
         }
     }
 
@@ -848,7 +915,7 @@ mod tests {
         );
     }
 
-    fn src_span(line: usize, column: usize, len: usize) -> Option<SrcSpan> {
-        Some(SrcSpan { line, column, len })
+    fn src_span(line: usize, column: usize, len: usize) -> SrcSpan {
+        SrcSpan { line, column, len }
     }
 }

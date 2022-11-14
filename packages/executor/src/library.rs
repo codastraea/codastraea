@@ -5,7 +5,7 @@ use tokio::sync::watch;
 
 use crate::{
     run::ThreadCallStates,
-    syntax_tree::{Expression, IdMap, LinkedFunction, Module},
+    syntax_tree::{run_call, IdMap, LinkedFunction, Module},
 };
 
 pub struct Library {
@@ -75,12 +75,7 @@ impl Library {
 
     pub fn run(&self, call_states: &watch::Sender<ThreadCallStates>) {
         if let Some(main_id) = self.main_id() {
-            Expression::Call {
-                name: main_id,
-                args: Vec::new(),
-                span: None,
-            }
-            .run(self, call_states);
+            run_call(main_id, &[], self, call_states);
         }
     }
 

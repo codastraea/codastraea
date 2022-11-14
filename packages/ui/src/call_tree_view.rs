@@ -5,13 +5,13 @@ use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, RunState, StackFrame},
-    syntax_tree::{Expression, LinkedBody, LinkedFunction, Statement},
+    syntax_tree::{Expression, LinkedBody, LinkedFunction, SrcSpan, Statement},
 };
 use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
     clone,
     elements::{
-        html::{a, div, ABuilder, DivBuilder},
+        html::{self, div, DivBuilder},
         ElementEvents,
     },
     node::{
@@ -45,32 +45,44 @@ pub struct CallTree(Node);
 impl CallTree {
     pub fn new(
         fn_id: FunctionId,
+        actions: impl CallTreeActions,
         library: &Rc<Library>,
         view_call_states: &ViewCallStates,
     ) -> Self {
-        let view_state = CallTreeState::new(view_call_states.clone(), library.clone());
+        let view_state = CallTreeState::new(actions, library.clone(), view_call_states.clone());
         Self(
             div()
                 .class(css::CALL_TREE)
-                .child(function_node(fn_id, CallStack::new(), &view_state))
+                .child(function_node(
+                    fn_id,
+                    SrcSpan::todo(),
+                    CallStack::new(),
+                    &view_state,
+                ))
                 .into(),
         )
     }
 }
 
+pub trait CallTreeActions: Clone + 'static {
+    fn view_code(&self, span: SrcSpan);
+}
+
 #[derive(Clone)]
-struct CallTreeState {
+struct CallTreeState<Actions: CallTreeActions> {
     expanded: Rc<RefCell<HashMap<CallStack, Mutable<bool>>>>,
     view_call_states: ViewCallStates,
     library: Rc<Library>,
+    actions: Actions,
 }
 
-impl CallTreeState {
-    fn new(view_call_states: ViewCallStates, library: Rc<Library>) -> Self {
+impl<Actions: CallTreeActions> CallTreeState<Actions> {
+    fn new(actions: Actions, library: Rc<Library>, view_call_states: ViewCallStates) -> Self {
         Self {
             expanded: Rc::new(RefCell::new(HashMap::new())),
             library,
             view_call_states,
+            actions,
         }
     }
 
@@ -89,12 +101,17 @@ impl CallTreeState {
     fn lookup_fn(&self, fn_id: FunctionId) -> &LinkedFunction {
         self.library.lookup(fn_id)
     }
+
+    fn actions(&self) -> &Actions {
+        &self.actions
+    }
 }
 
-fn function_node(
+fn function_node<Actions: CallTreeActions>(
     fn_id: FunctionId,
+    span: SrcSpan,
     mut call_stack: CallStack,
-    view_state: &CallTreeState,
+    view_state: &CallTreeState<Actions>,
 ) -> Element {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(StackFrame::Function(fn_id));
@@ -103,31 +120,31 @@ fn function_node(
         LinkedBody::Local(body) => is_expandable(body).then_some(body),
         LinkedBody::Python => None,
     };
-    let run_state = view_state.run_state(&call_stack);
 
     if let Some(body) = body {
-        let expanded = view_state.expanded(&call_stack);
-        clone!(body, call_stack, view_state);
-        let body =
-            move || column().children(body_statements(body.iter(), &call_stack, &view_state));
-
-        expandable_node(name, FUNCTION_COLOUR, run_state, expanded, body)
+        expandable_node(name, FUNCTION_COLOUR, span, &call_stack, view_state, {
+            clone!(body, call_stack, view_state);
+            move || column().children(body_statements(body.iter(), &call_stack, &view_state))
+        })
     } else {
-        leaf_node(name, FUNCTION_COLOUR, run_state)
+        leaf_node(name, FUNCTION_COLOUR, span, &call_stack, view_state)
     }
 }
 
-fn expandable_node<Elem>(
+fn expandable_node<Elem, Actions>(
     type_name: &str,
     colour: Colour,
-    run_state: impl Signal<Item = RunState> + 'static,
-    is_expanded: Mutable<bool>,
+    span: SrcSpan,
+    call_stack: &CallStack,
+    view_state: &CallTreeState<Actions>,
     mut expanded: impl FnMut() -> Elem + 'static,
 ) -> Element
 where
     Elem: Into<Element>,
+    Actions: CallTreeActions,
 {
     let style = ButtonStyle::Solid(colour);
+    let is_expanded = view_state.expanded(call_stack);
 
     column()
         .align_self(Align::Stretch)
@@ -137,7 +154,9 @@ where
                 .border_colour(border_colour(colour))
                 .child(
                     button_group(type_name)
-                        .dropdown(item_dropdown(type_name, style, run_state))
+                        .dropdown(item_dropdown(
+                            type_name, style, span, call_stack, view_state,
+                        ))
                         .button(zoom_button(&is_expanded, style)),
                 ),
         )
@@ -179,23 +198,33 @@ fn item(colour: Colour) -> DivBuilder {
         .rounded_border(true)
 }
 
-fn leaf_node(
+fn leaf_node<Actions: CallTreeActions>(
     name: &str,
     colour: Colour,
-    run_state: impl Signal<Item = RunState> + 'static,
+    span: SrcSpan,
+    call_stack: &CallStack,
+    view_state: &CallTreeState<Actions>,
 ) -> Element {
     column()
         .align_items(Align::Start)
-        .child(item(colour).child(item_dropdown(name, ButtonStyle::Solid(colour), run_state)))
+        .child(item(colour).child(item_dropdown(
+            name,
+            ButtonStyle::Solid(colour),
+            span,
+            call_stack,
+            view_state,
+        )))
         .into()
 }
 
-fn item_dropdown(
+fn item_dropdown<Actions: CallTreeActions>(
     name: &str,
     style: ButtonStyle,
-    run_state: impl Signal<Item = RunState> + 'static,
+    span: SrcSpan,
+    call_stack: &CallStack,
+    view_state: &CallTreeState<Actions>,
 ) -> DropdownBuilder {
-    let run_state = run_state.map(|run_state| {
+    let run_state = view_state.run_state(call_stack).map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
             RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
@@ -211,12 +240,19 @@ fn item_dropdown(
 
     dropdown(
         icon_button("button", Sig(run_state), style).text(name),
-        dropdown_menu().children([dropdown_item("Run"), dropdown_item("Pause")]),
+        dropdown_menu().children([
+            dropdown_item("View code").on_click({
+                let actions = view_state.actions().clone();
+                move |_, _| actions.view_code(span)
+            }),
+            dropdown_item("Run"),
+            dropdown_item("Pause"),
+        ]),
     )
 }
 
-fn dropdown_item(name: &str) -> ABuilder {
-    a().href("#").text(name)
+fn dropdown_item(name: &str) -> html::ButtonBuilder {
+    html::button().text(name)
 }
 
 fn zoom_button(
@@ -242,11 +278,12 @@ fn zoom_button(
     })
 }
 
-fn call<'a>(
+fn call<'a, Actions: CallTreeActions>(
     name: FunctionId,
+    span: SrcSpan,
     args: &'a [Expression<FunctionId>],
     call_stack: CallStack,
-    view_state: &'a CallTreeState,
+    view_state: &'a CallTreeState<Actions>,
 ) -> impl Iterator<Item = Element> + 'a {
     args.iter()
         .enumerate()
@@ -259,26 +296,28 @@ fn call<'a>(
                 expression(arg, &call_stack, view_state)
             }
         })
-        .chain(iter::once(function_node(name, call_stack, view_state)))
+        .chain(iter::once(function_node(
+            name, span, call_stack, view_state,
+        )))
 }
 
-fn expression(
+fn expression<Actions: CallTreeActions>(
     expr: &Expression<FunctionId>,
     call_stack: &CallStack,
-    view_state: &CallTreeState,
+    view_state: &CallTreeState<Actions>,
 ) -> Vec<Element> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
-        Expression::Call { name, args, .. } => {
-            call(*name, args, call_stack.clone(), view_state).collect()
+        Expression::Call { name, args, span } => {
+            call(*name, *span, args, call_stack.clone(), view_state).collect()
         }
     }
 }
 
-fn body_statements<'a>(
+fn body_statements<'a, Actions: CallTreeActions>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     call_stack: &'a CallStack,
-    view_state: &'a CallTreeState,
+    view_state: &'a CallTreeState<Actions>,
 ) -> impl Iterator<Item = Element> + 'a {
     body.filter(|stmt| statement_is_expandable(stmt))
         .enumerate()
@@ -290,13 +329,15 @@ fn body_statements<'a>(
                 Statement::Pass => Vec::new(),
                 Statement::Expression(expr) => expression(expr, &call_stack, view_state),
                 Statement::If {
+                    if_span,
                     condition,
                     then_block,
                     else_block,
                 } => vec![if_node(
+                    *if_span,
                     condition.clone(),
                     then_block.clone(),
-                    else_block.clone(),
+                    else_block,
                     &call_stack,
                     view_state,
                 )],

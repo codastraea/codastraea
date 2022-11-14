@@ -4,6 +4,7 @@ use derive_more::Into;
 use futures_signals::signal::{Mutable, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
+    syntax_tree::SrcSpan,
     CODE,
 };
 use silkenweb::{
@@ -23,7 +24,7 @@ use silkenweb_bootstrap::{
 };
 
 use crate::{
-    call_tree_view::CallTree,
+    call_tree_view::{CallTree, CallTreeActions},
     source_view::{Editor, SourceView},
     ViewCallStates,
 };
@@ -38,6 +39,7 @@ impl ThreadView {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let active = Mutable::new(Tab::CallTree);
+        let editor = Editor::new(CODE);
 
         Self(
             column()
@@ -52,19 +54,36 @@ impl ThreadView {
                     content(
                         Tab::CallTree,
                         &active,
-                        CallTree::new(fn_id, library, view_call_states),
+                        CallTree::new(
+                            fn_id,
+                            Actions {
+                                active: active.clone(),
+                                editor: editor.clone(),
+                            },
+                            library,
+                            view_call_states,
+                        ),
                     )
                     .overflow(Overflow::Auto),
-                    content(
-                        Tab::SourceCode,
-                        &active,
-                        SourceView::new(&Editor::new(CODE)),
-                    )
-                    .flex_column()
-                    .overflow(Overflow::Hidden),
+                    content(Tab::SourceCode, &active, SourceView::new(&editor))
+                        .flex_column()
+                        .overflow(Overflow::Hidden),
                 ])
                 .into(),
         )
+    }
+}
+
+#[derive(Clone)]
+struct Actions {
+    active: Mutable<Tab>,
+    editor: Editor,
+}
+
+impl CallTreeActions for Actions {
+    fn view_code(&self, span: SrcSpan) {
+        self.editor.set_selection(span);
+        self.active.set_neq(Tab::SourceCode);
     }
 }
 
