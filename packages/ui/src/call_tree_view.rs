@@ -50,15 +50,12 @@ impl CallTree {
         view_call_states: &ViewCallStates,
     ) -> Self {
         let view_state = CallTreeState::new(actions, library.clone(), view_call_states.clone());
+        // TODO: Handle error (python functions can't be run directly).
+        let span = library.lookup(fn_id).span().unwrap();
         Self(
             div()
                 .class(css::CALL_TREE)
-                .child(function_node(
-                    fn_id,
-                    SrcSpan::todo(),
-                    CallStack::new(),
-                    &view_state,
-                ))
+                .child(function_node(fn_id, span, CallStack::new(), &view_state))
                 .into(),
         )
     }

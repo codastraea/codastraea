@@ -61,6 +61,7 @@ impl Module {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     name: String,
+    span: SrcSpan,
     body: Body<String>,
 }
 
@@ -83,6 +84,7 @@ impl Function {
         )
         .map(|(_def, _, name, _params, _colon, body)| Function {
             name: name.fragment().to_string(),
+            span: SrcSpan::from_span(&name),
             body,
         })
     }
@@ -90,6 +92,7 @@ impl Function {
     pub fn translate_ids(&self, id_map: &IdMap) -> LinkedFunction {
         LinkedFunction::local(
             &self.name,
+            self.span,
             self.body
                 .iter()
                 .map(|statement| statement.translate_ids(id_map)),
@@ -110,13 +113,19 @@ impl Function {
 #[derive(Debug)]
 pub struct LinkedFunction {
     name: String,
+    span: Option<SrcSpan>,
     body: LinkedBody,
 }
 
 impl LinkedFunction {
-    pub fn local(name: &str, body: impl IntoIterator<Item = Statement<FunctionId>>) -> Self {
+    pub fn local(
+        name: &str,
+        span: SrcSpan,
+        body: impl IntoIterator<Item = Statement<FunctionId>>,
+    ) -> Self {
         Self {
             name: name.to_owned(),
+            span: Some(span),
             body: LinkedBody::Local(Arc::new(Body::new(body))),
         }
     }
@@ -124,12 +133,17 @@ impl LinkedFunction {
     pub fn python(name: String) -> Self {
         Self {
             name,
+            span: None,
             body: LinkedBody::Python,
         }
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn span(&self) -> Option<SrcSpan> {
+        self.span
     }
 
     pub fn body(&self) -> &LinkedBody {
@@ -709,15 +723,6 @@ impl SrcSpan {
         }
     }
 
-    // TODO: Remove this
-    pub fn todo() -> Self {
-        Self {
-            line: 0,
-            column: 0,
-            len: 0,
-        }
-    }
-
     pub fn line(&self) -> usize {
         self.line
     }
@@ -909,6 +914,7 @@ mod tests {
             Module {
                 functions: vec![Function {
                     name: "test".to_owned(),
+                    span: src_span(1, 5, 4),
                     body: Body::new(body),
                 }],
             }
