@@ -38,7 +38,7 @@ impl AnimatedExpand for DivBuilder {
         let element = self.handle().dom_element();
         let delayed_is_expanded_signal = delayed_is_expanded.signal();
 
-        self.class(css::ANIMATED_EXPANDING_NODE)
+        self.class(css::TRANSITION)
             .style(Sig(style.signal_cloned()))
             .optional_child(Sig(is_expanded.signal().map({
                 clone!(initial_bounds);

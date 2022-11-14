@@ -58,10 +58,7 @@
     padding: 2px;
 }
 
-/* An element with an expanding/contracting animation */
-.animated-expanding-node {
-    width: 100%;
-    height: 100%;
+.transition {
     transition: all 200ms;
 }
 

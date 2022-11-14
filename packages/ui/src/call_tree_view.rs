@@ -131,15 +131,17 @@ where
 
     column()
         .align_self(Align::Stretch)
-        .align_items(Align::Start)
         .child(
-            item(colour).border_colour(border_colour(colour)).child(
-                button_group(type_name)
-                    .dropdown(item_dropdown(type_name, style, run_state))
-                    .button(zoom_button(&is_expanded, style)),
-            ),
+            item(colour)
+                .align_self(Align::Start)
+                .border_colour(border_colour(colour))
+                .child(
+                    button_group(type_name)
+                        .dropdown(item_dropdown(type_name, style, run_state))
+                        .button(zoom_button(&is_expanded, style)),
+                ),
         )
-        .child(div().animated_expand(
+        .child(div().align_self(Align::Stretch).animated_expand(
             move || indented_block().child(expanded().into()),
             is_expanded,
         ))
