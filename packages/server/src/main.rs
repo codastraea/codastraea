@@ -10,6 +10,7 @@ use axum::{
     routing::get,
     Router, Server,
 };
+use bincode::Options;
 use serpent_automation_executor::{
     library::Library, run::ThreadCallStates, syntax_tree::parse, CODE,
 };
@@ -60,11 +61,17 @@ async fn handler(mut call_states: watch::Receiver<ThreadCallStates>, mut socket:
     loop {
         call_states.changed().await.unwrap();
 
-        let serialize_tracer = serde_json::to_string(&*call_states.borrow()).unwrap();
+        let serialize_tracer = bincode::options()
+            .serialize(&*call_states.borrow())
+            .unwrap();
         println!("Sending run state");
 
         // TODO: Diff `RunTracer` and send a `RunTracerDelta`
-        if socket.send(Message::Text(serialize_tracer)).await.is_err() {
+        if socket
+            .send(Message::Binary(serialize_tracer))
+            .await
+            .is_err()
+        {
             println!("Client disconnected");
             return;
         }

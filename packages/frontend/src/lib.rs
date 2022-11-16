@@ -1,3 +1,4 @@
+use bincode::Options;
 use futures::StreamExt;
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
@@ -33,14 +34,16 @@ pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
     while let Some(msg) = server_ws.next().await {
         log!(format!("Received: {:?}", msg));
 
-        match msg.unwrap() {
+        let call_states = match msg.unwrap() {
             Message::Text(text) => {
                 let call_states: ThreadCallStates = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
-                receive_call_states.set_call_states(call_states);
+                call_states
             }
-            Message::Bytes(_) => log!("Unknown binary message"),
-        }
+            Message::Bytes(bytes) => bincode::options().deserialize(&bytes).unwrap(),
+        };
+
+        receive_call_states.set_call_states(call_states);
     }
 
     log!("WebSocket Closed")
