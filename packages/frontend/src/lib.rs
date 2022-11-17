@@ -29,7 +29,7 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
 
 pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
     log!("Connecting to websocket");
-    let mut server_ws = WebSocket::open("ws://178.79.165.198:9090/").unwrap();
+    let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
 
     while let Some(msg) = server_ws.next().await {
         log!(format!("Received: {:?}", msg));
