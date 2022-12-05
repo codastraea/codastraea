@@ -1,3 +1,4 @@
+use bincode::Options;
 use futures::StreamExt;
 use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
@@ -28,19 +29,25 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
 
 pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
     log!("Connecting to websocket");
-    let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap();
+    let mut server_ws = WebSocket::open("ws://178.79.165.198:9090/").unwrap_or_else(|e| {
+        log!(format!("Error: {}", e));
+        // TODO: Handle error
+        panic!("Error connecting to websocket");
+    });
 
     while let Some(msg) = server_ws.next().await {
         log!(format!("Received: {:?}", msg));
 
-        match msg.unwrap() {
+        let call_states = match msg.unwrap() {
             Message::Text(text) => {
                 let call_states: ThreadCallStates = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
-                receive_call_states.set_call_states(call_states);
+                call_states
             }
-            Message::Bytes(_) => log!("Unknown binary message"),
-        }
+            Message::Bytes(bytes) => bincode::options().deserialize(&bytes).unwrap(),
+        };
+
+        receive_call_states.set_call_states(call_states);
     }
 
     log!("WebSocket Closed")
