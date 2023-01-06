@@ -3,9 +3,9 @@ use std::{cell::RefCell, rc::Rc};
 use futures_signals::signal::{Mutable, SignalExt};
 use silkenweb::{
     clone,
-    elements::html::DivBuilder,
-    node::element::{Element, ElementBuilder},
-    prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
+    elements::html::Div,
+    node::element::{Element, GenericElement},
+    prelude::{HtmlElement, HtmlElementEvents, ParentElement},
     task::on_animation_frame,
     value::Sig,
 };
@@ -20,17 +20,17 @@ pub trait AnimatedExpand {
         expanded: Mutable<bool>,
     ) -> Self
     where
-        Elem: Into<Element>;
+        Elem: Into<GenericElement>;
 }
 
-impl AnimatedExpand for DivBuilder {
+impl AnimatedExpand for Div {
     fn animated_expand<Elem>(
         self,
         mut child: impl FnMut() -> Elem + 'static,
         is_expanded: Mutable<bool>,
     ) -> Self
     where
-        Elem: Into<Element>,
+        Elem: Into<GenericElement>,
     {
         let style = Mutable::new(None);
         let delayed_is_expanded = Mutable::<Option<bool>>::new(None);

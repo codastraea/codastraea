@@ -6,7 +6,7 @@ use serpent_automation_executor::{
     syntax_tree::{Body, ElseClause, Expression, SrcSpan},
 };
 use serpent_automation_frontend::{expression_is_expandable, is_expandable};
-use silkenweb::{clone, node::element::Element, prelude::ParentBuilder};
+use silkenweb::{clone, node::element::GenericElement, prelude::ParentElement};
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
     column,
@@ -26,7 +26,7 @@ pub(super) fn if_node<Actions: CallTreeActions>(
     else_block: &Option<ElseClause<FunctionId>>,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     // TODO: Make call stack cheap to clone.
     column()
         .align_items(Align::Start)
@@ -57,7 +57,7 @@ fn condition_node<Actions: CallTreeActions>(
     block_index: usize,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     clone!(mut call_stack);
     call_stack.push(StackFrame::BlockPredicate(block_index));
     if let Some(condition) = condition {
@@ -90,7 +90,7 @@ fn condition_leaf_node<Actions: CallTreeActions>(
     span: SrcSpan,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     leaf_node(name, CONDITION_COLOUR, span, call_stack, view_state)
 }
 
@@ -101,7 +101,7 @@ fn branch_body<Actions: CallTreeActions>(
     nested_block_index: usize,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     let is_expandable = is_expandable(body);
     let condition = condition_node(condition, span, nested_block_index, call_stack, view_state);
 

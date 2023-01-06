@@ -1,7 +1,7 @@
 use derive_more::Into;
 use serpent_automation_executor::syntax_tree::SrcSpan;
 use silkenweb::{
-    node::{element::ElementBuilder, Node},
+    node::{element::Element, Node},
     Value,
 };
 use silkenweb_bootstrap::{

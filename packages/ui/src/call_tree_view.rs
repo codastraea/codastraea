@@ -11,14 +11,14 @@ use serpent_automation_frontend::{is_expandable, statement_is_expandable};
 use silkenweb::{
     clone,
     elements::{
-        html::{self, div, DivBuilder},
+        html::{self, div, Div},
         ElementEvents,
     },
     node::{
-        element::{Element, ElementBuilder},
+        element::{Element, GenericElement},
         Node,
     },
-    prelude::ParentBuilder,
+    prelude::ParentElement,
     value::Sig,
     Value,
 };
@@ -26,7 +26,7 @@ use silkenweb_bootstrap::{
     button::{icon_button, ButtonStyle},
     button_group::button_group,
     column,
-    dropdown::{dropdown, dropdown_menu, DropdownBuilder},
+    dropdown::{dropdown, dropdown_menu, Dropdown},
     icon::{icon, Icon, IconType},
     utility::{
         Align, Colour, Position, SetAlign, SetBorder, SetColour, SetDisplay, SetPosition,
@@ -109,7 +109,7 @@ fn function_node<Actions: CallTreeActions>(
     span: SrcSpan,
     mut call_stack: CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     let f = view_state.lookup_fn(fn_id);
     call_stack.push(StackFrame::Function(fn_id));
     let name = f.name();
@@ -135,9 +135,9 @@ fn expandable_node<Elem, Actions>(
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
     mut expanded: impl FnMut() -> Elem + 'static,
-) -> Element
+) -> GenericElement
 where
-    Elem: Into<Element>,
+    Elem: Into<GenericElement>,
     Actions: CallTreeActions,
 {
     let style = ButtonStyle::Solid(colour);
@@ -164,7 +164,7 @@ where
         .into()
 }
 
-fn indented_block() -> DivBuilder {
+fn indented_block() -> Div {
     column()
         .border_on(Side::Start)
         .border_colour(Colour::Secondary)
@@ -185,7 +185,7 @@ fn border_colour(colour: Colour) -> Colour {
     }
 }
 
-fn item(colour: Colour) -> DivBuilder {
+fn item(colour: Colour) -> Div {
     div()
         .position(Position::Relative)
         .class(css::CALL_TREE__ITEM)
@@ -201,7 +201,7 @@ fn leaf_node<Actions: CallTreeActions>(
     span: SrcSpan,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Element {
+) -> GenericElement {
     column()
         .align_items(Align::Start)
         .child(item(colour).child(item_dropdown(
@@ -220,7 +220,7 @@ fn item_dropdown<Actions: CallTreeActions>(
     span: SrcSpan,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> DropdownBuilder {
+) -> Dropdown {
     let run_state = view_state.run_state(call_stack).map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
@@ -248,14 +248,14 @@ fn item_dropdown<Actions: CallTreeActions>(
     )
 }
 
-fn dropdown_item(name: &str) -> html::ButtonBuilder {
+fn dropdown_item(name: &str) -> html::Button {
     html::button().text(name)
 }
 
 fn zoom_button(
     expanded: &Mutable<bool>,
     style: ButtonStyle,
-) -> silkenweb_bootstrap::button::ButtonBuilder {
+) -> silkenweb_bootstrap::button::Button {
     icon_button(
         "button",
         icon(Sig(expanded.signal().map(|expanded| {
@@ -281,7 +281,7 @@ fn call<'a, Actions: CallTreeActions>(
     args: &'a [Expression<FunctionId>],
     call_stack: CallStack,
     view_state: &'a CallTreeState<Actions>,
-) -> impl Iterator<Item = Element> + 'a {
+) -> impl Iterator<Item = GenericElement> + 'a {
     args.iter()
         .enumerate()
         .flat_map({
@@ -302,7 +302,7 @@ fn expression<Actions: CallTreeActions>(
     expr: &Expression<FunctionId>,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-) -> Vec<Element> {
+) -> Vec<GenericElement> {
     match expr {
         Expression::Variable { .. } | Expression::Literal(_) => Vec::new(),
         Expression::Call { name, args, span } => {
@@ -315,7 +315,7 @@ fn body_statements<'a, Actions: CallTreeActions>(
     body: impl Iterator<Item = &'a Statement<FunctionId>> + 'a,
     call_stack: &'a CallStack,
     view_state: &'a CallTreeState<Actions>,
-) -> impl Iterator<Item = Element> + 'a {
+) -> impl Iterator<Item = GenericElement> + 'a {
     body.filter(|stmt| statement_is_expandable(stmt))
         .enumerate()
         .flat_map(move |(stmt_index, statement)| {

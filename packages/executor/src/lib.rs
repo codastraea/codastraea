@@ -1,9 +1,9 @@
 use indoc::indoc;
 
+pub mod call_tree;
 pub mod library;
 pub mod run;
 pub mod syntax_tree;
-pub mod call_tree;
 
 pub const CODE: &str = indoc! {r#"
     def main():

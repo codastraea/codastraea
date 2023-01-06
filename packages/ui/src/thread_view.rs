@@ -9,9 +9,9 @@ use serpent_automation_executor::{
 };
 use silkenweb::{
     clone,
-    elements::html::{self, div, DivBuilder},
+    elements::html::{self, div, Div},
     node::Node,
-    prelude::{ElementEvents, ParentBuilder},
+    prelude::{ElementEvents, ParentElement},
     value::Sig,
     Value,
 };
@@ -87,7 +87,7 @@ impl CallTreeActions for Actions {
     }
 }
 
-fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
+fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::Button {
     html::button()
         .text(name)
         .active(Sig(active.signal().eq(tab)))
@@ -97,7 +97,7 @@ fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::ButtonBuilder {
         })
 }
 
-fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> DivBuilder {
+fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Div {
     div()
         .display(Sig(active.signal().map(move |active| {
             if active == tab {
