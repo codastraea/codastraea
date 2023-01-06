@@ -10,17 +10,13 @@
     <link data-trunk rel="copy-dir" href="bootstrap-icons-1.9.1/fonts" />
     <link data-trunk rel="css" href="serpent-automation.css" />
     <link data-trunk rel="rust" data-wasm-opt="z" />
-    <link data-trunk rel="copy-file" href="codemirror-bundler/dist/codemirror.esm.js" />
-    <!-- TODO: `trunk` support for `<script>` is not released yet. -->
-    <!-- This will not be needed when it's released.  -->
-    <link data-trunk rel="copy-file" href="bootstrap-5.2.2/js/bootstrap.bundle.min.js" />
+    <link data-trunk rel="inline" href="codemirror-bundler/dist/codemirror-bundle.iife.js" />
+    <link data-trunk rel="inline" href="bootstrap-5.2.2/js/bootstrap.bundle.min.js" />
     <base data-trunk-public-url />
 </head>
 
 <body>
     <div id="app"></div>
-    <script data-trunk src="bootstrap.bundle.min.js"></script>
-    <script type="module" src="codemirror.esm.js"></script>
 </body>
 
 </html>
