@@ -20,7 +20,7 @@ mod source_view;
 mod splitter;
 mod thread_view;
 mod css {
-    silkenweb::css_classes!(visibility: pub, path: "serpent-automation.css");
+    silkenweb::css!(visibility: pub, path: "serpent-automation.css");
 }
 
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<GenericElement> {
