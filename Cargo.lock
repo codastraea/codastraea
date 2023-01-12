@@ -1799,7 +1799,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "caseless",
  "discard",
@@ -1821,7 +1821,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "cssparser",
  "itertools",
@@ -1834,7 +1834,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap"
 version = "0.1.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "derive_more",
  "futures-signals",
@@ -1845,7 +1845,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -1858,9 +1858,10 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "cssparser",
+ "derive_more",
  "lightningcss",
  "proc-macro-error",
  "proc-macro2",
@@ -1872,7 +1873,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-signals-ext"
 version = "0.3.0"
-source = "git+https://github.com/silkenweb/silkenweb#27d7a1d45c5bf4e69056219b677f00dbe80f7e35"
+source = "git+https://github.com/silkenweb/silkenweb#137aaa788cef354c3d0778aeda9cb1ad73db4012"
 dependencies = [
  "futures-signals",
  "paste",
