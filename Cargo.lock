@@ -1716,7 +1716,6 @@ dependencies = [
 name = "serpent-automation-executor"
 version = "0.1.0"
 dependencies = [
- "futures-signals",
  "indoc",
  "nom 7.1.2",
  "nom-greedyerror",
