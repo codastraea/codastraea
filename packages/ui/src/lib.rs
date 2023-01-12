@@ -8,7 +8,7 @@ use serpent_automation_executor::{
 };
 use serpent_automation_frontend::ReceiveCallStates;
 use silkenweb::{
-    node::element::GenericElement,
+    node::element::ChildElement,
     prelude::{Element, ParentElement},
 };
 use silkenweb_bootstrap::column;
@@ -23,7 +23,7 @@ mod css {
     silkenweb::css!(visibility: pub, path: "serpent-automation.css");
 }
 
-pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<GenericElement> {
+pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
 
     column()
