@@ -6,7 +6,7 @@ module.exports = defineConfig({
         lib: {
             entry: resolve(__dirname, 'main.js'),
             name: 'CodeMirror',
-            formats: ['iife'],
+            formats: ['esm'],
         },
     },
 })

@@ -41,7 +41,7 @@ impl Editor {
     }
 }
 
-#[wasm_bindgen(raw_module = "/codemirror.esm.js")]
+#[wasm_bindgen(raw_module = "/codemirror-bundle.esm.js")]
 extern "C" {
     // TODO: Can any of these throw exceptions?
     #[derive(Clone)]

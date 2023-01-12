@@ -10,8 +10,10 @@
     <link data-trunk rel="copy-dir" href="bootstrap-icons-1.9.1/fonts" />
     <link data-trunk rel="css" href="serpent-automation.css" />
     <link data-trunk rel="rust" data-wasm-opt="z" />
-    <link data-trunk rel="inline" href="codemirror-bundler/dist/codemirror-bundle.iife.js" />
-    <link data-trunk rel="inline" href="bootstrap-5.2.2/js/bootstrap.bundle.min.js" />
+    <link data-trunk rel="copy-file" href="codemirror-bundler/dist/codemirror-bundle.esm.js" />
+    <link data-trunk rel="copy-file" href="bootstrap-5.2.2/js/bootstrap.bundle.min.js" />
+    <script type="module" src="./codemirror-bundle.esm.js"></script>
+    <script type="module" src="./bootstrap.bundle.min.js"></script>
     <base data-trunk-public-url />
 </head>
 
