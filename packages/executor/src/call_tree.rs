@@ -42,7 +42,7 @@ impl Stack {
 }
 
 struct StackFrame {
-    block_pos: BlockPos,
+    _block_pos: BlockPos,
     child: CallTree,
     run_state: RunState,
 }
@@ -50,7 +50,7 @@ struct StackFrame {
 impl StackFrame {
     pub fn new(block_pos: BlockPos) -> Self {
         Self {
-            block_pos,
+            _block_pos: block_pos,
             child: CallTree { tree: None },
             run_state: RunState::Running,
         }
