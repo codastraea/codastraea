@@ -20,7 +20,9 @@ mod source_view;
 mod splitter;
 mod thread_view;
 mod css {
-    silkenweb::css!(visibility: pub, path: "serpent-automation.css");
+    silkenweb::css!(path = "serpent-automation.css");
+
+    pub use class::*;
 }
 
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl ChildElement {
