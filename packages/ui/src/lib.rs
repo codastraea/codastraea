@@ -25,6 +25,14 @@ mod css {
     pub use class::*;
 }
 
+macro_rules! component {
+    ($path:literal) => {
+        silkenweb::css!(path = $path, auto_mount, transpile = (modules));
+    };
+}
+
+use component;
+
 pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
 

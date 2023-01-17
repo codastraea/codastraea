@@ -35,9 +35,14 @@ use silkenweb_bootstrap::{
     },
 };
 
-use crate::{animation::AnimatedExpand, call_tree_view::conditional::if_node, css, ViewCallStates};
+use crate::{
+    animation::AnimatedExpand, call_tree_view::conditional::if_node, component, ViewCallStates,
+};
 
 mod conditional;
+
+// TODO: Accept `path = concat!("css/", "call-tree", ".css")`
+component!("css/call-tree.css");
 
 #[derive(Into, Value)]
 pub struct CallTree(Node);
@@ -54,7 +59,7 @@ impl CallTree {
         let span = library.lookup(fn_id).span().unwrap();
         Self(
             div()
-                .class(css::CALL_TREE)
+                .class(class::container())
                 .child(function_node(fn_id, span, CallStack::new(), &view_state))
                 .into(),
         )
@@ -188,7 +193,7 @@ fn border_colour(colour: Colour) -> Colour {
 fn item(colour: Colour) -> Div {
     div()
         .position(Position::Relative)
-        .class(css::CALL_TREE__ITEM)
+        .class(class::item())
         .border_colour(border_colour(colour))
         .border_on(Side::Bottom)
         .background_colour(colour)
@@ -232,7 +237,7 @@ fn item_dropdown<Actions: CallTreeActions>(
             RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size2), Side::End))
-        .class(css::CALL_TREE__NODE_STATUS_ICON)
+        .class(class::node_status_icon())
     });
 
     dropdown(
