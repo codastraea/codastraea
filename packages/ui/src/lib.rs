@@ -27,7 +27,11 @@ mod css {
 
 macro_rules! component {
     ($path:literal) => {
-        silkenweb::css!(path = $path, auto_mount, transpile = (modules));
+        silkenweb::css!(
+            path = concat("css/", $path, ".css"),
+            auto_mount,
+            transpile = (modules)
+        );
     };
 }
 

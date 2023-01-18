@@ -41,8 +41,7 @@ use crate::{
 
 mod conditional;
 
-// TODO: Accept `path = concat!("css/", "call-tree", ".css")`
-component!("css/call-tree.css");
+component!("call-tree");
 
 #[derive(Into, Value)]
 pub struct CallTree(Node);
