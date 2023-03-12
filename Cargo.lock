@@ -1734,8 +1734,10 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "futures",
+ "futures-signals",
  "gloo-console",
  "gloo-net",
+ "once_cell",
  "serde-json-wasm",
  "serpent-automation-executor",
 ]
