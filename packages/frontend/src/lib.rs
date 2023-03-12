@@ -8,6 +8,8 @@ use serpent_automation_executor::{
     syntax_tree::{Body, Expression, Statement},
 };
 
+pub mod call_tree;
+
 pub fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     match expression {
         Expression::Variable { .. } | Expression::Literal(_) => false,
