@@ -103,18 +103,21 @@ impl Body {
                 syntax_tree::Statement::Expression(expr) => match expr {
                     syntax_tree::Expression::Literal(_) => (),
                     syntax_tree::Expression::Variable { .. } => (),
-                    syntax_tree::Expression::Call { span, name, args } => {
-                        stmts.push(Statement { span: *span })
-                    }
+                    syntax_tree::Expression::Call { span, name, args } => stmts.push(Statement {
+                        span: *span,
+                        // TODO: Collect args and call together and add to vec
+                        body: StatementBody::Call(Vec::new()),
+                    }),
                 },
                 syntax_tree::Statement::If {
                     if_span,
                     condition,
                     then_block,
                     else_block,
-                } => {
-                    stmts.push(Statement { span: *if_span })
-                },
+                } => stmts.push(Statement {
+                    span: *if_span,
+                    body: StatementBody::If,
+                }),
             }
         }
         Self(Rc::new(Vec::new()))
@@ -123,4 +126,12 @@ impl Body {
 
 pub struct Statement {
     span: SrcSpan,
+    body: StatementBody,
 }
+
+pub enum StatementBody {
+    Call(Vec<Call>),
+    If,
+}
+
+pub struct Call {}
