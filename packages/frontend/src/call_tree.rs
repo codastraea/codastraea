@@ -11,7 +11,7 @@ use crate::is_expandable;
 
 pub struct CallTree {
     name: String,
-    body: Vertex<Accordion<Body>>,
+    body: Vertex<Expandable<Body>>,
 }
 
 impl CallTree {
@@ -20,7 +20,7 @@ impl CallTree {
         let body = match f.body() {
             LinkedBody::Local(body) if is_expandable(body) => {
                 let body = body.clone();
-                Vertex::Node(Accordion::new(Lazy::new(Box::new(move || {
+                Vertex::Node(Expandable::new(Lazy::new(Box::new(move || {
                     Body::new(&body)
                 }))))
             }
@@ -60,12 +60,12 @@ impl<Children> Vertex<Children> {
 }
 
 #[derive(Clone)]
-pub struct Accordion<Item> {
+pub struct Expandable<Item> {
     expanded: Mutable<bool>,
     item: Rc<DynLazy<Item>>,
 }
 
-impl<Item: Clone> Accordion<Item> {
+impl<Item: Clone> Expandable<Item> {
     pub fn new(item: DynLazy<Item>) -> Self {
         Self {
             expanded: Mutable::new(false),
