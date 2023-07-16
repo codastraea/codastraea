@@ -5,7 +5,7 @@ use silkenweb::{
     clone,
     elements::html::Div,
     node::element::{Element, GenericElement},
-    prelude::{HtmlElement, HtmlElementEvents, ParentElement},
+    prelude::{ElementEvents, HtmlElement, ParentElement},
     task::on_animation_frame,
     value::Sig,
 };
