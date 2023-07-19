@@ -16,6 +16,7 @@ use thread_view::ThreadView;
 
 mod animation;
 mod call_tree_view;
+mod call_tree_view2;
 mod source_view;
 mod splitter;
 mod thread_view;

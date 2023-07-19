@@ -10,6 +10,7 @@ use serpent_automation_executor::{
 use crate::is_expandable;
 
 pub struct CallTree {
+    span: Option<SrcSpan>,
     name: String,
     body: Vertex<Expandable<Body>>,
 }
@@ -19,9 +20,14 @@ impl CallTree {
         let f = library.lookup(fn_id);
 
         Self {
+            span: f.span(),
             name: f.name().to_string(),
             body: Body::from_linked_body(library, f.body()),
         }
+    }
+
+    pub fn span(&self) -> Option<SrcSpan> {
+        self.span
     }
 
     pub fn name(&self) -> &str {
@@ -70,12 +76,8 @@ impl<Item: Clone> Expandable<Item> {
         }
     }
 
-    pub fn collapse(&self) {
-        self.expanded.set_neq(false)
-    }
-
-    pub fn expand(&self) {
-        self.expanded.set_neq(true)
+    pub fn is_expanded(&self) -> &Mutable<bool> {
+        &self.expanded
     }
 
     pub fn signal(&self) -> impl Signal<Item = Option<Item>> {
@@ -142,8 +144,8 @@ pub enum Statement {
 #[derive(Clone)]
 pub struct Call {
     span: SrcSpan,
-    args: Vec<Self>,
     name: String,
+    args: Vec<Self>,
     body: Vertex<Expandable<Body>>,
 }
 

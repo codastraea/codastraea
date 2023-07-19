@@ -24,7 +24,7 @@ use silkenweb_bootstrap::{
 };
 
 use crate::{
-    call_tree_view::{CallTree, CallTreeActions},
+    call_tree_view2::{CallTreeActions, CallTreeView},
     source_view::{Editor, SourceView},
     ViewCallStates,
 };
@@ -54,7 +54,7 @@ impl ThreadView {
                     content(
                         Tab::CallTree,
                         &active,
-                        CallTree::new(
+                        CallTreeView::new(
                             fn_id,
                             Actions {
                                 active: active.clone(),

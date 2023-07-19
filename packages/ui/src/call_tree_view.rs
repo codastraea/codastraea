@@ -138,7 +138,7 @@ fn expandable_node<Elem, Actions>(
     span: SrcSpan,
     call_stack: &CallStack,
     view_state: &CallTreeState<Actions>,
-    mut expanded: impl FnMut() -> Elem + 'static,
+    expanded: impl FnMut() -> Elem + 'static + Clone,
 ) -> GenericElement
 where
     Elem: Into<GenericElement>,
@@ -161,10 +161,14 @@ where
                         .button(zoom_button(&is_expanded, style)),
                 ),
         )
-        .child(div().align_self(Align::Stretch).animated_expand(
-            move || indented_block().child(expanded().into()),
-            is_expanded,
-        ))
+        .child(
+            div()
+                .align_self(Align::Stretch)
+                .animated_expand(is_expanded.signal().map(move |is_expanded| {
+                    clone!(mut expanded);
+                    is_expanded.then(move || indented_block().child(expanded().into()))
+                })),
+        )
         .into()
 }
 
