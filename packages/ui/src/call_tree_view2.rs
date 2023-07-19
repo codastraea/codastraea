@@ -7,7 +7,10 @@ use serpent_automation_executor::{
     run::RunState,
     syntax_tree::SrcSpan,
 };
-use serpent_automation_frontend::call_tree::{Body, CallTree, Expandable, Statement, Vertex};
+use serpent_automation_frontend::{
+    call_tree::{Body, CallTree, Statement},
+    tree::{Expandable, Vertex},
+};
 use silkenweb::{
     clone,
     node::{element::GenericElement, Node},

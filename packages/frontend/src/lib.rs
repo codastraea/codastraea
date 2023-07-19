@@ -9,6 +9,7 @@ use serpent_automation_executor::{
 };
 
 pub mod call_tree;
+pub mod tree;
 
 pub fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     match expression {
