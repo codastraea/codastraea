@@ -17,20 +17,10 @@ pub struct CallTree {
 impl CallTree {
     pub fn root(fn_id: FunctionId, library: &Rc<Library>) -> Self {
         let f = library.lookup(fn_id);
-        let body = match f.body() {
-            LinkedBody::Local(body) if is_expandable(body) => {
-                let body = body.clone();
-                Vertex::Node(Expandable::new({
-                    let library = library.clone();
-                    move || Body::new(&library, &body)
-                }))
-            }
-            LinkedBody::Python | LinkedBody::Local(_) => Vertex::Leaf,
-        };
 
         Self {
             name: f.name().to_string(),
-            body,
+            body: Body::from_syntax_tree(library, f.body()),
         }
     }
 
@@ -94,6 +84,22 @@ impl<Item: Clone> Expandable<Item> {
 pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
+    pub fn from_syntax_tree(
+        library: &Rc<Library>,
+        body: &syntax_tree::LinkedBody,
+    ) -> Vertex<Expandable<Self>> {
+        match body {
+            LinkedBody::Local(body) if is_expandable(body) => {
+                let body = body.clone();
+                Vertex::Node(Expandable::new({
+                    let library = library.clone();
+                    move || Self::new(&library, &body)
+                }))
+            }
+            LinkedBody::Python | LinkedBody::Local(_) => Vertex::Leaf,
+        }
+    }
+
     pub fn new(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
         let mut stmts = Vec::new();
 
@@ -140,6 +146,7 @@ pub struct Call {
     span: SrcSpan,
     args: Vec<Self>,
     name: String,
+    body: Vertex<Expandable<Body>>,
 }
 
 impl Call {
@@ -152,7 +159,7 @@ impl Call {
         let function = &library.lookup(name);
         let name = function.name().to_string();
         let args =
-        args.iter()
+            args.iter()
                 .filter_map(|arg| match arg {
                     syntax_tree::Expression::Literal(_)
                     | syntax_tree::Expression::Variable { .. } => None,
@@ -161,8 +168,13 @@ impl Call {
                     }
                 })
                 .collect();
-        
-        // TODO: Extract function body into `Vertex<Expandable>`
-        Self { span, name, args }
+        let body = Body::from_syntax_tree(library, function.body());
+
+        Self {
+            span,
+            name,
+            args,
+            body,
+        }
     }
 }
