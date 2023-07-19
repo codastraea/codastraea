@@ -34,7 +34,10 @@ use silkenweb_bootstrap::{
     },
 };
 
+use self::conditional::if_node;
 use crate::{animation::AnimatedExpand, component, ViewCallStates};
+
+mod conditional;
 
 component!("call-tree");
 
@@ -69,7 +72,7 @@ fn call_view(
     actions: &impl CallTreeActions,
 ) -> GenericElement {
     if let Vertex::Node(body) = body {
-        vertex(
+        node(
             name,
             body.is_expanded(),
             FUNCTION_COLOUR,
@@ -90,7 +93,7 @@ fn call_view(
     }
 }
 
-fn vertex<Elem>(
+fn node<Elem>(
     type_name: &str,
     is_expanded: &Mutable<bool>,
     colour: Colour,
@@ -236,9 +239,9 @@ fn body_statements<'a>(
     stmts: impl Iterator<Item = &'a Statement> + 'a,
     actions: &'a impl CallTreeActions,
 ) -> impl Iterator<Item = GenericElement> + 'a {
-    stmts.filter_map(|stmt| match stmt {
-        Statement::Call(call) => Some(call_view(call.span(), call.name(), call.body(), actions)),
-        Statement::If(_) => None,
+    stmts.map(|stmt| match stmt {
+        Statement::Call(call) => call_view(call.span(), call.name(), call.body(), actions),
+        Statement::If(if_stmt) => if_node(if_stmt, actions),
     })
 }
 

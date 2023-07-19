@@ -88,6 +88,10 @@ impl Body {
     pub fn iter(&self) -> impl Iterator<Item = &'_ Statement> {
         self.0.iter()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 pub enum Statement {
@@ -163,7 +167,11 @@ impl If {
         let calls = Call::from_expression(library, condition);
         Self {
             span,
-            condition: Vertex::Node(Expandable::new(|| calls)),
+            condition: if calls.is_empty() {
+                Vertex::Leaf
+            } else {
+                Vertex::Node(Expandable::new(|| calls))
+            },
             then_block: Body::from_body(library, then_block),
             else_block: else_block
                 .as_ref()

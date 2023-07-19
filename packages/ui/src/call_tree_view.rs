@@ -44,9 +44,9 @@ mod conditional;
 component!("call-tree");
 
 #[derive(Into, Value)]
-pub struct CallTree(Node);
+pub struct CallTreeView(Node);
 
-impl CallTree {
+impl CallTreeView {
     pub fn new(
         fn_id: FunctionId,
         actions: impl CallTreeActions,
