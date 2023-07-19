@@ -194,11 +194,11 @@ pub struct If {
 // TODO: Implement
 impl If {
     fn new(
-        library: &Rc<Library>,
+        _library: &Rc<Library>,
         span: SrcSpan,
-        condition: &syntax_tree::Expression<FunctionId>,
-        then_block: &syntax_tree::Body<FunctionId>,
-        else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
+        _condition: &syntax_tree::Expression<FunctionId>,
+        _then_block: &syntax_tree::Body<FunctionId>,
+        _else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
         Self { span }
     }
