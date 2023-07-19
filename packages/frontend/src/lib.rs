@@ -25,6 +25,7 @@ pub fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
     }
 }
 
+// TODO: Make this a method on `Body`
 pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
