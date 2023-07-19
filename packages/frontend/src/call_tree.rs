@@ -20,7 +20,7 @@ impl CallTree {
 
         Self {
             name: f.name().to_string(),
-            body: Body::from_syntax_tree(library, f.body()),
+            body: Body::from_linked_body(library, f.body()),
         }
     }
 
@@ -84,7 +84,7 @@ impl<Item: Clone> Expandable<Item> {
 pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
-    fn from_syntax_tree(
+    fn from_linked_body(
         library: &Rc<Library>,
         body: &syntax_tree::LinkedBody,
     ) -> Vertex<Expandable<Self>> {
@@ -93,14 +93,14 @@ impl Body {
                 let body = body.clone();
                 Vertex::Node(Expandable::new({
                     let library = library.clone();
-                    move || Self::new(&library, &body)
+                    move || Self::from_body(&library, &body)
                 }))
             }
             LinkedBody::Python | LinkedBody::Local(_) => Vertex::Leaf,
         }
     }
 
-    fn new(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
+    fn from_body(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
         let mut stmts = Vec::new();
 
         for stmt in body.iter() {
@@ -154,7 +154,7 @@ impl Call {
                     }
                 })
                 .collect();
-        let body = Body::from_syntax_tree(library, function.body());
+        let body = Body::from_linked_body(library, function.body());
 
         Self {
             span,
