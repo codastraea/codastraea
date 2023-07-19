@@ -1,7 +1,7 @@
 use derive_more::Into;
 use serpent_automation_executor::syntax_tree::SrcSpan;
 use silkenweb::{
-    node::{element::ElementBuilder, Node},
+    node::{element::Element, Node},
     Value,
 };
 use silkenweb_bootstrap::{
@@ -41,7 +41,7 @@ impl Editor {
     }
 }
 
-#[wasm_bindgen(raw_module = "/codemirror.esm.js")]
+#[wasm_bindgen(raw_module = "/codemirror-bundle.esm.js")]
 extern "C" {
     // TODO: Can any of these throw exceptions?
     #[derive(Clone)]

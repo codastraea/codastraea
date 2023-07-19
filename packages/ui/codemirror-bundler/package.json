@@ -6,7 +6,7 @@
     "build": "vite build"
   },
   "devDependencies": {
-    "vite": "^2.9.13"
+    "vite": "^4.0.3"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.0.4",

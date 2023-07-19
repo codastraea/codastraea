@@ -1,5 +1,6 @@
 use indoc::indoc;
 
+pub mod call_tree;
 pub mod library;
 pub mod run;
 pub mod syntax_tree;

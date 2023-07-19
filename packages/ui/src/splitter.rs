@@ -3,8 +3,8 @@ use std::{cell::Cell, rc::Rc};
 use futures_signals::signal::Mutable;
 use silkenweb::{
     clone, document,
-    elements::html::DivBuilder,
-    prelude::{ElementEvents, HtmlElement, ParentBuilder},
+    elements::html::Div,
+    prelude::{ElementEvents, HtmlElement, ParentElement},
     value::Sig,
 };
 use web_sys::MouseEvent;
@@ -12,11 +12,11 @@ use web_sys::MouseEvent;
 pub trait Splitter {
     /// Adds `node` as a child, and a splitter bar that adjusts the size of
     /// `node`.
-    fn horizontal_splitter(self, elem: DivBuilder, splitter: DivBuilder) -> Self;
+    fn horizontal_splitter(self, elem: Div, splitter: Div) -> Self;
 }
 
-impl Splitter for DivBuilder {
-    fn horizontal_splitter(self, elem: DivBuilder, splitter: DivBuilder) -> Self {
+impl Splitter for Div {
+    fn horizontal_splitter(self, elem: Div, splitter: Div) -> Self {
         let style = Mutable::new("".to_string());
         let style_signal = Sig(style.signal_cloned());
         let events: Rc<Cell<Option<[document::EventCallback; 2]>>> = Rc::new(Cell::new(None));

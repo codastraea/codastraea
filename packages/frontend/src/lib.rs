@@ -8,6 +8,9 @@ use serpent_automation_executor::{
     syntax_tree::{Body, Expression, Statement},
 };
 
+pub mod call_tree;
+pub mod tree;
+
 pub fn expression_is_expandable(expression: &Expression<FunctionId>) -> bool {
     match expression {
         Expression::Variable { .. } | Expression::Literal(_) => false,
@@ -23,13 +26,14 @@ pub fn statement_is_expandable(stmt: &Statement<FunctionId>) -> bool {
     }
 }
 
+// TODO: Make this a method on `Body`
 pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 
 pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
     log!("Connecting to websocket");
-    let mut server_ws = WebSocket::open("ws://178.79.165.198:9090/").unwrap_or_else(|e| {
+    let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap_or_else(|e| {
         log!(format!("Error: {}", e));
         // TODO: Handle error
         panic!("Error connecting to websocket");

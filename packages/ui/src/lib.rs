@@ -8,8 +8,8 @@ use serpent_automation_executor::{
 };
 use serpent_automation_frontend::ReceiveCallStates;
 use silkenweb::{
-    node::{element::ElementBuilder, Node},
-    prelude::ParentBuilder,
+    node::element::ChildElement,
+    prelude::{Element, ParentElement},
 };
 use silkenweb_bootstrap::column;
 use thread_view::ThreadView;
@@ -20,10 +20,24 @@ mod source_view;
 mod splitter;
 mod thread_view;
 mod css {
-    silkenweb::css_classes!(visibility: pub, path: "serpent-automation.css");
+    silkenweb::css!(path = "serpent-automation.css");
+
+    pub use class::*;
 }
 
-pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl Into<Node> {
+macro_rules! component {
+    ($path:literal) => {
+        silkenweb::css!(
+            path = concat("css/", $path, ".css"),
+            auto_mount,
+            transpile = (modules)
+        );
+    };
+}
+
+use component;
+
+pub fn app(library: &Rc<Library>, view_call_states: &ViewCallStates) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
 
     column()

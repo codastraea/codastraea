@@ -16,8 +16,7 @@ use serpent_automation_executor::{
 };
 use tokio::{sync::watch, time::sleep};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let lib = Library::link(parse(CODE).unwrap());
 
     let (trace_send, trace_receive) = watch::channel(ThreadCallStates::new());

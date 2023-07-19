@@ -1,36 +1,28 @@
 use std::{cell::RefCell, rc::Rc};
 
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal::{Mutable, Signal, SignalExt};
 use silkenweb::{
     clone,
-    elements::html::DivBuilder,
-    node::element::{Element, ElementBuilder},
-    prelude::{HtmlElement, HtmlElementEvents, ParentBuilder},
+    elements::html::Div,
+    node::element::Element,
+    prelude::{ElementEvents, HtmlElement, Node, ParentElement},
     task::on_animation_frame,
-    value::Sig,
+    value::{Sig, Value},
 };
 use web_sys::DomRect;
 
 use crate::css;
 
 pub trait AnimatedExpand {
-    fn animated_expand<Elem>(
-        self,
-        child: impl FnMut() -> Elem + 'static,
-        expanded: Mutable<bool>,
-    ) -> Self
+    fn animated_expand<Elem>(self, child: impl Signal<Item = Option<Elem>> + 'static) -> Self
     where
-        Elem: Into<Element>;
+        Elem: Into<Node> + Value + 'static;
 }
 
-impl AnimatedExpand for DivBuilder {
-    fn animated_expand<Elem>(
-        self,
-        mut child: impl FnMut() -> Elem + 'static,
-        is_expanded: Mutable<bool>,
-    ) -> Self
+impl AnimatedExpand for Div {
+    fn animated_expand<Elem>(self, child: impl Signal<Item = Option<Elem>> + 'static) -> Self
     where
-        Elem: Into<Element>,
+        Elem: Into<Node> + Value + 'static,
     {
         let style = Mutable::new(None);
         let delayed_is_expanded = Mutable::<Option<bool>>::new(None);
@@ -40,17 +32,17 @@ impl AnimatedExpand for DivBuilder {
 
         self.class(css::TRANSITION)
             .style(Sig(style.signal_cloned()))
-            .optional_child(Sig(is_expanded.signal().map({
+            .optional_child(Sig(child.map({
                 clone!(initial_bounds);
-                move |expanded| {
+                move |child| {
                     let existing_initial_bounds =
                         initial_bounds.replace(Some(element.get_bounding_client_rect()));
 
                     if existing_initial_bounds.is_some() {
-                        delayed_is_expanded.set(Some(expanded));
+                        delayed_is_expanded.set(Some(child.is_some()));
                     }
 
-                    expanded.then(|| child().into())
+                    child
                 }
             })))
             .on_transitionend({
