@@ -33,7 +33,6 @@ impl CallTree {
     }
 }
 
-pub type DynLazy<T> = Lazy<T, Box<dyn FnOnce() -> T>>;
 
 #[derive(Clone)]
 pub enum Vertex<Children> {
@@ -55,6 +54,8 @@ pub struct Expandable<Item> {
     expanded: Mutable<bool>,
     item: Rc<DynLazy<Item>>,
 }
+
+type DynLazy<T> = Lazy<T, Box<dyn FnOnce() -> T>>;
 
 impl<Item: Clone> Expandable<Item> {
     pub fn new(f: impl FnOnce() -> Item + 'static) -> Self {
