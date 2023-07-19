@@ -86,9 +86,8 @@ fn condition_vertex(
                     expandable_condition.map({
                         clone!(actions);
                         move |condition| {
-                            indented_block().children(condition.iter().map(|call| {
-                                call_view(call.span(), call.name(), call.body(), &actions)
-                            }))
+                            indented_block()
+                                .children(condition.iter().map(|call| call_view(call, &actions)))
                         }
                     })
                 }

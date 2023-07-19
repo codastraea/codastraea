@@ -8,7 +8,7 @@ use serpent_automation_executor::{
     syntax_tree::SrcSpan,
 };
 use serpent_automation_frontend::{
-    call_tree::{Body, CallTree, Statement},
+    call_tree::{Body, Call, CallTree, Statement},
     tree::{Expandable, Vertex},
 };
 use silkenweb::{
@@ -59,13 +59,17 @@ impl CallTreeView {
         Self(
             div()
                 .class(class::container())
-                .child(call_view(span, name, call_tree.body(), &actions))
+                .child(vertex(span, name, call_tree.body(), &actions))
                 .into(),
         )
     }
 }
 
-fn call_view(
+fn call_view(call: &Call, actions: &impl CallTreeActions) -> GenericElement {
+    vertex(call.span(), call.name(), call.body(), actions)
+}
+
+fn vertex(
     span: SrcSpan,
     name: &str,
     body: &Vertex<Expandable<Body>>,
@@ -240,7 +244,7 @@ fn body_statements<'a>(
     actions: &'a impl CallTreeActions,
 ) -> impl Iterator<Item = GenericElement> + 'a {
     stmts.map(|stmt| match stmt {
-        Statement::Call(call) => call_view(call.span(), call.name(), call.body(), actions),
+        Statement::Call(call) => call_view(call, actions),
         Statement::If(if_stmt) => if_node(if_stmt, actions),
     })
 }
