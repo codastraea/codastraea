@@ -6,8 +6,8 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-serpent-automation-executor = {workspace = true }
-gloo-net = {workspace = true}
+serpent-automation-executor = { workspace = true }
+gloo-net = { workspace = true }
 futures = { workspace = true }
 gloo-console = { workspace = true }
 serde-json-wasm = { workspace = true }
