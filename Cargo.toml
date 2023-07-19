@@ -1,2 +1,9 @@
 [workspace]
 members = ["packages/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Simon Bourne <simonbourne@gmail.com>"]
+
+[workspace.dependencies]

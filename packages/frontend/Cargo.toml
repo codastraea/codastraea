@@ -1,9 +1,9 @@
 [package]
 name = "serpent-automation-frontend"
-version = "0.1.0"
-authors = ["Simon Bourne <simonbourne@gmail.com>"]
-edition = "2021"
 publish = false
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 serpent-automation-executor = { path = "../executor" }

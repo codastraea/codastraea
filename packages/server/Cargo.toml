@@ -1,8 +1,9 @@
 [package]
 name = "serpent-automation-server"
-
-version = "0.1.0"
-edition = "2021"
+publish = false
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 axum = { version = "0.5.16", features = ["ws", "headers"] }

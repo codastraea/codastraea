@@ -1,8 +1,9 @@
 [package]
 name = "serpent-automation-executor"
-
-version = "0.1.0"
-edition = "2021"
+publish = false
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 indoc = "1.0.7"
