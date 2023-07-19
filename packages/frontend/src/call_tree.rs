@@ -33,7 +33,6 @@ impl CallTree {
     }
 }
 
-
 #[derive(Clone)]
 pub enum Vertex<Children> {
     Leaf,
@@ -85,7 +84,7 @@ impl<Item: Clone> Expandable<Item> {
 pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
-    pub fn from_syntax_tree(
+    fn from_syntax_tree(
         library: &Rc<Library>,
         body: &syntax_tree::LinkedBody,
     ) -> Vertex<Expandable<Self>> {
@@ -101,7 +100,7 @@ impl Body {
         }
     }
 
-    pub fn new(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
+    fn new(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
         let mut stmts = Vec::new();
 
         for stmt in body.iter() {
