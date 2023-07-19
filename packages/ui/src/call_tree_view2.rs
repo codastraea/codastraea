@@ -187,6 +187,7 @@ fn item_dropdown(
     span: SrcSpan,
     actions: &impl CallTreeActions,
 ) -> Dropdown {
+    // TODO: Get run state from call_tree
     let run_state = always(RunState::NotRun).map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
