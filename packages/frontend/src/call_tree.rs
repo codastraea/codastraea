@@ -178,4 +178,20 @@ impl Call {
             body,
         }
     }
+
+    pub fn span(&self) -> SrcSpan {
+        self.span
+    }
+
+    pub fn args(&self) -> &[Call] {
+        &self.args
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn body(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
+        self.body.map(|body| body.item())
+    }
 }
