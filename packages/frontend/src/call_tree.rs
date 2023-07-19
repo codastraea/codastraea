@@ -113,8 +113,14 @@ impl Body {
                         stmts.push(Statement::Call(Call::new(library, *span, *name, args)))
                     }
                 },
-                // TODO: Implement
-                syntax_tree::Statement::If { .. } => stmts.push(Statement::If),
+                syntax_tree::Statement::If {
+                    if_span,
+                    condition,
+                    then_block,
+                    else_block,
+                } => stmts.push(Statement::If(If::new(
+                    library, *if_span, condition, then_block, else_block,
+                ))),
             }
         }
 
@@ -124,7 +130,7 @@ impl Body {
 
 pub enum Statement {
     Call(Call),
-    If,
+    If(If),
 }
 
 #[derive(Clone)]
@@ -178,5 +184,26 @@ impl Call {
 
     pub fn body(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
         self.body.map(|body| body.item())
+    }
+}
+
+pub struct If {
+    span: SrcSpan,
+}
+
+// TODO: Implement
+impl If {
+    fn new(
+        library: &Rc<Library>,
+        span: SrcSpan,
+        condition: &syntax_tree::Expression<FunctionId>,
+        then_block: &syntax_tree::Body<FunctionId>,
+        else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
+    ) -> Self {
+        Self { span }
+    }
+
+    pub fn span(&self) -> SrcSpan {
+        self.span
     }
 }
