@@ -110,21 +110,12 @@ impl Body {
                 syntax_tree::Statement::Expression(expr) => match expr {
                     syntax_tree::Expression::Literal(_) => (),
                     syntax_tree::Expression::Variable { .. } => (),
-                    syntax_tree::Expression::Call { span, name, args } => stmts.push(Statement {
-                        span: *span,
-                        body: StatementBody::Call(Call::new(library, *span, *name, args)),
-                    }),
+                    syntax_tree::Expression::Call { span, name, args } => {
+                        stmts.push(Statement::Call(Call::new(library, *span, *name, args)))
+                    }
                 },
-                syntax_tree::Statement::If {
-                    if_span,
-                    condition,
-                    then_block,
-                    else_block,
-                } => stmts.push(Statement {
-                    span: *if_span,
-                    // TODO: Implement
-                    body: StatementBody::If,
-                }),
+                // TODO: Implement
+                syntax_tree::Statement::If { .. } => stmts.push(Statement::If),
             }
         }
 
@@ -132,12 +123,7 @@ impl Body {
     }
 }
 
-pub struct Statement {
-    span: SrcSpan,
-    body: StatementBody,
-}
-
-pub enum StatementBody {
+pub enum Statement {
     Call(Call),
     If,
 }
