@@ -28,8 +28,8 @@ impl CallTree {
         &self.name
     }
 
-    pub fn children(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
-        self.body.signal()
+    pub fn children(&self) -> &Vertex<Expandable<Body>> {
+        &self.body
     }
 }
 
@@ -51,12 +51,6 @@ impl<Children> Vertex<Children> {
 impl<Children> From<Option<Children>> for Vertex<Children> {
     fn from(value: Option<Children>) -> Self {
         value.map_or(Self::Leaf, |children| Vertex::Node(children))
-    }
-}
-
-impl<Children: Clone> Vertex<Expandable<Children>> {
-    pub fn signal(&self) -> Vertex<impl Signal<Item = Option<Children>>> {
-        self.map(|body| body.signal())
     }
 }
 
@@ -196,8 +190,8 @@ impl Call {
         &self.name
     }
 
-    pub fn body(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
-        self.body.signal()
+    pub fn body(&self) -> &Vertex<Expandable<Body>> {
+        &self.body
     }
 }
 
@@ -232,8 +226,8 @@ impl If {
         self.span
     }
 
-    pub fn condition(&self) -> Vertex<impl Signal<Item = Option<Call>>> {
-        self.condition.signal()
+    pub fn condition(&self) -> &Vertex<Expandable<Call>> {
+        &self.condition
     }
 
     pub fn then_block(&self) -> &Body {
