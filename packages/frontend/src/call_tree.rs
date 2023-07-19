@@ -20,9 +20,10 @@ impl CallTree {
         let body = match f.body() {
             LinkedBody::Local(body) if is_expandable(body) => {
                 let body = body.clone();
-                Vertex::Node(Expandable::new(Lazy::new(Box::new(move || {
-                    Body::new(&body)
-                }))))
+                Vertex::Node(Expandable::new({
+                    let library = library.clone();
+                    move || Body::new(&library, &body)
+                }))
             }
             LinkedBody::Python | LinkedBody::Local(_) => Vertex::Leaf,
         };
@@ -66,10 +67,10 @@ pub struct Expandable<Item> {
 }
 
 impl<Item: Clone> Expandable<Item> {
-    pub fn new(item: DynLazy<Item>) -> Self {
+    pub fn new(f: impl FnOnce() -> Item + 'static) -> Self {
         Self {
             expanded: Mutable::new(false),
-            item: Rc::new(item),
+            item: Rc::new(Lazy::new(Box::new(f))),
         }
     }
 
@@ -89,12 +90,11 @@ impl<Item: Clone> Expandable<Item> {
     }
 }
 
-// TODO: Implement
 #[derive(Clone)]
 pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
-    pub fn new(body: &syntax_tree::Body<FunctionId>) -> Self {
+    pub fn new(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
         let mut stmts = Vec::new();
 
         for stmt in body.iter() {
@@ -105,8 +105,7 @@ impl Body {
                     syntax_tree::Expression::Variable { .. } => (),
                     syntax_tree::Expression::Call { span, name, args } => stmts.push(Statement {
                         span: *span,
-                        // TODO: Collect args and call together and add to vec
-                        body: StatementBody::Call(Vec::new()),
+                        body: StatementBody::Call(Call::new(library, *span, *name, args)),
                     }),
                 },
                 syntax_tree::Statement::If {
@@ -116,11 +115,13 @@ impl Body {
                     else_block,
                 } => stmts.push(Statement {
                     span: *if_span,
+                    // TODO: Implement
                     body: StatementBody::If,
                 }),
             }
         }
-        Self(Rc::new(Vec::new()))
+
+        Self(Rc::new(stmts))
     }
 }
 
@@ -130,8 +131,38 @@ pub struct Statement {
 }
 
 pub enum StatementBody {
-    Call(Vec<Call>),
+    Call(Call),
     If,
 }
 
-pub struct Call {}
+#[derive(Clone)]
+pub struct Call {
+    span: SrcSpan,
+    args: Vec<Self>,
+    name: String,
+}
+
+impl Call {
+    fn new(
+        library: &Rc<Library>,
+        span: SrcSpan,
+        name: FunctionId,
+        args: &[syntax_tree::Expression<FunctionId>],
+    ) -> Self {
+        let function = &library.lookup(name);
+        let name = function.name().to_string();
+        let args =
+        args.iter()
+                .filter_map(|arg| match arg {
+                    syntax_tree::Expression::Literal(_)
+                    | syntax_tree::Expression::Variable { .. } => None,
+                    syntax_tree::Expression::Call { span, name, args } => {
+                        Some(Self::new(library, *span, *name, args))
+                    }
+                })
+                .collect();
+        
+        // TODO: Extract function body into `Vertex<Expandable>`
+        Self { span, name, args }
+    }
+}
