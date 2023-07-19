@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use serpent_automation_executor::{
-    library::FunctionId,
-    run::{CallStack, StackFrame},
-    syntax_tree::{Body, ElseClause, Expression, SrcSpan},
+use futures_signals::signal::SignalExt;
+use serpent_automation_executor::syntax_tree::SrcSpan;
+use serpent_automation_frontend::{
+    call_tree::{Body, Call, If},
+    tree::{Expandable, Vertex},
 };
-use serpent_automation_frontend::{expression_is_expandable, is_expandable};
 use silkenweb::{clone, node::element::GenericElement, prelude::ParentElement};
 use silkenweb_bootstrap::{
     button::{button, ButtonStyle},
@@ -14,102 +12,42 @@ use silkenweb_bootstrap::{
     utility::{Align, Axis, Colour, SetAlign, SetDisplay, SetSpacing, Size},
 };
 
-use super::{leaf_node, CallTreeActions, CallTreeState};
-use crate::call_tree_view::{
-    body_statements, dropdown_item, expandable_node, expression, indented_block, item,
-};
+use super::{body_statements, dropdown_item, indented_block, item, leaf, node, CallTreeActions};
+use crate::call_tree_view::call_view;
 
-pub(super) fn if_node<Actions: CallTreeActions>(
-    if_span: SrcSpan,
-    condition: Arc<Expression<FunctionId>>,
-    then_block: Arc<Body<FunctionId>>,
-    else_block: &Option<ElseClause<FunctionId>>,
-    call_stack: &CallStack,
-    view_state: &CallTreeState<Actions>,
-) -> GenericElement {
-    // TODO: Make call stack cheap to clone.
+pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> GenericElement {
     column()
         .align_items(Align::Start)
         .child(branch_body(
-            if_span,
-            Some(&condition),
-            &then_block,
-            0,
-            call_stack,
-            view_state,
+            "if",
+            if_stmt.span(),
+            if_stmt.condition(),
+            if_stmt.then_block(),
+            actions,
         ))
-        .optional_child(else_block.as_ref().map(|else_block| {
+        .optional_child(if_stmt.else_block().as_ref().map(|else_block| {
             branch_body(
+                "else",
                 else_block.span(),
-                None,
+                &Vertex::Leaf,
                 else_block.body(),
-                1,
-                call_stack,
-                view_state,
+                actions,
             )
         }))
         .into()
 }
 
-fn condition_node<Actions: CallTreeActions>(
-    condition: Option<&Arc<Expression<FunctionId>>>,
-    span: SrcSpan,
-    block_index: usize,
-    call_stack: &CallStack,
-    view_state: &CallTreeState<Actions>,
-) -> GenericElement {
-    clone!(mut call_stack);
-    call_stack.push(StackFrame::BlockPredicate(block_index));
-    if let Some(condition) = condition {
-        // TODO: Condition text (maybe truncated), with tooltip (how does that work on
-        // touch)
-        if expression_is_expandable(condition) {
-            expandable_node(
-                "if condition",
-                CONDITION_COLOUR,
-                span,
-                &call_stack,
-                view_state,
-                {
-                    clone!(condition, call_stack, view_state);
-                    move || {
-                        indented_block().children(expression(&condition, &call_stack, &view_state))
-                    }
-                },
-            )
-        } else {
-            condition_leaf_node("if condition", span, &call_stack, view_state)
-        }
-    } else {
-        condition_leaf_node("else", span, &call_stack, view_state)
-    }
-}
-
-fn condition_leaf_node<Actions: CallTreeActions>(
+fn branch_body(
     name: &str,
     span: SrcSpan,
-    call_stack: &CallStack,
-    view_state: &CallTreeState<Actions>,
+    condition: &Vertex<Expandable<Vec<Call>>>,
+    body: &Body,
+    actions: &impl CallTreeActions,
 ) -> GenericElement {
-    leaf_node(name, CONDITION_COLOUR, span, call_stack, view_state)
-}
+    let condition = condition_vertex(name, condition, span, actions);
 
-fn branch_body<Actions: CallTreeActions>(
-    span: SrcSpan,
-    condition: Option<&Arc<Expression<FunctionId>>>,
-    body: &Arc<Body<FunctionId>>,
-    nested_block_index: usize,
-    call_stack: &CallStack,
-    view_state: &CallTreeState<Actions>,
-) -> GenericElement {
-    let is_expandable = is_expandable(body);
-    let condition = condition_node(condition, span, nested_block_index, call_stack, view_state);
-
-    clone!(mut call_stack);
-    call_stack.push(StackFrame::NestedBlock(nested_block_index));
-
-    let body_elem = if is_expandable {
-        indented_block().children(body_statements(body.iter(), &call_stack, view_state))
+    let body_elem = if !body.is_empty() {
+        indented_block().children(body_statements(body.iter(), actions))
     } else {
         indented_block().child(
             item(Colour::Secondary).child(dropdown(
@@ -125,6 +63,40 @@ fn branch_body<Actions: CallTreeActions>(
         .child(condition)
         .child(body_elem)
         .into()
+}
+
+fn condition_vertex(
+    name: &str,
+    condition: &Vertex<Expandable<Vec<Call>>>,
+    span: SrcSpan,
+    actions: &impl CallTreeActions,
+) -> GenericElement {
+    if let Vertex::Node(condition) = condition {
+        // TODO: Condition text (maybe truncated), with tooltip (how does that work on
+        // touch)
+        node(
+            name,
+            condition.is_expanded(),
+            CONDITION_COLOUR,
+            span,
+            actions,
+            condition.signal().map({
+                clone!(actions);
+                move |expandable_condition| {
+                    expandable_condition.map({
+                        clone!(actions);
+                        move |condition| {
+                            indented_block().children(condition.iter().map(|call| {
+                                call_view(call.span(), call.name(), call.body(), &actions)
+                            }))
+                        }
+                    })
+                }
+            }),
+        )
+    } else {
+        leaf(name, CONDITION_COLOUR, span, actions)
+    }
 }
 
 const CONDITION_COLOUR: Colour = Colour::Info;

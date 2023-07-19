@@ -24,7 +24,7 @@ use silkenweb_bootstrap::{
 };
 
 use crate::{
-    call_tree_view2::{CallTreeActions, CallTreeView},
+    call_tree_view::{CallTreeActions, CallTreeView},
     source_view::{Editor, SourceView},
     ViewCallStates,
 };
