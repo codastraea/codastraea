@@ -28,7 +28,7 @@ impl CallTree {
         &self.name
     }
 
-    pub fn children(&self) -> &Vertex<Expandable<Body>> {
+    pub fn body(&self) -> &Vertex<Expandable<Body>> {
         &self.body
     }
 }
@@ -127,6 +127,10 @@ impl Body {
         }
 
         Self(Rc::new(stmts))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &'_ Statement> {
+        self.0.iter()
     }
 }
 
