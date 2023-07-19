@@ -54,12 +54,6 @@ impl<Children> Vertex<Children> {
     }
 }
 
-impl<Children> From<Option<Children>> for Vertex<Children> {
-    fn from(value: Option<Children>) -> Self {
-        value.map_or(Self::Leaf, |children| Vertex::Node(children))
-    }
-}
-
 #[derive(Clone)]
 pub struct Expandable<Item> {
     expanded: Mutable<bool>,
@@ -114,9 +108,11 @@ impl Body {
         for stmt in body.iter() {
             match stmt {
                 syntax_tree::Statement::Pass => (),
-                syntax_tree::Statement::Expression(expr) => {
-                    stmts.extend(Call::from_expression(library, expr).map(Statement::Call))
-                }
+                syntax_tree::Statement::Expression(expr) => stmts.extend(
+                    Call::from_expression(library, expr)
+                        .into_iter()
+                        .map(Statement::Call),
+                ),
                 syntax_tree::Statement::If {
                     if_span,
                     condition,
@@ -145,51 +141,41 @@ pub enum Statement {
 pub struct Call {
     span: SrcSpan,
     name: String,
-    args: Vec<Self>,
     body: Vertex<Expandable<Body>>,
 }
 
 impl Call {
-    fn new(
-        library: &Rc<Library>,
-        span: SrcSpan,
-        name: FunctionId,
-        args: &[syntax_tree::Expression<FunctionId>],
-    ) -> Self {
+    fn new(library: &Rc<Library>, span: SrcSpan, name: FunctionId) -> Self {
         let function = &library.lookup(name);
         let name = function.name().to_string();
-        let args = args
-            .iter()
-            .filter_map(|arg| Self::from_expression(library, arg))
-            .collect();
         let body = Body::from_linked_body(library, function.body());
 
-        Self {
-            span,
-            name,
-            args,
-            body,
-        }
+        Self { span, name, body }
     }
 
     fn from_expression(
         library: &Rc<Library>,
         expr: &syntax_tree::Expression<FunctionId>,
-    ) -> Option<Call> {
+    ) -> Vec<Call> {
         match expr {
-            syntax_tree::Expression::Literal(_) | syntax_tree::Expression::Variable { .. } => None,
+            syntax_tree::Expression::Literal(_) | syntax_tree::Expression::Variable { .. } => {
+                Vec::new()
+            }
             syntax_tree::Expression::Call { span, name, args } => {
-                Some(Self::new(library, *span, *name, args))
+                let mut calls = Vec::new();
+
+                for arg in args {
+                    calls.extend(Self::from_expression(library, arg));
+                }
+
+                calls.push(Self::new(library, *span, *name));
+                calls
             }
         }
     }
 
     pub fn span(&self) -> SrcSpan {
         self.span
-    }
-
-    pub fn args(&self) -> &[Call] {
-        &self.args
     }
 
     pub fn name(&self) -> &str {
@@ -203,7 +189,7 @@ impl Call {
 
 pub struct If {
     span: SrcSpan,
-    condition: Vertex<Expandable<Call>>,
+    condition: Vertex<Expandable<Vec<Call>>>,
     then_block: Body,
     else_block: Option<Body>,
 }
@@ -216,11 +202,10 @@ impl If {
         then_block: &syntax_tree::Body<FunctionId>,
         else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
+        let calls = Call::from_expression(library, condition);
         Self {
             span,
-            condition: Call::from_expression(library, condition)
-                .map(|cond| Expandable::new(|| cond))
-                .into(),
+            condition: Vertex::Node(Expandable::new(|| calls)),
             then_block: Body::from_body(library, then_block),
             else_block: else_block
                 .as_ref()
@@ -232,7 +217,7 @@ impl If {
         self.span
     }
 
-    pub fn condition(&self) -> &Vertex<Expandable<Call>> {
+    pub fn condition(&self) -> &Vertex<Expandable<Vec<Call>>> {
         &self.condition
     }
 

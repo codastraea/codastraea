@@ -7,7 +7,7 @@ use serpent_automation_executor::{
     run::RunState,
     syntax_tree::SrcSpan,
 };
-use serpent_automation_frontend::call_tree::{CallTree, Statement, Vertex};
+use serpent_automation_frontend::call_tree::{Body, CallTree, Expandable, Statement, Vertex};
 use silkenweb::{
     clone,
     node::{element::GenericElement, Node},
@@ -46,22 +46,26 @@ impl CallTreeView {
         _view_call_states: &ViewCallStates,
     ) -> Self {
         let call_tree = CallTree::root(fn_id, library);
+        // TODO: Handle uwnrap failure (python functions can't be run directly).
+        let span = call_tree.span().unwrap();
+        let name = call_tree.name();
+
         Self(
             div()
                 .class(class::container())
-                .child(root(&call_tree, &actions))
+                .child(call_view(span, name, call_tree.body(), &actions))
                 .into(),
         )
     }
 }
 
-fn root(call_tree: &CallTree, actions: &impl CallTreeActions) -> GenericElement {
-    // TODO: Handle uwnrap failure (python functions can't be run directly).
-    let span = call_tree.span().unwrap();
-    let name = call_tree.name();
-
-    if let Vertex::Node(body) = call_tree.body() {
-        // TODO:
+fn call_view(
+    span: SrcSpan,
+    name: &str,
+    body: &Vertex<Expandable<Body>>,
+    actions: &impl CallTreeActions,
+) -> GenericElement {
+    if let Vertex::Node(body) = body {
         vertex(
             name,
             body.is_expanded(),
@@ -225,10 +229,13 @@ fn border_colour(colour: Colour) -> Colour {
 }
 
 fn body_statements<'a>(
-    _body: impl Iterator<Item = &'a Statement> + 'a,
-    _actions: &'a impl CallTreeActions,
+    stmts: impl Iterator<Item = &'a Statement> + 'a,
+    actions: &'a impl CallTreeActions,
 ) -> impl Iterator<Item = GenericElement> + 'a {
-    [].into_iter()
+    stmts.filter_map(|stmt| match stmt {
+        Statement::Call(call) => Some(call_view(call.span(), call.name(), call.body(), actions)),
+        Statement::If(_) => None,
+    })
 }
 
 pub trait CallTreeActions: Clone + 'static {
