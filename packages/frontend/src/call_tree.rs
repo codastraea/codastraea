@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    syntax_tree::{self, LinkedBody, SrcSpan},
+    syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 
 use crate::{
@@ -149,7 +149,7 @@ pub struct If {
     span: SrcSpan,
     condition: Vertex<Expandable<Vec<Call>>>,
     then_block: Body,
-    else_block: Option<Body>,
+    else_block: Option<Else>,
 }
 
 impl If {
@@ -167,7 +167,7 @@ impl If {
             then_block: Body::from_body(library, then_block),
             else_block: else_block
                 .as_ref()
-                .map(|el_blk| Body::from_body(library, el_blk.body())),
+                .map(|else_block| Else::new(library, else_block)),
         }
     }
 
@@ -183,7 +183,29 @@ impl If {
         &self.then_block
     }
 
-    pub fn else_block(&self) -> &Option<Body> {
+    pub fn else_block(&self) -> &Option<Else> {
         &self.else_block
+    }
+}
+
+pub struct Else {
+    span: SrcSpan,
+    body: Body,
+}
+
+impl Else {
+    fn new(library: &Rc<Library>, else_block: &ElseClause<FunctionId>) -> Self {
+        Self {
+            span: else_block.span(),
+            body: Body::from_body(library, else_block.body()),
+        }
+    }
+
+    pub fn span(&self) -> SrcSpan {
+        self.span
+    }
+
+    pub fn body(&self) -> &Body {
+        &self.body
     }
 }
