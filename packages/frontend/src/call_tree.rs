@@ -29,7 +29,7 @@ impl CallTree {
     }
 
     pub fn children(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
-        self.body.map(|body| body.item())
+        self.body.signal()
     }
 }
 
@@ -45,6 +45,18 @@ impl<Children> Vertex<Children> {
             Vertex::Leaf => Vertex::Leaf,
             Vertex::Node(children) => Vertex::Node(f(children)),
         }
+    }
+}
+
+impl<Children> From<Option<Children>> for Vertex<Children> {
+    fn from(value: Option<Children>) -> Self {
+        value.map_or(Self::Leaf, |children| Vertex::Node(children))
+    }
+}
+
+impl<Children: Clone> Vertex<Expandable<Children>> {
+    pub fn signal(&self) -> Vertex<impl Signal<Item = Option<Children>>> {
+        self.map(|body| body.signal())
     }
 }
 
@@ -72,7 +84,7 @@ impl<Item: Clone> Expandable<Item> {
         self.expanded.set_neq(true)
     }
 
-    pub fn item(&self) -> impl Signal<Item = Option<Item>> {
+    pub fn signal(&self) -> impl Signal<Item = Option<Item>> {
         let item = self.item.clone();
 
         self.expanded
@@ -106,13 +118,9 @@ impl Body {
         for stmt in body.iter() {
             match stmt {
                 syntax_tree::Statement::Pass => (),
-                syntax_tree::Statement::Expression(expr) => match expr {
-                    syntax_tree::Expression::Literal(_) => (),
-                    syntax_tree::Expression::Variable { .. } => (),
-                    syntax_tree::Expression::Call { span, name, args } => {
-                        stmts.push(Statement::Call(Call::new(library, *span, *name, args)))
-                    }
-                },
+                syntax_tree::Statement::Expression(expr) => {
+                    stmts.extend(Call::from_expression(library, expr).map(Statement::Call))
+                }
                 syntax_tree::Statement::If {
                     if_span,
                     condition,
@@ -150,16 +158,10 @@ impl Call {
     ) -> Self {
         let function = &library.lookup(name);
         let name = function.name().to_string();
-        let args =
-            args.iter()
-                .filter_map(|arg| match arg {
-                    syntax_tree::Expression::Literal(_)
-                    | syntax_tree::Expression::Variable { .. } => None,
-                    syntax_tree::Expression::Call { span, name, args } => {
-                        Some(Self::new(library, *span, *name, args))
-                    }
-                })
-                .collect();
+        let args = args
+            .iter()
+            .filter_map(|arg| Self::from_expression(library, arg))
+            .collect();
         let body = Body::from_linked_body(library, function.body());
 
         Self {
@@ -167,6 +169,18 @@ impl Call {
             name,
             args,
             body,
+        }
+    }
+
+    fn from_expression(
+        library: &Rc<Library>,
+        expr: &syntax_tree::Expression<FunctionId>,
+    ) -> Option<Call> {
+        match expr {
+            syntax_tree::Expression::Literal(_) | syntax_tree::Expression::Variable { .. } => None,
+            syntax_tree::Expression::Call { span, name, args } => {
+                Some(Self::new(library, *span, *name, args))
+            }
         }
     }
 
@@ -183,27 +197,50 @@ impl Call {
     }
 
     pub fn body(&self) -> Vertex<impl Signal<Item = Option<Body>>> {
-        self.body.map(|body| body.item())
+        self.body.signal()
     }
 }
 
 pub struct If {
     span: SrcSpan,
+    condition: Vertex<Expandable<Call>>,
+    then_block: Body,
+    else_block: Option<Body>,
 }
 
-// TODO: Implement
 impl If {
     fn new(
-        _library: &Rc<Library>,
+        library: &Rc<Library>,
         span: SrcSpan,
-        _condition: &syntax_tree::Expression<FunctionId>,
-        _then_block: &syntax_tree::Body<FunctionId>,
-        _else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
+        condition: &syntax_tree::Expression<FunctionId>,
+        then_block: &syntax_tree::Body<FunctionId>,
+        else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
-        Self { span }
+        Self {
+            span,
+            condition: Call::from_expression(library, condition)
+                .map(|cond| Expandable::new(|| cond))
+                .into(),
+            then_block: Body::from_body(library, then_block),
+            else_block: else_block
+                .as_ref()
+                .map(|el_blk| Body::from_body(library, el_blk.body())),
+        }
     }
 
     pub fn span(&self) -> SrcSpan {
         self.span
+    }
+
+    pub fn condition(&self) -> Vertex<impl Signal<Item = Option<Call>>> {
+        self.condition.signal()
+    }
+
+    pub fn then_block(&self) -> &Body {
+        &self.then_block
+    }
+
+    pub fn else_block(&self) -> &Option<Body> {
+        &self.else_block
     }
 }
