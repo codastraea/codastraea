@@ -18,7 +18,7 @@ use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
-    run::{RunState, StackFrame, ThreadCallStates},
+    run::{RunState, StackFrame, ThreadRunState},
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
@@ -150,12 +150,7 @@ impl LinkedFunction {
         &self.body
     }
 
-    pub fn run(
-        &self,
-        args: &[Value],
-        lib: &Library,
-        call_states: &watch::Sender<ThreadCallStates>,
-    ) {
+    pub fn run(&self, args: &[Value], lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(1));
 
@@ -231,7 +226,7 @@ impl Body<String> {
 }
 
 impl Body<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
         for (index, stmt) in self.iter().enumerate() {
             call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
             defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
@@ -344,7 +339,7 @@ impl Statement<String> {
 }
 
 impl Statement<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) {
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
         match self {
             Self::Pass => (),
             Self::Expression(expr) => {
@@ -413,7 +408,7 @@ impl ElseClause<FunctionId> {
     pub fn run(
         &self,
         lib: &Library,
-        call_states: &watch::Sender<ThreadCallStates>,
+        call_states: &watch::Sender<ThreadRunState>,
         block_index: usize,
     ) {
         call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
@@ -446,7 +441,7 @@ pub enum Expression<FnId> {
 }
 
 impl Expression<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadCallStates>) -> Value {
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) -> Value {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args, .. } => run_call(*name, args, lib, call_states),
@@ -459,7 +454,7 @@ pub(crate) fn run_call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     lib: &Library,
-    call_states: &watch::Sender<ThreadCallStates>,
+    call_states: &watch::Sender<ThreadRunState>,
 ) -> Value {
     let args: Vec<_> = args
         .iter()

@@ -4,7 +4,7 @@ use gloo_console::log;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serpent_automation_executor::{
     library::FunctionId,
-    run::ThreadCallStates,
+    run::ThreadRunState,
     syntax_tree::{Body, Expression, Statement},
 };
 
@@ -31,7 +31,7 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 
-pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
+pub async fn server_connection() {
     log!("Connecting to websocket");
     let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap_or_else(|e| {
         log!(format!("Error: {}", e));
@@ -42,21 +42,15 @@ pub async fn server_connection(receive_call_states: impl ReceiveCallStates) {
     while let Some(msg) = server_ws.next().await {
         log!(format!("Received: {:?}", msg));
 
-        let call_states = match msg.unwrap() {
+        let _run_state = match msg.unwrap() {
             Message::Text(text) => {
-                let call_states: ThreadCallStates = serde_json_wasm::from_str(&text).unwrap();
+                let run_state: ThreadRunState = serde_json_wasm::from_str(&text).unwrap();
                 log!(format!("Deserialized `RunTracer` from `{text}`"));
-                call_states
+                run_state
             }
             Message::Bytes(bytes) => bincode::options().deserialize(&bytes).unwrap(),
         };
-
-        receive_call_states.set_call_states(call_states);
     }
 
     log!("WebSocket Closed")
-}
-
-pub trait ReceiveCallStates {
-    fn set_call_states(&self, thread_state: ThreadCallStates);
 }

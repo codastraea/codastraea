@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 use crate::library::FunctionId;
 
@@ -29,42 +26,28 @@ impl CallStack {
     pub fn pop(&mut self) {
         self.0.pop();
     }
-
-    pub fn is_descendant_or_equal(&self, ancestor: &Self) -> bool {
-        self.0.starts_with(&ancestor.0)
-    }
 }
 
-#[serde_as]
 #[derive(Default, Clone, Serialize, Deserialize)]
-pub struct ThreadCallStates {
-    running: CallStack,
-    #[serde_as(as = "Vec<(_, _)>")]
-    completed: HashMap<CallStack, RunState>,
+pub struct ThreadRunState {
+    current: CallStack,
+    failed: bool,
 }
 
-impl ThreadCallStates {
+impl ThreadRunState {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn run_state(&self, call_stack: &CallStack) -> RunState {
-        if self.running.is_descendant_or_equal(call_stack) {
-            RunState::Running
-        } else if let Some(run_state) = self.completed.get(call_stack) {
-            *run_state
-        } else {
-            RunState::NotRun
-        }
-    }
-
     pub fn push(&mut self, item: StackFrame) {
-        self.running.push(item);
+        self.current.push(item);
     }
 
-    pub fn pop(&mut self, run_state: RunState) {
-        self.completed.insert(self.running.clone(), run_state);
-        self.running.pop();
+    // TODO: Is run state the right thing to send? We want to know if it's running
+    // or failed.
+    pub fn pop(&mut self, _run_state: RunState) {
+        // TODO: Need to notify client of failed run states
+        self.current.pop();
     }
 }
 

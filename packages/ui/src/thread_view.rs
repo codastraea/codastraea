@@ -26,18 +26,13 @@ use silkenweb_bootstrap::{
 use crate::{
     call_tree_view::{CallTreeActions, CallTreeView},
     source_view::{Editor, SourceView},
-    ViewCallStates,
 };
 
 #[derive(Into, Value)]
 pub struct ThreadView(Node);
 
 impl ThreadView {
-    pub fn new(
-        fn_id: FunctionId,
-        library: &Rc<Library>,
-        view_call_states: &ViewCallStates,
-    ) -> Self {
+    pub fn new(fn_id: FunctionId, library: &Rc<Library>) -> Self {
         let active = Mutable::new(Tab::CallTree);
         let editor = Editor::new(CODE);
 
@@ -61,7 +56,6 @@ impl ThreadView {
                                 editor: editor.clone(),
                             },
                             library,
-                            view_call_states,
                         ),
                     )
                     .overflow(Overflow::Auto),

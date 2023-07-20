@@ -35,7 +35,7 @@ use silkenweb_bootstrap::{
 };
 
 use self::conditional::if_node;
-use crate::{animation::AnimatedExpand, component, ViewCallStates};
+use crate::{animation::AnimatedExpand, component};
 
 mod conditional;
 
@@ -45,12 +45,7 @@ component!("call-tree");
 pub struct CallTreeView(Node);
 
 impl CallTreeView {
-    pub fn new(
-        fn_id: FunctionId,
-        actions: impl CallTreeActions,
-        library: &Rc<Library>,
-        _view_call_states: &ViewCallStates,
-    ) -> Self {
+    pub fn new(fn_id: FunctionId, actions: impl CallTreeActions, library: &Rc<Library>) -> Self {
         let call_tree = CallTree::root(fn_id, library);
         // TODO: Handle uwnrap failure (python functions can't be run directly).
         let span = call_tree.span().unwrap();

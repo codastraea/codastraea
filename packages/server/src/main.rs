@@ -12,27 +12,27 @@ use axum::{
 };
 use bincode::Options;
 use serpent_automation_executor::{
-    library::Library, run::ThreadCallStates, syntax_tree::parse, CODE,
+    library::Library, run::ThreadRunState, syntax_tree::parse, CODE,
 };
 use tokio::{sync::watch, time::sleep};
 
 fn main() {
     let lib = Library::link(parse(CODE).unwrap());
 
-    let (trace_send, trace_receive) = watch::channel(ThreadCallStates::new());
+    let (trace_send, trace_receive) = watch::channel(ThreadRunState::new());
 
     thread::scope(|scope| {
         scope.spawn(|| server(trace_receive));
         scope.spawn(|| loop {
             lib.run(&trace_send);
             thread::sleep(Duration::from_secs(3));
-            trace_send.send_replace(ThreadCallStates::new());
+            trace_send.send_replace(ThreadRunState::new());
         });
     });
 }
 
 #[tokio::main]
-async fn server(call_states: watch::Receiver<ThreadCallStates>) {
+async fn server(call_states: watch::Receiver<ThreadRunState>) {
     let handler =
         |ws, user_agent| async { upgrade_to_websocket(call_states, ws, user_agent).await };
     let app = Router::new().route("/", get(handler));
@@ -43,7 +43,7 @@ async fn server(call_states: watch::Receiver<ThreadCallStates>) {
 }
 
 async fn upgrade_to_websocket(
-    call_states: watch::Receiver<ThreadCallStates>,
+    call_states: watch::Receiver<ThreadRunState>,
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
 ) -> impl IntoResponse {
@@ -54,7 +54,7 @@ async fn upgrade_to_websocket(
     ws.on_upgrade(|socket| handler(call_states, socket))
 }
 
-async fn handler(mut call_states: watch::Receiver<ThreadCallStates>, mut socket: WebSocket) {
+async fn handler(mut call_states: watch::Receiver<ThreadRunState>, mut socket: WebSocket) {
     println!("Upgraded to websocket");
 
     loop {

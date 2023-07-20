@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
 use crate::{
-    run::ThreadCallStates,
+    run::ThreadRunState,
     syntax_tree::{run_call, IdMap, LinkedFunction, Module},
 };
 
@@ -73,7 +73,7 @@ impl Library {
         self.main_id
     }
 
-    pub fn run(&self, call_states: &watch::Sender<ThreadCallStates>) {
+    pub fn run(&self, call_states: &watch::Sender<ThreadRunState>) {
         if let Some(main_id) = self.main_id() {
             run_call(main_id, &[], self, call_states);
         }
