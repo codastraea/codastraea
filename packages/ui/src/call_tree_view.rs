@@ -108,7 +108,7 @@ where
     column()
         .align_self(Align::Stretch)
         .child(
-            item(colour)
+            node_container(colour)
                 .align_self(Align::Start)
                 .border_colour(border_colour(colour))
                 .child(
@@ -164,7 +164,7 @@ fn leaf_node(
 ) -> GenericElement {
     column()
         .align_items(Align::Start)
-        .child(item(colour).child(node_dropdown(
+        .child(node_container(colour).child(node_dropdown(
             name,
             ButtonStyle::Solid(colour),
             span,
@@ -173,7 +173,7 @@ fn leaf_node(
         .into()
 }
 
-fn item(colour: Colour) -> Div {
+fn node_container(colour: Colour) -> Div {
     div()
         .position(Position::Relative)
         .class(class::item())

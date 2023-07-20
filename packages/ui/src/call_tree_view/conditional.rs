@@ -13,7 +13,8 @@ use silkenweb_bootstrap::{
 };
 
 use super::{
-    body_statements, dropdown_item, indented_block, internal_node, item, leaf_node, CallTreeActions,
+    body_statements, dropdown_item, indented_block, internal_node, leaf_node, node_container,
+    CallTreeActions,
 };
 use crate::call_tree_view::call_view;
 
@@ -52,7 +53,7 @@ fn branch_body(
         indented_block().children(body_statements(body.iter(), actions))
     } else {
         indented_block().child(
-            item(Colour::Secondary).child(dropdown(
+            node_container(Colour::Secondary).child(dropdown(
                 button("button", "pass", ButtonStyle::Solid(Colour::Secondary))
                     .padding_on_axis((Size::Size4, Axis::X)),
                 dropdown_menu().child(dropdown_item("View code")),
