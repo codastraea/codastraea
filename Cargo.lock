@@ -2219,15 +2219,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-json-wasm"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a62a1fad1e1828b24acac8f2b468971dade7b8c3c2e672bcadefefb1f8c137"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "serde_derive"
 version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2296,7 +2287,6 @@ dependencies = [
  "gloo-console",
  "gloo-net 0.1.0",
  "once_cell",
- "serde-json-wasm",
  "serpent-automation-executor",
  "serpent-automation-server-api",
 ]

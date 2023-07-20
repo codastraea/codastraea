@@ -13,6 +13,5 @@ arpy-reqwasm = { workspace = true }
 gloo-net = { workspace = true }
 futures = { workspace = true }
 gloo-console = { workspace = true }
-serde-json-wasm = { workspace = true }
 futures-signals = { workspace = true }
 once_cell = { workspace = true }
