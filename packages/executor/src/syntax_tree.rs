@@ -353,7 +353,7 @@ impl Statement<FunctionId> {
             } => {
                 call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
                 let truthy = condition.run(lib, call_states).truthy();
-                call_states.send_modify(|t| t.pop(RunState::PredicateSuccessful(truthy)));
+                call_states.send_modify(|t| t.pop(RunState::Successful));
 
                 if truthy {
                     call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));

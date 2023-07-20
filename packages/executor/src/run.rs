@@ -60,6 +60,5 @@ pub enum RunState {
     NotRun,
     Running,
     Successful,
-    PredicateSuccessful(bool),
     Failed,
 }
