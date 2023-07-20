@@ -1,9 +1,10 @@
-use std::rc::Rc;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-use futures_signals::signal::{Mutable, ReadOnlyMutable};
+use futures::{Future, StreamExt};
+use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::RunState,
+    run::{CallStack, RunState, ThreadRunState},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 
@@ -17,17 +18,24 @@ pub struct CallTree {
     name: String,
     run_state: Mutable<RunState>,
     body: TreeNode<Expandable<Body>>,
+    run_state_map: Rc<RefCell<BTreeMap<CallStack, Mutable<RunState>>>>,
 }
 
 impl CallTree {
     pub fn root(fn_id: FunctionId, library: &Rc<Library>) -> Self {
         let f = library.lookup(fn_id);
 
+        let run_state = Mutable::new(RunState::NotRun);
+        let mut run_state_map = BTreeMap::new();
+        run_state_map.insert(CallStack::new(), run_state.clone());
+        let run_state_map = Rc::new(RefCell::new(run_state_map));
+
         Self {
             span: f.span(),
             name: f.name().to_string(),
-            run_state: Mutable::new(RunState::NotRun),
+            run_state,
             body: Body::from_linked_body(library, f.body()),
+            run_state_map,
         }
     }
 
@@ -37,6 +45,24 @@ impl CallTree {
 
     pub fn run_state(&self) -> ReadOnlyMutable<RunState> {
         self.run_state.read_only()
+    }
+
+    pub fn update_run_state(
+        &self,
+        run_state: impl Signal<Item = ThreadRunState> + 'static,
+    ) -> impl Future<Output = ()> + 'static {
+        let run_state_map = self.run_state_map.clone();
+
+        async move {
+            let mut run_state = Box::pin(run_state.to_stream());
+
+            while let Some(run_state) = run_state.next().await {
+                let _run_state_map = run_state_map.borrow_mut();
+                let _call_stack = run_state.current();
+
+                // TODO: Implement
+            }
+        }
     }
 
     pub fn name(&self) -> &str {

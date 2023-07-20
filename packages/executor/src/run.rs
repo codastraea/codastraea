@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::library::FunctionId;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum StackFrame {
     Function(FunctionId),
     Statement(usize),
@@ -11,9 +11,10 @@ pub enum StackFrame {
     BlockPredicate(usize),
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CallStack(Vec<StackFrame>);
 
+// TODO: We need a `block_index` at each level to disambiguate.
 impl CallStack {
     pub fn new() -> Self {
         Self::default()
@@ -31,7 +32,6 @@ impl CallStack {
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct ThreadRunState {
     current: CallStack,
-    failed: bool,
 }
 
 impl ThreadRunState {
@@ -48,6 +48,10 @@ impl ThreadRunState {
     pub fn pop(&mut self, _run_state: RunState) {
         // TODO: Need to notify client of failed run states
         self.current.pop();
+    }
+
+    pub fn current(&self) -> &CallStack {
+        &self.current
     }
 }
 

@@ -1,12 +1,6 @@
-use std::rc::Rc;
-
 use derive_more::Into;
 use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
-use serpent_automation_executor::{
-    library::{FunctionId, Library},
-    run::RunState,
-    syntax_tree::SrcSpan,
-};
+use serpent_automation_executor::{run::RunState, syntax_tree::SrcSpan};
 use serpent_automation_frontend::{
     call_tree::{Body, Call, CallTree, Statement},
     tree::{Expandable, TreeNode},
@@ -45,8 +39,7 @@ component!("call-tree");
 pub struct CallTreeView(Node);
 
 impl CallTreeView {
-    pub fn new(fn_id: FunctionId, actions: impl CallTreeActions, library: &Rc<Library>) -> Self {
-        let call_tree = CallTree::root(fn_id, library);
+    pub fn new(call_tree: CallTree, actions: impl CallTreeActions) -> Self {
         // TODO: Handle uwnrap failure (python functions can't be run directly).
         let node_data = NodeData::new(
             call_tree.span().unwrap(),

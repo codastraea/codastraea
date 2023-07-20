@@ -96,5 +96,5 @@ impl Library {
 }
 
 /// An id for a function that is fast to lookup.
-#[derive(Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FunctionId(usize);

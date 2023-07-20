@@ -1,12 +1,7 @@
-use std::rc::Rc;
-
 use derive_more::Into;
 use futures_signals::signal::{Mutable, SignalExt};
-use serpent_automation_executor::{
-    library::{FunctionId, Library},
-    syntax_tree::SrcSpan,
-    CODE,
-};
+use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
+use serpent_automation_frontend::call_tree::CallTree;
 use silkenweb::{
     clone,
     elements::html::{self, div, Div},
@@ -32,9 +27,16 @@ use crate::{
 pub struct ThreadView(Node);
 
 impl ThreadView {
-    pub fn new(fn_id: FunctionId, library: &Rc<Library>) -> Self {
+    pub fn new(call_tree: CallTree) -> Self {
         let active = Mutable::new(Tab::CallTree);
         let editor = Editor::new(CODE);
+        let call_tree_view = CallTreeView::new(
+            call_tree,
+            Actions {
+                active: active.clone(),
+                editor: editor.clone(),
+            },
+        );
 
         Self(
             column()
@@ -46,19 +48,7 @@ impl ThreadView {
                     tab(Tab::SourceCode, "Source Code", &active),
                 ]))
                 .children([
-                    content(
-                        Tab::CallTree,
-                        &active,
-                        CallTreeView::new(
-                            fn_id,
-                            Actions {
-                                active: active.clone(),
-                                editor: editor.clone(),
-                            },
-                            library,
-                        ),
-                    )
-                    .overflow(Overflow::Auto),
+                    content(Tab::CallTree, &active, call_tree_view).overflow(Overflow::Auto),
                     content(Tab::SourceCode, &active, SourceView::new(&editor))
                         .flex_column()
                         .overflow(Overflow::Hidden),

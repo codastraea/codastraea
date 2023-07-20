@@ -1,9 +1,12 @@
 use std::rc::Rc;
 
-use serpent_automation_executor::library::Library;
+use futures_signals::signal::Signal;
+use serpent_automation_executor::{library::Library, run::ThreadRunState};
+use serpent_automation_frontend::call_tree::CallTree;
 use silkenweb::{
     node::element::ChildElement,
     prelude::{Element, ParentElement},
+    task::spawn_local,
 };
 use silkenweb_bootstrap::column;
 use thread_view::ThreadView;
@@ -31,10 +34,16 @@ macro_rules! component {
 
 use component;
 
-pub fn app(library: &Rc<Library>) -> impl ChildElement {
+pub fn app(
+    run_state: impl Signal<Item = ThreadRunState> + 'static,
+    library: &Rc<Library>,
+) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
+    let call_tree = CallTree::root(main_id, library);
+
+    spawn_local(call_tree.update_run_state(run_state));
 
     column()
         .class(css::HEIGHT_FULLSCREEN)
-        .child(ThreadView::new(main_id, library))
+        .child(ThreadView::new(call_tree))
 }
