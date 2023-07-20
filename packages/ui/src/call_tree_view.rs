@@ -93,7 +93,7 @@ fn vertex(
 }
 
 fn node<Elem>(
-    type_name: &str,
+    name: &str,
     is_expanded: &Mutable<bool>,
     colour: Colour,
     span: SrcSpan,
@@ -112,8 +112,8 @@ where
                 .align_self(Align::Start)
                 .border_colour(border_colour(colour))
                 .child(
-                    button_group(type_name)
-                        .dropdown(item_dropdown(type_name, style, span, actions))
+                    button_group(name)
+                        .dropdown(item_dropdown(name, style, span, actions))
                         .button(zoom_button(is_expanded, style)),
                 ),
         )
