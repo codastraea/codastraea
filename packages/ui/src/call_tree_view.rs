@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use derive_more::Into;
-use futures_signals::signal::{always, Mutable, Signal, SignalExt};
+use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::RunState,
@@ -48,34 +48,55 @@ impl CallTreeView {
     pub fn new(fn_id: FunctionId, actions: impl CallTreeActions, library: &Rc<Library>) -> Self {
         let call_tree = CallTree::root(fn_id, library);
         // TODO: Handle uwnrap failure (python functions can't be run directly).
-        let span = call_tree.span().unwrap();
-        let name = call_tree.name();
+        let node_data = NodeData::new(
+            call_tree.span().unwrap(),
+            call_tree.name(),
+            call_tree.run_state(),
+        );
 
         Self(
             div()
                 .class(class::container())
-                .child(node(span, name, call_tree.body(), &actions))
+                .child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )
     }
 }
 
-fn call_view(call: &Call, actions: &impl CallTreeActions) -> GenericElement {
-    node(call.span(), call.name(), call.body(), actions)
+struct NodeData<'a> {
+    span: SrcSpan,
+    name: &'a str,
+    run_state: ReadOnlyMutable<RunState>,
 }
 
-fn node(
-    span: SrcSpan,
-    name: &str,
+impl<'a> NodeData<'a> {
+    fn new(span: SrcSpan, name: &'a str, run_state: ReadOnlyMutable<RunState>) -> Self {
+        Self {
+            span,
+            name,
+            run_state,
+        }
+    }
+
+    fn from_call(call: &'a Call) -> Self {
+        Self {
+            span: call.span(),
+            name: call.name(),
+            run_state: call.run_state(),
+        }
+    }
+}
+
+fn call_node(
+    node: &NodeData,
     body: &TreeNode<Expandable<Body>>,
     actions: &impl CallTreeActions,
 ) -> GenericElement {
     if let TreeNode::Internal(body) = body {
         internal_node(
-            name,
+            node,
             body.is_expanded(),
             FUNCTION_COLOUR,
-            span,
             actions,
             body.signal().map({
                 clone!(actions);
@@ -88,15 +109,14 @@ fn node(
             }),
         )
     } else {
-        leaf_node(name, FUNCTION_COLOUR, span, actions)
+        leaf_node(node, FUNCTION_COLOUR, actions)
     }
 }
 
 fn internal_node<Elem>(
-    name: &str,
+    node: &NodeData,
     is_expanded: &Mutable<bool>,
     colour: Colour,
-    span: SrcSpan,
     actions: &impl CallTreeActions,
     expandable_child_signal: impl Signal<Item = Option<Elem>> + 'static,
 ) -> GenericElement
@@ -112,8 +132,8 @@ where
                 .align_self(Align::Start)
                 .border_colour(border_colour(colour))
                 .child(
-                    button_group(name)
-                        .dropdown(node_dropdown(name, style, span, actions))
+                    button_group(node.name)
+                        .dropdown(node_dropdown(node, style, actions))
                         .button(zoom_button(is_expanded, style)),
                 ),
         )
@@ -156,18 +176,12 @@ fn indented_block() -> Div {
         .padding_on_side((Size3, Side::Start))
 }
 
-fn leaf_node(
-    name: &str,
-    colour: Colour,
-    span: SrcSpan,
-    actions: &impl CallTreeActions,
-) -> GenericElement {
+fn leaf_node(node: &NodeData, colour: Colour, actions: &impl CallTreeActions) -> GenericElement {
     column()
         .align_items(Align::Start)
         .child(node_container(colour).child(node_dropdown(
-            name,
+            node,
             ButtonStyle::Solid(colour),
-            span,
             actions,
         )))
         .into()
@@ -183,14 +197,9 @@ fn node_container(colour: Colour) -> Div {
         .rounded_border(true)
 }
 
-fn node_dropdown(
-    name: &str,
-    style: ButtonStyle,
-    span: SrcSpan,
-    actions: &impl CallTreeActions,
-) -> Dropdown {
+fn node_dropdown(node: &NodeData, style: ButtonStyle, actions: &impl CallTreeActions) -> Dropdown {
     // TODO: Get run state from call_tree
-    let run_state = always(RunState::NotRun).map(|run_state| {
+    let run_state = node.run_state.signal().map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
             RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
@@ -205,10 +214,11 @@ fn node_dropdown(
     });
 
     dropdown(
-        icon_button("button", Sig(run_state), style).text(name),
+        icon_button("button", Sig(run_state), style).text(node.name),
         dropdown_menu().children([
             dropdown_item("View code").on_click({
                 clone!(actions);
+                let span = node.span;
                 move |_, _| actions.view_code(span)
             }),
             dropdown_item("Run"),
@@ -239,7 +249,7 @@ fn body_statements<'a>(
     actions: &'a impl CallTreeActions,
 ) -> impl Iterator<Item = GenericElement> + 'a {
     stmts.map(|stmt| match stmt {
-        Statement::Call(call) => call_view(call, actions),
+        Statement::Call(call) => call_node(&NodeData::from_call(call), call.body(), actions),
         Statement::If(if_stmt) => if_node(if_stmt, actions),
     })
 }

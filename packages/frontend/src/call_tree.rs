@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
+use futures_signals::signal::{Mutable, ReadOnlyMutable};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
+    run::RunState,
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 
@@ -13,6 +15,7 @@ use crate::{
 pub struct CallTree {
     span: Option<SrcSpan>,
     name: String,
+    run_state: Mutable<RunState>,
     body: TreeNode<Expandable<Body>>,
 }
 
@@ -23,12 +26,17 @@ impl CallTree {
         Self {
             span: f.span(),
             name: f.name().to_string(),
+            run_state: Mutable::new(RunState::NotRun),
             body: Body::from_linked_body(library, f.body()),
         }
     }
 
     pub fn span(&self) -> Option<SrcSpan> {
         self.span
+    }
+
+    pub fn run_state(&self) -> ReadOnlyMutable<RunState> {
+        self.run_state.read_only()
     }
 
     pub fn name(&self) -> &str {
@@ -103,6 +111,7 @@ pub enum Statement {
 pub struct Call {
     span: SrcSpan,
     name: String,
+    run_state: Mutable<RunState>,
     body: TreeNode<Expandable<Body>>,
 }
 
@@ -110,9 +119,15 @@ impl Call {
     fn new(library: &Rc<Library>, span: SrcSpan, name: FunctionId) -> Self {
         let function = &library.lookup(name);
         let name = function.name().to_string();
+        let run_state = Mutable::new(RunState::NotRun);
         let body = Body::from_linked_body(library, function.body());
 
-        Self { span, name, body }
+        Self {
+            span,
+            name,
+            run_state,
+            body,
+        }
     }
 
     fn from_expression(
@@ -144,6 +159,10 @@ impl Call {
         &self.name
     }
 
+    pub fn run_state(&self) -> ReadOnlyMutable<RunState> {
+        self.run_state.read_only()
+    }
+
     pub fn body(&self) -> &TreeNode<Expandable<Body>> {
         &self.body
     }
@@ -151,6 +170,7 @@ impl Call {
 
 pub struct If {
     span: SrcSpan,
+    run_state: Mutable<RunState>,
     condition: TreeNode<Expandable<Vec<Call>>>,
     then_block: Body,
     else_block: Option<Else>,
@@ -167,6 +187,7 @@ impl If {
         let calls = Call::from_expression(library, condition);
         Self {
             span,
+            run_state: Mutable::new(RunState::NotRun),
             condition: if calls.is_empty() {
                 TreeNode::Leaf
             } else {
@@ -181,6 +202,10 @@ impl If {
 
     pub fn span(&self) -> SrcSpan {
         self.span
+    }
+
+    pub fn run_state(&self) -> ReadOnlyMutable<RunState> {
+        self.run_state.read_only()
     }
 
     pub fn condition(&self) -> &TreeNode<Expandable<Vec<Call>>> {
@@ -198,6 +223,7 @@ impl If {
 
 pub struct Else {
     span: SrcSpan,
+    run_state: Mutable<RunState>,
     body: Body,
 }
 
@@ -205,8 +231,13 @@ impl Else {
     fn new(library: &Rc<Library>, else_block: &ElseClause<FunctionId>) -> Self {
         Self {
             span: else_block.span(),
+            run_state: Mutable::new(RunState::NotRun),
             body: Body::from_body(library, else_block.body()),
         }
+    }
+
+    pub fn run_state(&self) -> ReadOnlyMutable<RunState> {
+        self.run_state.read_only()
     }
 
     pub fn span(&self) -> SrcSpan {
