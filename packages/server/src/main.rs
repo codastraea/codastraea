@@ -1,20 +1,14 @@
 use std::{thread, time::Duration};
 
-use axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        TypedHeader,
-    },
-    headers,
-    response::IntoResponse,
-    routing::get,
-    Router, Server,
-};
-use bincode::Options;
+use arpy_axum::RpcRoute;
+use arpy_server::WebSocketRouter;
+use axum::{Router, Server};
 use serpent_automation_executor::{
     library::Library, run::ThreadRunState, syntax_tree::parse, CODE,
 };
-use tokio::{sync::watch, time::sleep};
+use serpent_automation_server_api::ThreadSubscription;
+use tokio::sync::watch;
+use tokio_stream::wrappers::WatchStream;
 
 fn main() {
     let lib = Library::link(parse(CODE).unwrap());
@@ -26,6 +20,7 @@ fn main() {
         scope.spawn(|| loop {
             lib.run(&trace_send);
             thread::sleep(Duration::from_secs(3));
+            // TODO: Only send if not updated
             trace_send.send_replace(ThreadRunState::new());
         });
     });
@@ -33,48 +28,13 @@ fn main() {
 
 #[tokio::main]
 async fn server(call_states: watch::Receiver<ThreadRunState>) {
-    let handler =
-        |ws, user_agent| async { upgrade_to_websocket(call_states, ws, user_agent).await };
-    let app = Router::new().route("/", get(handler));
+    let ws = WebSocketRouter::new().handle_subscription({
+        let call_states = call_states.clone();
+        move |_: ThreadSubscription| WatchStream::from_changes(call_states.clone())
+    });
+    let app = Router::new().ws_rpc_route("/api", ws, 10000);
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
-
-async fn upgrade_to_websocket(
-    call_states: watch::Receiver<ThreadRunState>,
-    ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
-) -> impl IntoResponse {
-    if let Some(TypedHeader(user_agent)) = user_agent {
-        println!("`{}` connected", user_agent.as_str());
-    }
-
-    ws.on_upgrade(|socket| handler(call_states, socket))
-}
-
-async fn handler(mut call_states: watch::Receiver<ThreadRunState>, mut socket: WebSocket) {
-    println!("Upgraded to websocket");
-
-    loop {
-        call_states.changed().await.unwrap();
-
-        let serialize_tracer = bincode::options()
-            .serialize(&*call_states.borrow())
-            .unwrap();
-        println!("Sending run state");
-
-        // TODO: Diff `RunTracer` and send a `RunTracerDelta`
-        if socket
-            .send(Message::Binary(serialize_tracer))
-            .await
-            .is_err()
-        {
-            println!("Client disconnected");
-            return;
-        }
-
-        sleep(Duration::from_millis(100)).await;
-    }
 }

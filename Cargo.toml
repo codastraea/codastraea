@@ -7,10 +7,15 @@ edition = "2021"
 authors = ["Simon Bourne <simonbourne@gmail.com>"]
 
 [workspace.dependencies]
+serpent-automation-frontend = { path = "packages/frontend" }
+serpent-automation-server-api = { path = "packages/server-api" }
+serpent-automation-executor = { path = "packages/executor" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb" }
 silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb" }
-serpent-automation-frontend = { path = "packages/frontend" }
-serpent-automation-executor = { path = "packages/executor" }
+arpy = { git = "https://github.com/simon-bourne/arpy" }
+arpy-server = { git = "https://github.com/simon-bourne/arpy" }
+arpy-axum = { git = "https://github.com/simon-bourne/arpy" }
+arpy-reqwasm = { git = "https://github.com/simon-bourne/arpy" }
 futures-signals = "0.3.31"
 web-sys = "0.3.60"
 derive_more = "0.99.17"
@@ -25,9 +30,9 @@ serde = "1.0.145"
 serde_with = "3.1.0"
 thiserror = "1.0.32"
 tokio = "1.21.2"
-gloo-net = "0.3.0"
+tokio-stream = "0.1.14"
+gloo-net = "0.1.0"
 futures = "0.3.24"
 serde-json-wasm = "0.5.1"
-bincode = "1.3.3"
 once_cell = "1.17.1"
 axum = "0.6.19"

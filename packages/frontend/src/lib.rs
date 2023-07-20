@@ -1,12 +1,13 @@
-use bincode::Options;
+use arpy::ConcurrentRpcClient;
+use arpy_reqwasm::websocket;
 use futures::StreamExt;
 use gloo_console::log;
-use gloo_net::websocket::{futures::WebSocket, Message};
+use gloo_net::websocket::futures::WebSocket;
 use serpent_automation_executor::{
     library::FunctionId,
-    run::ThreadRunState,
     syntax_tree::{Body, Expression, Statement},
 };
+use serpent_automation_server_api::ThreadSubscription;
 
 pub mod call_tree;
 pub mod tree;
@@ -32,25 +33,15 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
 }
 
 pub async fn server_connection() {
-    log!("Connecting to websocket");
-    let mut server_ws = WebSocket::open("ws://127.0.0.1:9090/").unwrap_or_else(|e| {
-        log!(format!("Error: {}", e));
-        // TODO: Handle error
-        panic!("Error connecting to websocket");
-    });
+    // TODO: Error handling
+    log!("Subscribing to thread");
+    let ws = websocket::Connection::new(WebSocket::open("ws://127.0.0.1:9090/api").unwrap());
 
-    while let Some(msg) = server_ws.next().await {
-        log!(format!("Received: {:?}", msg));
+    let mut thread_run_states = ws.subscribe(ThreadSubscription).await.unwrap();
 
-        let _run_state = match msg.unwrap() {
-            Message::Text(text) => {
-                let run_state: ThreadRunState = serde_json_wasm::from_str(&text).unwrap();
-                log!(format!("Deserialized `RunTracer` from `{text}`"));
-                run_state
-            }
-            Message::Bytes(bytes) => bincode::options().deserialize(&bytes).unwrap(),
-        };
+    while let Some(thread_run_state) = thread_run_states.next().await {
+        log!(format!("Received: {:?}", thread_run_state));
     }
 
-    log!("WebSocket Closed")
+    log!("Subscription closed");
 }

@@ -28,7 +28,7 @@ impl CallStack {
     }
 }
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct ThreadRunState {
     current: CallStack,
     failed: bool,
