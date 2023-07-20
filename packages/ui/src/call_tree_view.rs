@@ -207,7 +207,7 @@ fn node_dropdown(node: &NodeData, style: ButtonStyle, actions: &impl CallTreeAct
                 Icon::check_circle_fill().colour(Colour::Success)
             }
             RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
-            RunState::Failed => Icon::exclamation_triangle_fill().colour(Colour::Danger),
+            RunState::Failed => Icon::exclamation_circle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size2), Side::End))
         .class(class::node_status_icon())
