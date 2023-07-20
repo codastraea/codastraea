@@ -2,7 +2,7 @@ use futures_signals::signal::SignalExt;
 use serpent_automation_executor::syntax_tree::SrcSpan;
 use serpent_automation_frontend::{
     call_tree::{Body, Call, If},
-    tree::{Expandable, Vertex},
+    tree::{Expandable, TreeNode},
 };
 use silkenweb::{clone, node::element::GenericElement, prelude::ParentElement};
 use silkenweb_bootstrap::{
@@ -12,7 +12,9 @@ use silkenweb_bootstrap::{
     utility::{Align, Axis, Colour, SetAlign, SetDisplay, SetSpacing, Size},
 };
 
-use super::{body_statements, dropdown_item, indented_block, item, leaf, node, CallTreeActions};
+use super::{
+    body_statements, dropdown_item, indented_block, internal_node, item, leaf_node, CallTreeActions,
+};
 use crate::call_tree_view::call_view;
 
 pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> GenericElement {
@@ -29,7 +31,7 @@ pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> GenericElement {
             branch_body(
                 "else",
                 else_block.span(),
-                &Vertex::Leaf,
+                &TreeNode::Leaf,
                 else_block.body(),
                 actions,
             )
@@ -40,11 +42,11 @@ pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> GenericElement {
 fn branch_body(
     name: &str,
     span: SrcSpan,
-    condition: &Vertex<Expandable<Vec<Call>>>,
+    condition: &TreeNode<Expandable<Vec<Call>>>,
     body: &Body,
     actions: &impl CallTreeActions,
 ) -> GenericElement {
-    let condition = condition_vertex(name, condition, span, actions);
+    let condition = condition_node(name, condition, span, actions);
 
     let body_elem = if !body.is_empty() {
         indented_block().children(body_statements(body.iter(), actions))
@@ -65,16 +67,16 @@ fn branch_body(
         .into()
 }
 
-fn condition_vertex(
+fn condition_node(
     name: &str,
-    condition: &Vertex<Expandable<Vec<Call>>>,
+    condition: &TreeNode<Expandable<Vec<Call>>>,
     span: SrcSpan,
     actions: &impl CallTreeActions,
 ) -> GenericElement {
-    if let Vertex::Node(condition) = condition {
+    if let TreeNode::Internal(condition) = condition {
         // TODO: Condition text (maybe truncated), with tooltip (how does that work on
         // touch)
-        node(
+        internal_node(
             name,
             condition.is_expanded(),
             CONDITION_COLOUR,
@@ -94,7 +96,7 @@ fn condition_vertex(
             }),
         )
     } else {
-        leaf(name, CONDITION_COLOUR, span, actions)
+        leaf_node(name, CONDITION_COLOUR, span, actions)
     }
 }
 

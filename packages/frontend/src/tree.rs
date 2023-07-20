@@ -4,16 +4,16 @@ use futures_signals::signal::{Mutable, Signal};
 use once_cell::unsync::Lazy;
 
 #[derive(Clone)]
-pub enum Vertex<Children> {
+pub enum TreeNode<Children> {
     Leaf,
-    Node(Children),
+    Internal(Children),
 }
 
-impl<Children> Vertex<Children> {
-    pub fn map<R>(&self, f: impl FnOnce(&Children) -> R) -> Vertex<R> {
+impl<Children> TreeNode<Children> {
+    pub fn map<R>(&self, f: impl FnOnce(&Children) -> R) -> TreeNode<R> {
         match self {
-            Vertex::Leaf => Vertex::Leaf,
-            Vertex::Node(children) => Vertex::Node(f(children)),
+            TreeNode::Leaf => TreeNode::Leaf,
+            TreeNode::Internal(children) => TreeNode::Internal(f(children)),
         }
     }
 }

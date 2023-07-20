@@ -9,7 +9,7 @@ use serpent_automation_executor::{
 };
 use serpent_automation_frontend::{
     call_tree::{Body, Call, CallTree, Statement},
-    tree::{Expandable, Vertex},
+    tree::{Expandable, TreeNode},
 };
 use silkenweb::{
     clone,
@@ -54,24 +54,24 @@ impl CallTreeView {
         Self(
             div()
                 .class(class::container())
-                .child(vertex(span, name, call_tree.body(), &actions))
+                .child(node(span, name, call_tree.body(), &actions))
                 .into(),
         )
     }
 }
 
 fn call_view(call: &Call, actions: &impl CallTreeActions) -> GenericElement {
-    vertex(call.span(), call.name(), call.body(), actions)
+    node(call.span(), call.name(), call.body(), actions)
 }
 
-fn vertex(
+fn node(
     span: SrcSpan,
     name: &str,
-    body: &Vertex<Expandable<Body>>,
+    body: &TreeNode<Expandable<Body>>,
     actions: &impl CallTreeActions,
 ) -> GenericElement {
-    if let Vertex::Node(body) = body {
-        node(
+    if let TreeNode::Internal(body) = body {
+        internal_node(
             name,
             body.is_expanded(),
             FUNCTION_COLOUR,
@@ -88,11 +88,11 @@ fn vertex(
             }),
         )
     } else {
-        leaf(name, FUNCTION_COLOUR, span, actions)
+        leaf_node(name, FUNCTION_COLOUR, span, actions)
     }
 }
 
-fn node<Elem>(
+fn internal_node<Elem>(
     name: &str,
     is_expanded: &Mutable<bool>,
     colour: Colour,
@@ -113,7 +113,7 @@ where
                 .border_colour(border_colour(colour))
                 .child(
                     button_group(name)
-                        .dropdown(item_dropdown(name, style, span, actions))
+                        .dropdown(node_dropdown(name, style, span, actions))
                         .button(zoom_button(is_expanded, style)),
                 ),
         )
@@ -156,7 +156,7 @@ fn indented_block() -> Div {
         .padding_on_side((Size3, Side::Start))
 }
 
-fn leaf(
+fn leaf_node(
     name: &str,
     colour: Colour,
     span: SrcSpan,
@@ -164,7 +164,7 @@ fn leaf(
 ) -> GenericElement {
     column()
         .align_items(Align::Start)
-        .child(item(colour).child(item_dropdown(
+        .child(item(colour).child(node_dropdown(
             name,
             ButtonStyle::Solid(colour),
             span,
@@ -183,7 +183,7 @@ fn item(colour: Colour) -> Div {
         .rounded_border(true)
 }
 
-fn item_dropdown(
+fn node_dropdown(
     name: &str,
     style: ButtonStyle,
     span: SrcSpan,

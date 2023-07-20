@@ -7,13 +7,13 @@ use serpent_automation_executor::{
 
 use crate::{
     is_expandable,
-    tree::{Expandable, Vertex},
+    tree::{Expandable, TreeNode},
 };
 
 pub struct CallTree {
     span: Option<SrcSpan>,
     name: String,
-    body: Vertex<Expandable<Body>>,
+    body: TreeNode<Expandable<Body>>,
 }
 
 impl CallTree {
@@ -35,7 +35,7 @@ impl CallTree {
         &self.name
     }
 
-    pub fn body(&self) -> &Vertex<Expandable<Body>> {
+    pub fn body(&self) -> &TreeNode<Expandable<Body>> {
         &self.body
     }
 }
@@ -47,16 +47,16 @@ impl Body {
     fn from_linked_body(
         library: &Rc<Library>,
         body: &syntax_tree::LinkedBody,
-    ) -> Vertex<Expandable<Self>> {
+    ) -> TreeNode<Expandable<Self>> {
         match body {
             LinkedBody::Local(body) if is_expandable(body) => {
                 let body = body.clone();
-                Vertex::Node(Expandable::new({
+                TreeNode::Internal(Expandable::new({
                     let library = library.clone();
                     move || Self::from_body(&library, &body)
                 }))
             }
-            LinkedBody::Python | LinkedBody::Local(_) => Vertex::Leaf,
+            LinkedBody::Python | LinkedBody::Local(_) => TreeNode::Leaf,
         }
     }
 
@@ -103,7 +103,7 @@ pub enum Statement {
 pub struct Call {
     span: SrcSpan,
     name: String,
-    body: Vertex<Expandable<Body>>,
+    body: TreeNode<Expandable<Body>>,
 }
 
 impl Call {
@@ -144,14 +144,14 @@ impl Call {
         &self.name
     }
 
-    pub fn body(&self) -> &Vertex<Expandable<Body>> {
+    pub fn body(&self) -> &TreeNode<Expandable<Body>> {
         &self.body
     }
 }
 
 pub struct If {
     span: SrcSpan,
-    condition: Vertex<Expandable<Vec<Call>>>,
+    condition: TreeNode<Expandable<Vec<Call>>>,
     then_block: Body,
     else_block: Option<Else>,
 }
@@ -168,9 +168,9 @@ impl If {
         Self {
             span,
             condition: if calls.is_empty() {
-                Vertex::Leaf
+                TreeNode::Leaf
             } else {
-                Vertex::Node(Expandable::new(|| calls))
+                TreeNode::Internal(Expandable::new(|| calls))
             },
             then_block: Body::from_body(library, then_block),
             else_block: else_block
@@ -183,7 +183,7 @@ impl If {
         self.span
     }
 
-    pub fn condition(&self) -> &Vertex<Expandable<Vec<Call>>> {
+    pub fn condition(&self) -> &TreeNode<Expandable<Vec<Call>>> {
         &self.condition
     }
 
