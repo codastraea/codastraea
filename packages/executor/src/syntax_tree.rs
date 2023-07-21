@@ -459,7 +459,7 @@ pub(crate) fn run_call(
             arg.run(lib, call_states)
         })
         .collect();
-    call_states.send_modify(|t| t.push(StackFrame::Function(name)));
+    call_states.send_modify(|t| t.push(StackFrame::Call(name)));
     defer! {call_states.send_modify(|t| t.pop_success());}
     lib.lookup(name).run(&args, lib, call_states);
     Value::None

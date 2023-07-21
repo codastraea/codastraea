@@ -43,7 +43,7 @@ impl CallTree {
         let f = library.lookup(fn_id);
 
         let mut call_stack = CallStack::new();
-        call_stack.push(StackFrame::Function(fn_id));
+        call_stack.push(StackFrame::Call(fn_id));
         let run_state_map = RunStateMap::new();
         let run_state = run_state_map.insert(call_stack.clone());
 
@@ -219,7 +219,7 @@ impl Call {
 
                 calls.push(Self::new(
                     run_state_map,
-                    call_stack.push_cloned(StackFrame::Function(*name)),
+                    call_stack.push_cloned(StackFrame::Call(*name)),
                     library,
                     *span,
                     *name,

@@ -10,7 +10,7 @@ use crate::library::FunctionId;
 pub enum StackFrame {
     Statement(usize),
     Argument(usize),
-    Function(FunctionId),
+    Call(FunctionId),
     BlockPredicate(usize),
     NestedBlock(usize),
 }
