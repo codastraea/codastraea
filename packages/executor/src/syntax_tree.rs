@@ -18,7 +18,7 @@ use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
-    run::{StackFrame, ThreadRunState},
+    run::{NestedBlock, StackFrame, ThreadRunState},
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
@@ -353,27 +353,32 @@ impl Statement<FunctionId> {
             } => {
                 let mut drop_through = true;
 
-                {
-                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
-                    let truthy = condition.run(lib, call_states).truthy();
-                    defer! {call_states.send_modify(|t| t.pop_predicate_success(truthy))}
+                // TODO: Tidy this
+                call_states
+                    .send_modify(|t| t.push(StackFrame::NestedBlock(0, NestedBlock::Predicate)));
+                let truthy = condition.run(lib, call_states).truthy();
+                call_states.send_modify(|t| t.pop_predicate_success(truthy));
 
-                    if truthy {
-                        drop_through = false;
-                        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
-                        defer! {call_states.send_modify(|t| t.pop_success());}
-                        then_block.run(lib, call_states);
-                    }
+                if truthy {
+                    drop_through = false;
+                    call_states
+                        .send_modify(|t| t.push(StackFrame::NestedBlock(0, NestedBlock::Body)));
+                    defer! {call_states.send_modify(|t| t.pop_success());}
+                    then_block.run(lib, call_states);
                 }
 
                 if let Some(else_block) = else_block {
                     // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
-                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
-                    defer! {call_states.send_modify(|t| t.pop_predicate_success(drop_through))}
+                    call_states.send_modify(|t| {
+                        t.push(StackFrame::NestedBlock(block_index, NestedBlock::Predicate))
+                    });
+                    call_states.send_modify(|t| t.pop_predicate_success(drop_through));
 
                     if drop_through {
-                        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
+                        call_states.send_modify(|t| {
+                            t.push(StackFrame::NestedBlock(block_index, NestedBlock::Body))
+                        });
                         defer! {call_states.send_modify(|t| t.pop_success());}
 
                         else_block.run(lib, call_states)

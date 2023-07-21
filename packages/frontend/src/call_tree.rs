@@ -4,7 +4,7 @@ use futures::{Future, StreamExt};
 use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, RunState, StackFrame, ThreadRunState},
+    run::{CallStack, NestedBlock, RunState, StackFrame, ThreadRunState},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 
@@ -264,18 +264,18 @@ impl If {
         then_block: &syntax_tree::Body<FunctionId>,
         else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
-        call_stack.push(StackFrame::BlockPredicate(0));
+        // TODO: Tidy this
+        call_stack.push(StackFrame::NestedBlock(0, NestedBlock::Predicate));
 
         let calls = Call::from_expression(run_state_map, call_stack.clone(), library, condition);
         let run_state = run_state_map.insert(call_stack.clone());
+        call_stack.pop();
         let then_block = Body::from_body(
             run_state_map,
-            call_stack.push_cloned(StackFrame::NestedBlock(0)),
+            call_stack.push_cloned(StackFrame::NestedBlock(0, NestedBlock::Body)),
             library,
             then_block,
         );
-
-        call_stack.pop();
 
         Self {
             span,
@@ -327,10 +327,11 @@ impl Else {
         library: &Rc<Library>,
         else_block: &ElseClause<FunctionId>,
     ) -> Self {
-        call_stack.push(StackFrame::BlockPredicate(block_index));
-        let run_state = run_state_map.insert(call_stack.clone());
+        let run_state = run_state_map.insert(
+            call_stack.push_cloned(StackFrame::NestedBlock(block_index, NestedBlock::Predicate)),
+        );
 
-        call_stack.push(StackFrame::NestedBlock(1));
+        call_stack.push(StackFrame::NestedBlock(block_index, NestedBlock::Body));
 
         Self {
             span: else_block.span(),

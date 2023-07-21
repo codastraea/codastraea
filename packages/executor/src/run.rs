@@ -11,8 +11,13 @@ pub enum StackFrame {
     Statement(usize),
     Argument(usize),
     Call(FunctionId),
-    BlockPredicate(usize),
-    NestedBlock(usize),
+    NestedBlock(usize, NestedBlock),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum NestedBlock {
+    Predicate,
+    Body,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -80,12 +85,28 @@ impl ThreadRunState {
             return RunState::Running;
         }
 
-        match self
+        if stack > &self.current {
+            return RunState::NotRun;
+        }
+
+        let insert_index = match self
             .history
             .binary_search_by_key(&stack, |(call_stack, _)| call_stack)
         {
-            Ok(match_index) => self.history[match_index].1,
-            Err(_insert_index) => RunState::NotRun,
+            Ok(match_index) => return self.history[match_index].1,
+            Err(insert_index) => insert_index,
+        };
+
+        if insert_index == 0 {
+            return RunState::NotRun;
+        }
+
+        let run_state = self.history[insert_index - 1].1;
+
+        if run_state == RunState::PredicateSuccessful(false) {
+            RunState::NotRun
+        } else {
+            run_state
         }
     }
 
@@ -106,11 +127,20 @@ impl ThreadRunState {
     }
 
     fn pop(&mut self, run_state: RunState) {
-        if let Some((last, _)) = self.history.last() {
+        let store_run_state = if let Some((last, last_run_state)) = self.history.last() {
             assert!(last < &self.current);
+
+            // We always need to store `PredicateSuccessful(false)` as that is used to
+            // indicate the start of a gap of `NotRun`.
+            *last_run_state == RunState::PredicateSuccessful(false) || *last_run_state != run_state
+        } else {
+            true
+        };
+
+        if store_run_state {
+            self.history.push((self.current.clone(), run_state));
         }
 
-        self.history.push((self.current.clone(), run_state));
         self.current.pop();
     }
 }
