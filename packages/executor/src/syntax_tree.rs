@@ -18,7 +18,7 @@ use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
-    run::{RunState, StackFrame, ThreadRunState},
+    run::{StackFrame, ThreadRunState},
 };
 
 pub fn parse(input: &str) -> Result<Module, ParseError> {
@@ -229,7 +229,7 @@ impl Body<FunctionId> {
     pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
         for (index, stmt) in self.iter().enumerate() {
             call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
-            defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+            defer! {call_states.send_modify(|t| t.pop_success());}
             stmt.run(lib, call_states);
         }
     }
@@ -353,11 +353,11 @@ impl Statement<FunctionId> {
             } => {
                 call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
                 let truthy = condition.run(lib, call_states).truthy();
-                call_states.send_modify(|t| t.pop(RunState::PredicateSuccessful(truthy)));
+                call_states.send_modify(|t| t.pop_predicate_success(truthy));
 
                 if truthy {
                     call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
-                    defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+                    defer! {call_states.send_modify(|t| t.pop_success());}
                     then_block.run(lib, call_states)
                 } else if let Some(else_block) = else_block {
                     // TODO: Functions to `send_modify` `push` and `pop` stack
@@ -412,9 +412,9 @@ impl ElseClause<FunctionId> {
         block_index: usize,
     ) {
         call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
-        call_states.send_modify(|t| t.pop(RunState::Successful));
+        call_states.send_modify(|t| t.pop_success());
         call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
-        defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+        defer! {call_states.send_modify(|t| t.pop_success());}
         self.body.run(lib, call_states)
     }
 
@@ -461,12 +461,12 @@ pub(crate) fn run_call(
         .enumerate()
         .map(|(index, arg)| {
             call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
-            defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+            defer! {call_states.send_modify(|t| t.pop_success());}
             arg.run(lib, call_states)
         })
         .collect();
     call_states.send_modify(|t| t.push(StackFrame::Function(name)));
-    defer! {call_states.send_modify(|t| t.pop(RunState::Successful));}
+    defer! {call_states.send_modify(|t| t.pop_success());}
     lib.lookup(name).run(&args, lib, call_states);
     Value::None
 }

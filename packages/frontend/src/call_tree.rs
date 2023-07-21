@@ -1,10 +1,10 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use futures::{Future, StreamExt};
 use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, RunState, ThreadRunState},
+    run::{CallStack, RunState, StackFrame, ThreadRunState},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 
@@ -18,23 +18,40 @@ pub struct CallTree {
     name: String,
     run_state: Mutable<RunState>,
     body: TreeNode<Expandable<Body>>,
-    run_state_map: Rc<RefCell<BTreeMap<CallStack, Mutable<RunState>>>>,
+    run_state_map: RunStateMap,
 }
+
+#[derive(Clone)]
+struct RunStateMap(Rc<RefCell<RunStateVec>>);
+
+impl RunStateMap {
+    pub fn new() -> Self {
+        Self(Rc::new(RefCell::new(Vec::new())))
+    }
+
+    pub fn insert(&self, call_stack: CallStack) -> Mutable<RunState> {
+        let run_state = Mutable::new(RunState::NotRun);
+        self.0.borrow_mut().push((call_stack, run_state.clone()));
+        run_state
+    }
+}
+
+type RunStateVec = Vec<(CallStack, Mutable<RunState>)>;
 
 impl CallTree {
     pub fn root(fn_id: FunctionId, library: &Rc<Library>) -> Self {
         let f = library.lookup(fn_id);
 
-        let run_state = Mutable::new(RunState::NotRun);
-        let mut run_state_map = BTreeMap::new();
-        run_state_map.insert(CallStack::new(), run_state.clone());
-        let run_state_map = Rc::new(RefCell::new(run_state_map));
+        let mut call_stack = CallStack::new();
+        call_stack.push(StackFrame::Function(fn_id));
+        let run_state_map = RunStateMap::new();
+        let run_state = run_state_map.insert(call_stack.clone());
 
         Self {
             span: f.span(),
             name: f.name().to_string(),
             run_state,
-            body: Body::from_linked_body(library, f.body()),
+            body: Body::from_linked_body(&run_state_map, call_stack, library, f.body()),
             run_state_map,
         }
     }
@@ -47,20 +64,21 @@ impl CallTree {
         self.run_state.read_only()
     }
 
+    // TODO: If we send deltas, change this to a `Stream` or
+    // `SignalMap`/`SignalVec`, as signals can loose values.
     pub fn update_run_state(
         &self,
         run_state: impl Signal<Item = ThreadRunState> + 'static,
     ) -> impl Future<Output = ()> + 'static {
-        let run_state_map = self.run_state_map.clone();
+        let run_states = self.run_state_map.clone();
 
         async move {
             let mut run_state = Box::pin(run_state.to_stream());
 
             while let Some(run_state) = run_state.next().await {
-                let _run_state_map = run_state_map.borrow_mut();
-                let _call_stack = run_state.current();
-
-                // TODO: Implement
+                for (stack, set_run_state) in run_states.0.borrow().iter() {
+                    set_run_state.set_neq(run_state.run_state(stack));
+                }
             }
         }
     }
@@ -79,29 +97,41 @@ pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
     fn from_linked_body(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
         library: &Rc<Library>,
         body: &syntax_tree::LinkedBody,
     ) -> TreeNode<Expandable<Self>> {
         match body {
             LinkedBody::Local(body) if is_expandable(body) => {
                 let body = body.clone();
+
                 TreeNode::Internal(Expandable::new({
+                    let run_state_map = run_state_map.clone();
                     let library = library.clone();
-                    move || Self::from_body(&library, &body)
+
+                    move || Self::from_body(&run_state_map, call_stack, &library, &body)
                 }))
             }
             LinkedBody::Python | LinkedBody::Local(_) => TreeNode::Leaf,
         }
     }
 
-    fn from_body(library: &Rc<Library>, body: &syntax_tree::Body<FunctionId>) -> Self {
+    fn from_body(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
+        library: &Rc<Library>,
+        body: &syntax_tree::Body<FunctionId>,
+    ) -> Self {
         let mut stmts = Vec::new();
 
-        for stmt in body.iter() {
+        for (index, stmt) in body.iter().enumerate() {
+            let call_stack = call_stack.push_cloned(StackFrame::Statement(index));
+
             match stmt {
                 syntax_tree::Statement::Pass => (),
                 syntax_tree::Statement::Expression(expr) => stmts.extend(
-                    Call::from_expression(library, expr)
+                    Call::from_expression(run_state_map, call_stack, library, expr)
                         .into_iter()
                         .map(Statement::Call),
                 ),
@@ -111,7 +141,13 @@ impl Body {
                     then_block,
                     else_block,
                 } => stmts.push(Statement::If(If::new(
-                    library, *if_span, condition, then_block, else_block,
+                    run_state_map,
+                    call_stack,
+                    library,
+                    *if_span,
+                    condition,
+                    then_block,
+                    else_block,
                 ))),
             }
         }
@@ -142,21 +178,26 @@ pub struct Call {
 }
 
 impl Call {
-    fn new(library: &Rc<Library>, span: SrcSpan, name: FunctionId) -> Self {
+    fn new(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
+        library: &Rc<Library>,
+        span: SrcSpan,
+        name: FunctionId,
+    ) -> Self {
         let function = &library.lookup(name);
-        let name = function.name().to_string();
-        let run_state = Mutable::new(RunState::NotRun);
-        let body = Body::from_linked_body(library, function.body());
 
         Self {
             span,
-            name,
-            run_state,
-            body,
+            name: function.name().to_string(),
+            run_state: run_state_map.insert(call_stack.clone()),
+            body: Body::from_linked_body(run_state_map, call_stack, library, function.body()),
         }
     }
 
     fn from_expression(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
         library: &Rc<Library>,
         expr: &syntax_tree::Expression<FunctionId>,
     ) -> Vec<Call> {
@@ -167,11 +208,22 @@ impl Call {
             syntax_tree::Expression::Call { span, name, args } => {
                 let mut calls = Vec::new();
 
-                for arg in args {
-                    calls.extend(Self::from_expression(library, arg));
+                for (index, arg) in args.iter().enumerate() {
+                    calls.extend(Self::from_expression(
+                        run_state_map,
+                        call_stack.push_cloned(StackFrame::Argument(index)),
+                        library,
+                        arg,
+                    ));
                 }
 
-                calls.push(Self::new(library, *span, *name));
+                calls.push(Self::new(
+                    run_state_map,
+                    call_stack.push_cloned(StackFrame::Function(*name)),
+                    library,
+                    *span,
+                    *name,
+                ));
                 calls
             }
         }
@@ -204,13 +256,21 @@ pub struct If {
 
 impl If {
     fn new(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
         library: &Rc<Library>,
         span: SrcSpan,
         condition: &syntax_tree::Expression<FunctionId>,
         then_block: &syntax_tree::Body<FunctionId>,
         else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
-        let calls = Call::from_expression(library, condition);
+        let calls = Call::from_expression(
+            run_state_map,
+            call_stack.push_cloned(StackFrame::BlockPredicate(0)),
+            library,
+            condition,
+        );
+
         Self {
             span,
             run_state: Mutable::new(RunState::NotRun),
@@ -219,10 +279,15 @@ impl If {
             } else {
                 TreeNode::Internal(Expandable::new(|| calls))
             },
-            then_block: Body::from_body(library, then_block),
+            then_block: Body::from_body(
+                run_state_map,
+                call_stack.push_cloned(StackFrame::NestedBlock(0)),
+                library,
+                then_block,
+            ),
             else_block: else_block
                 .as_ref()
-                .map(|else_block| Else::new(library, else_block)),
+                .map(|else_block| Else::new(run_state_map, call_stack, library, else_block)),
         }
     }
 
@@ -254,11 +319,16 @@ pub struct Else {
 }
 
 impl Else {
-    fn new(library: &Rc<Library>, else_block: &ElseClause<FunctionId>) -> Self {
+    fn new(
+        run_state_map: &RunStateMap,
+        call_stack: CallStack,
+        library: &Rc<Library>,
+        else_block: &ElseClause<FunctionId>,
+    ) -> Self {
         Self {
             span: else_block.span(),
             run_state: Mutable::new(RunState::NotRun),
-            body: Body::from_body(library, else_block.body()),
+            body: Body::from_body(run_state_map, call_stack, library, else_block.body()),
         }
     }
 
