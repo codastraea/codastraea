@@ -257,42 +257,38 @@ pub struct If {
 impl If {
     fn new(
         run_state_map: &RunStateMap,
-        call_stack: CallStack,
+        mut call_stack: CallStack,
         library: &Rc<Library>,
         span: SrcSpan,
         condition: &syntax_tree::Expression<FunctionId>,
         then_block: &syntax_tree::Body<FunctionId>,
         else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
-        let calls = Call::from_expression(
+        call_stack.push(StackFrame::BlockPredicate(0));
+
+        let calls = Call::from_expression(run_state_map, call_stack.clone(), library, condition);
+        let run_state = run_state_map.insert(call_stack.clone());
+        let then_block = Body::from_body(
             run_state_map,
-            call_stack.push_cloned(StackFrame::BlockPredicate(0)),
+            call_stack.push_cloned(StackFrame::NestedBlock(0)),
             library,
-            condition,
+            then_block,
         );
+
+        call_stack.pop();
 
         Self {
             span,
-            run_state: run_state_map.insert(call_stack.clone()),
+            run_state,
             condition: if calls.is_empty() {
                 TreeNode::Leaf
             } else {
                 TreeNode::Internal(Expandable::new(|| calls))
             },
-            then_block: Body::from_body(
-                run_state_map,
-                call_stack.push_cloned(StackFrame::NestedBlock(0)),
-                library,
-                then_block,
-            ),
-            else_block: else_block.as_ref().map(|else_block| {
-                Else::new(
-                    run_state_map,
-                    call_stack.push_cloned(StackFrame::NestedBlock(1)),
-                    library,
-                    else_block,
-                )
-            }),
+            then_block,
+            else_block: else_block
+                .as_ref()
+                .map(|else_block| Else::new(1, run_state_map, call_stack, library, else_block)),
         }
     }
 
@@ -325,14 +321,20 @@ pub struct Else {
 
 impl Else {
     fn new(
+        block_index: usize,
         run_state_map: &RunStateMap,
-        call_stack: CallStack,
+        mut call_stack: CallStack,
         library: &Rc<Library>,
         else_block: &ElseClause<FunctionId>,
     ) -> Self {
+        call_stack.push(StackFrame::BlockPredicate(block_index));
+        let run_state = run_state_map.insert(call_stack.clone());
+
+        call_stack.push(StackFrame::NestedBlock(1));
+
         Self {
             span: else_block.span(),
-            run_state: run_state_map.insert(call_stack.clone()),
+            run_state,
             body: Body::from_body(run_state_map, call_stack, library, else_block.body()),
         }
     }

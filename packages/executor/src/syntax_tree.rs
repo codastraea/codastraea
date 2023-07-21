@@ -351,21 +351,33 @@ impl Statement<FunctionId> {
                 else_block,
                 ..
             } => {
-                call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
-                let truthy = condition.run(lib, call_states).truthy();
-                call_states.send_modify(|t| t.pop_predicate_success(truthy));
+                let mut drop_through = true;
 
-                if truthy {
-                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
-                    defer! {call_states.send_modify(|t| t.pop_success());}
-                    then_block.run(lib, call_states)
-                } else if let Some(else_block) = else_block {
+                {
+                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(0)));
+                    let truthy = condition.run(lib, call_states).truthy();
+                    defer! {call_states.send_modify(|t| t.pop_predicate_success(truthy))}
+
+                    if truthy {
+                        drop_through = false;
+                        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(0)));
+                        defer! {call_states.send_modify(|t| t.pop_success());}
+                        then_block.run(lib, call_states);
+                    }
+                }
+
+                if let Some(else_block) = else_block {
                     // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
-                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
-                    defer! {call_states.send_modify(|t| t.pop_success());}
+                    call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
+                    defer! {call_states.send_modify(|t| t.pop_predicate_success(drop_through))}
 
-                    else_block.run(lib, call_states)
+                    if drop_through {
+                        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
+                        defer! {call_states.send_modify(|t| t.pop_success());}
+
+                        else_block.run(lib, call_states)
+                    }
                 }
             }
         }
