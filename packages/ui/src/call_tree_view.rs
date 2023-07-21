@@ -196,7 +196,10 @@ fn node_dropdown(node: &NodeData, style: ButtonStyle, actions: &impl CallTreeAct
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),
             RunState::Running => Icon::play_circle_fill().colour(Colour::Primary),
-            RunState::Successful => Icon::check_circle_fill().colour(Colour::Success),
+            RunState::Successful | RunState::PredicateSuccessful(true) => {
+                Icon::check_circle_fill().colour(Colour::Success)
+            }
+            RunState::PredicateSuccessful(false) => Icon::circle_fill().colour(Colour::Success),
             RunState::Failed => Icon::exclamation_circle_fill().colour(Colour::Danger),
         }
         .margin_on_side((Some(Size2), Side::End))
