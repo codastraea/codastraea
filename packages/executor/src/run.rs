@@ -38,7 +38,6 @@ impl PartialOrd for CallStack {
     }
 }
 
-// TODO: We need a `block_index` at each level to disambiguate.
 impl CallStack {
     pub fn new() -> Self {
         Self::default()
