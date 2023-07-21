@@ -362,7 +362,10 @@ impl Statement<FunctionId> {
                 } else if let Some(else_block) = else_block {
                     // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
-                    else_block.run(lib, call_states, block_index)
+                    call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
+                    defer! {call_states.send_modify(|t| t.pop_success());}
+
+                    else_block.run(lib, call_states)
                 }
             }
         }
@@ -405,16 +408,7 @@ impl ElseClause<String> {
 }
 
 impl ElseClause<FunctionId> {
-    pub fn run(
-        &self,
-        lib: &Library,
-        call_states: &watch::Sender<ThreadRunState>,
-        block_index: usize,
-    ) {
-        call_states.send_modify(|t| t.push(StackFrame::BlockPredicate(block_index)));
-        call_states.send_modify(|t| t.pop_success());
-        call_states.send_modify(|t| t.push(StackFrame::NestedBlock(block_index)));
-        defer! {call_states.send_modify(|t| t.pop_success());}
+    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
         self.body.run(lib, call_states)
     }
 

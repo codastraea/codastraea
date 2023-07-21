@@ -273,7 +273,7 @@ impl If {
 
         Self {
             span,
-            run_state: Mutable::new(RunState::NotRun),
+            run_state: run_state_map.insert(call_stack.clone()),
             condition: if calls.is_empty() {
                 TreeNode::Leaf
             } else {
@@ -285,9 +285,14 @@ impl If {
                 library,
                 then_block,
             ),
-            else_block: else_block
-                .as_ref()
-                .map(|else_block| Else::new(run_state_map, call_stack, library, else_block)),
+            else_block: else_block.as_ref().map(|else_block| {
+                Else::new(
+                    run_state_map,
+                    call_stack.push_cloned(StackFrame::NestedBlock(1)),
+                    library,
+                    else_block,
+                )
+            }),
         }
     }
 
@@ -327,7 +332,7 @@ impl Else {
     ) -> Self {
         Self {
             span: else_block.span(),
-            run_state: Mutable::new(RunState::NotRun),
+            run_state: run_state_map.insert(call_stack.clone()),
             body: Body::from_body(run_state_map, call_stack, library, else_block.body()),
         }
     }
