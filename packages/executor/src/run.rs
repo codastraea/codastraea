@@ -85,7 +85,7 @@ impl ThreadRunState {
             return RunState::Running;
         }
 
-        if stack > &self.current {
+        if stack.starts_with(&self.current) || stack > &self.current {
             return RunState::NotRun;
         }
 
