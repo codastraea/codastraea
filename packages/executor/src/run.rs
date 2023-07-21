@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +66,7 @@ impl CallStack {
 pub struct ThreadRunState {
     // TODO: Compress runs of `RunState::Success`
     // TODO: Register which callstacks we're interested in.
-    history: BTreeMap<CallStack, RunState>,
+    history: Vec<(CallStack, RunState)>,
     current: CallStack,
 }
 
@@ -80,7 +80,13 @@ impl ThreadRunState {
             return RunState::Running;
         }
 
-        *self.history.get(stack).unwrap_or(&RunState::NotRun)
+        match self
+            .history
+            .binary_search_by_key(&stack, |(call_stack, _)| call_stack)
+        {
+            Ok(match_index) => self.history[match_index].1,
+            Err(_insert_index) => RunState::NotRun,
+        }
     }
 
     pub fn push(&mut self, item: StackFrame) {
@@ -100,11 +106,11 @@ impl ThreadRunState {
     }
 
     fn pop(&mut self, run_state: RunState) {
-        if let Some((last, _)) = self.history.last_key_value() {
+        if let Some((last, _)) = self.history.last() {
             assert!(last < &self.current);
         }
 
-        self.history.insert(self.current.clone(), run_state);
+        self.history.push((self.current.clone(), run_state));
         self.current.pop();
     }
 }
