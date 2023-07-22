@@ -1,12 +1,13 @@
 use std::{cell::RefCell, rc::Rc};
 
-use futures::{Future, StreamExt};
-use futures_signals::signal::{Mutable, ReadOnlyMutable, Signal, SignalExt};
+use futures::Future;
+use futures_signals::signal::{Mutable, ReadOnlyMutable};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, NestedBlock, RunState, StackFrame, ThreadRunState},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
+use tokio::sync::mpsc;
 
 use crate::{
     is_expandable,
@@ -22,16 +23,32 @@ pub struct CallTree {
 }
 
 #[derive(Clone)]
-struct RunStateMap(Rc<RefCell<RunStateVec>>);
+struct RunStateMap {
+    thread_run_state: Rc<RefCell<ThreadRunState>>,
+    run_state_map: Rc<RefCell<RunStateVec>>,
+}
 
 impl RunStateMap {
     pub fn new() -> Self {
-        Self(Rc::new(RefCell::new(Vec::new())))
+        Self {
+            thread_run_state: Rc::new(RefCell::new(ThreadRunState::new())),
+            run_state_map: Rc::new(RefCell::new(Vec::new())),
+        }
+    }
+
+    pub fn update_thread_run_state(&self, thread_run_state: ThreadRunState) {
+        for (stack, set_run_state) in self.run_state_map.borrow().iter() {
+            set_run_state.set_neq(thread_run_state.run_state(stack));
+        }
+
+        self.thread_run_state.replace(thread_run_state);
     }
 
     pub fn insert(&self, call_stack: CallStack) -> Mutable<RunState> {
-        let run_state = Mutable::new(RunState::NotRun);
-        self.0.borrow_mut().push((call_stack, run_state.clone()));
+        let run_state = Mutable::new(self.thread_run_state.borrow().run_state(&call_stack));
+        self.run_state_map
+            .borrow_mut()
+            .push((call_stack, run_state.clone()));
         run_state
     }
 }
@@ -64,21 +81,15 @@ impl CallTree {
         self.run_state.read_only()
     }
 
-    // TODO: If we send deltas, change this to a `Stream` or
-    // `SignalMap`/`SignalVec`, as signals can loose values.
     pub fn update_run_state(
         &self,
-        run_state: impl Signal<Item = ThreadRunState> + 'static,
+        mut run_state_updates: mpsc::Receiver<ThreadRunState>,
     ) -> impl Future<Output = ()> + 'static {
-        let run_states = self.run_state_map.clone();
+        let run_state_map = self.run_state_map.clone();
 
         async move {
-            let mut run_state = Box::pin(run_state.to_stream());
-
-            while let Some(run_state) = run_state.next().await {
-                for (stack, set_run_state) in run_states.0.borrow().iter() {
-                    set_run_state.set_neq(run_state.run_state(stack));
-                }
+            while let Some(new_run_state) = run_state_updates.recv().await {
+                run_state_map.update_thread_run_state(new_run_state);
             }
         }
     }

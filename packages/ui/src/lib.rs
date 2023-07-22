@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use futures_signals::signal::Signal;
 use serpent_automation_executor::{library::Library, run::ThreadRunState};
 use serpent_automation_frontend::call_tree::CallTree;
 use silkenweb::{
@@ -33,9 +32,10 @@ macro_rules! component {
 }
 
 use component;
+use tokio::sync::mpsc;
 
 pub fn app(
-    run_state: impl Signal<Item = ThreadRunState> + 'static,
+    run_state: mpsc::Receiver<ThreadRunState>,
     library: &Rc<Library>,
 ) -> impl ChildElement {
     let main_id = library.main_id().unwrap();

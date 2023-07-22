@@ -1,19 +1,19 @@
 use std::rc::Rc;
 
-use futures_signals::signal::Mutable;
 use serpent_automation_executor::{
-    library::Library, run::ThreadRunState, syntax_tree::parse, CODE,
+    library::Library, syntax_tree::parse, CODE,
 };
 use serpent_automation_frontend::server_connection;
 use serpent_automation_ui::app;
 use silkenweb::{mount, task::spawn_local};
+use tokio::sync::mpsc;
 
 fn main() {
     let module = parse(CODE).unwrap();
     let library = Rc::new(Library::link(module));
-    let run_state = Mutable::new(ThreadRunState::new());
+    let (send_run_state, recv_run_state) = mpsc::channel(1);
 
-    spawn_local(server_connection(run_state.clone()));
+    spawn_local(server_connection(send_run_state));
 
-    mount("app", app(run_state.signal_cloned(), &library));
+    mount("app", app(recv_run_state, &library));
 }

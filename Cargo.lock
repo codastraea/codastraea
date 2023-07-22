@@ -2289,6 +2289,7 @@ dependencies = [
  "once_cell",
  "serpent-automation-executor",
  "serpent-automation-server-api",
+ "tokio",
 ]
 
 [[package]]
@@ -2326,6 +2327,7 @@ dependencies = [
  "serpent-automation-frontend",
  "silkenweb",
  "silkenweb-bootstrap",
+ "tokio",
  "wasm-bindgen",
  "web-sys",
 ]
