@@ -34,10 +34,7 @@ macro_rules! component {
 use component;
 use tokio::sync::mpsc;
 
-pub fn app(
-    run_state: mpsc::Receiver<ThreadRunState>,
-    library: &Rc<Library>,
-) -> impl ChildElement {
+pub fn app(run_state: mpsc::Receiver<ThreadRunState>, library: &Rc<Library>) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
     let call_tree = CallTree::root(main_id, library);
 
