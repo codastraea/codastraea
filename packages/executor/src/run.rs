@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::cmp::{min, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,38 @@ impl CallStack {
         self.0.starts_with(&other.0)
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn common_prefix(&self, other: &Self) -> Self {
+        let mut result = Self::new();
+
+        for (i, j) in self.0.iter().zip(other.0.iter()) {
+            if i != j {
+                return result;
+            }
+
+            result.0.push(*i);
+        }
+
+        result
+    }
+
+    pub fn common_prefix_len(&self, other: &Self) -> usize {
+        for (len, (i, j)) in self.0.iter().zip(other.0.iter()).enumerate() {
+            if i != j {
+                return len;
+            }
+        }
+
+        min(self.0.len(), other.0.len())
+    }
+
     pub fn push(&mut self, item: StackFrame) {
         self.0.push(item)
     }
@@ -69,9 +101,8 @@ impl CallStack {
 
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct ThreadRunState {
-    // TODO: Compress runs of `RunState::Success`
-    // TODO: Register which callstacks we're interested in.
     history: Vec<(CallStack, RunState)>,
+    last_completed: Option<CallStack>,
     current: CallStack,
 }
 
@@ -80,12 +111,20 @@ impl ThreadRunState {
         Self::default()
     }
 
+    pub fn last_completed(&self) -> &Option<CallStack> {
+        &self.last_completed
+    }
+
+    pub fn current(&self) -> &CallStack {
+        &self.current
+    }
+
     pub fn run_state(&self, stack: &CallStack) -> RunState {
         if self.current.starts_with(stack) {
             return RunState::Running;
         }
 
-        if stack.starts_with(&self.current) || stack > &self.current {
+        if Some(stack) > self.last_completed.as_ref() {
             return RunState::NotRun;
         }
 
@@ -141,6 +180,7 @@ impl ThreadRunState {
             self.history.push((self.current.clone(), run_state));
         }
 
+        self.last_completed = Some(self.current.clone());
         self.current.pop();
     }
 }

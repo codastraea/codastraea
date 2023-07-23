@@ -42,7 +42,6 @@ pub async fn server_connection(run_state: mpsc::Sender<ThreadRunState>) {
     let mut thread_run_states = ws.subscribe(ThreadSubscription).await.unwrap();
 
     while let Some(thread_run_state) = thread_run_states.next().await {
-        log!(format!("Received: {:?}", thread_run_state));
         // TODO: Error handling
         run_state.send(thread_run_state.unwrap()).await.unwrap();
     }
