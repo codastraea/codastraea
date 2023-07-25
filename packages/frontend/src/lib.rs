@@ -1,6 +1,6 @@
 use arpy::ConcurrentRpcClient;
 use arpy_reqwasm::websocket;
-use futures::StreamExt;
+use futures::{stream, StreamExt};
 use gloo_console::log;
 use gloo_net::websocket::futures::WebSocket;
 use serpent_automation_executor::{
@@ -39,7 +39,10 @@ pub async fn server_connection(run_state: mpsc::Sender<ThreadRunState>) {
     log!("Subscribing to thread");
     let ws = websocket::Connection::new(WebSocket::open("ws://127.0.0.1:9090/api").unwrap());
 
-    let mut thread_run_states = ws.subscribe(ThreadSubscription).await.unwrap();
+    let ((), mut thread_run_states) = ws
+        .subscribe(ThreadSubscription, stream::pending())
+        .await
+        .unwrap();
 
     while let Some(thread_run_state) = thread_run_states.next().await {
         // TODO: Error handling

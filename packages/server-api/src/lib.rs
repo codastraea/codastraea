@@ -6,5 +6,7 @@ use serpent_automation_executor::run::ThreadRunState;
 pub struct ThreadSubscription;
 
 impl FnSubscription for ThreadSubscription {
+    type InitialReply = ();
     type Item = ThreadRunState;
+    type Update = ();
 }

@@ -30,7 +30,7 @@ fn main() {
 async fn server(call_states: watch::Receiver<ThreadRunState>) {
     let ws = WebSocketRouter::new().handle_subscription({
         let call_states = call_states.clone();
-        move |_: ThreadSubscription| WatchStream::from_changes(call_states.clone())
+        move |_, _: ThreadSubscription| ((), WatchStream::from_changes(call_states.clone()))
     });
     let app = Router::new().ws_rpc_route("/api", ws, 10000);
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
