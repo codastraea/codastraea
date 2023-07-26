@@ -2370,7 +2370,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "caseless",
  "console_error_panic_hook",
@@ -2397,7 +2397,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "cssparser 0.31.2",
  "itertools 0.11.0",
@@ -2410,7 +2410,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "derive_more",
  "futures-signals",
@@ -2421,7 +2421,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-bootstrap-macros"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -2434,7 +2434,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "derive_more",
  "grass",
@@ -2449,7 +2449,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-signals-ext"
 version = "0.5.0"
-source = "git+https://github.com/silkenweb/silkenweb#97f49518489ea9a928674648edc9b55f624e5756"
+source = "git+https://github.com/silkenweb/silkenweb#99e0da926825ae2b6c3da54f0c0e10d9fa263474"
 dependencies = [
  "futures-signals",
  "paste",
