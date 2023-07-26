@@ -2281,12 +2281,15 @@ dependencies = [
 name = "serpent-automation-executor"
 version = "0.1.0"
 dependencies = [
+ "futures",
+ "futures-signals",
  "indoc",
  "nom",
  "nom-greedyerror",
  "nom_locate",
  "scopeguard",
  "serde",
+ "slotmap",
  "thiserror",
  "tokio",
 ]
@@ -2315,6 +2318,7 @@ dependencies = [
  "arpy-axum",
  "arpy-server",
  "axum",
+ "futures-signals",
  "serde",
  "serpent-automation-executor",
  "serpent-automation-server-api",
@@ -2327,6 +2331,7 @@ name = "serpent-automation-server-api"
 version = "0.1.0"
 dependencies = [
  "arpy",
+ "futures-signals",
  "serde",
  "serpent-automation-executor",
 ]

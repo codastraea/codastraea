@@ -1,6 +1,15 @@
-use std::cmp::{min, Ordering};
+use std::{
+    cmp::{min, Ordering},
+    collections::HashSet,
+    pin::pin,
+    sync::{Arc, RwLock},
+};
 
+use futures::{Stream, StreamExt};
+use futures_signals::signal_map::{MutableBTreeMap, SignalMap};
 use serde::{Deserialize, Serialize};
+use slotmap::{new_key_type, SlotMap};
+use tokio::{spawn, sync::mpsc};
 
 use crate::library::FunctionId;
 
@@ -60,6 +69,12 @@ impl CallStack {
         self.0.is_empty()
     }
 
+    // TODO: We need a "slice" for CallStacks
+    pub fn parent(&self) -> Option<CallStack> {
+        let mut parent = self.0.clone();
+        parent.pop().map(|_| Self(parent))
+    }
+
     pub fn common_prefix(&self, other: &Self) -> Self {
         let mut result = Self::new();
 
@@ -99,11 +114,12 @@ impl CallStack {
     }
 }
 
-#[derive(Default, Clone, Serialize, Deserialize, Debug)]
+#[derive(Default)]
 pub struct ThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
+    updater: ThreadRunStateUpdater,
 }
 
 impl ThreadRunState {
@@ -183,6 +199,85 @@ impl ThreadRunState {
         self.last_completed = Some(self.current.clone());
         self.current.pop();
     }
+}
+
+new_key_type! {struct ClientId; }
+
+struct ThreadRunStateUpdater {
+    clients: Arc<RwLock<SlotMap<ClientId, Arc<Client>>>>,
+    update_receiver: mpsc::UnboundedReceiver<(CallStack, RunState)>,
+    update_sender: mpsc::UnboundedSender<(CallStack, RunState)>,
+}
+
+impl Default for ThreadRunStateUpdater {
+    fn default() -> Self {
+        // TODO: Use bounded channel?
+        let (update_sender, update_receiver) = mpsc::unbounded_channel();
+
+        Self {
+            clients: Default::default(),
+            update_receiver,
+            update_sender,
+        }
+    }
+}
+
+impl ThreadRunStateUpdater {
+    pub fn update(&self, call_stack: CallStack, run_state: RunState) {
+        self.update_sender.send((call_stack, run_state)).unwrap()
+    }
+
+    pub async fn update_clients(&mut self) {
+        // TODO: Update receiver should receive new subscriptions and updates, so we
+        // don't have any ordering problems. It should put new subscriptions in the map
+        // and send the initial values.
+        while let Some((call_stack, run_state)) = self.update_receiver.recv().await {
+            if let Some(parent) = call_stack.parent() {
+                for client in self.clients.read().unwrap().values() {
+                    if client.open_nodes.read().unwrap().contains(&parent) {
+                        client
+                            .view_nodes
+                            .lock_mut()
+                            .insert_cloned(call_stack.clone(), run_state);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn subscribe(
+        &mut self,
+        open_nodes: impl Stream<Item = CallStack> + Send + 'static,
+    ) -> impl SignalMap<Key = CallStack, Value = RunState> {
+        let client = Arc::new(Client::default());
+        let id = self.clients.write().unwrap().insert(client.clone());
+
+        spawn({
+            // TODO: Use clone! from silkenweb
+            let client = client.clone();
+            let clients = self.clients.clone();
+
+            async move {
+                let mut open_nodes = pin!(open_nodes);
+
+                while let Some(node) = open_nodes.next().await {
+                    // TODO: Don't write to open nodes here. Just send a message to `update_clients`
+                    // saying we're interested.
+                    client.open_nodes.write().unwrap().insert(node);
+                }
+
+                clients.write().unwrap().remove(id);
+            }
+        });
+
+        client.view_nodes.signal_map_cloned()
+    }
+}
+
+#[derive(Default)]
+struct Client {
+    open_nodes: RwLock<HashSet<CallStack>>,
+    view_nodes: MutableBTreeMap<CallStack, RunState>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
