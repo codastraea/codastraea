@@ -16,9 +16,12 @@ use serpent_automation_executor::{
 use serpent_automation_server_api::ThreadSubscription;
 use tokio::{
     spawn,
-    sync::{mpsc, watch},
+    sync::{broadcast, mpsc, watch},
 };
-use tokio_stream::wrappers::{ReceiverStream, WatchStream};
+use tokio_stream::{
+    wrappers::{BroadcastStream, ReceiverStream, WatchStream},
+    StreamExt,
+};
 
 fn main() {
     let lib = Library::link(parse(CODE).unwrap());
@@ -28,21 +31,26 @@ fn main() {
     thread::scope(|scope| {
         scope.spawn(|| server(trace_receive));
         scope.spawn(|| loop {
+            // TODO: Send call state updates
             lib.run(&trace_send);
             thread::sleep(Duration::from_secs(3));
-            // TODO: Only send if not updated
             trace_send.send_replace(ThreadRunState::new());
         });
     });
 }
 
-// TODO: Take a tokio broadcast channel and disconnect on lagging.
 #[tokio::main]
-async fn server(call_states: MutableBTreeMap<CallStack, RunState>) {
+async fn server(call_states: broadcast::Receiver<(CallStack, RunState)>) {
     let ws = WebSocketRouter::new().handle_subscription({
-        let call_states = call_states.clone().entries_cloned();
+        let call_states = call_states.resubscribe();
 
-        move |_updates, _: ThreadSubscription| ((), ReceiverStream::new(recv_call_states))
+        move |_updates, _: ThreadSubscription| {
+            // TODO: Handle errors, particularly `Lagged`.
+            let call_states = BroadcastStream::new(call_states.resubscribe())
+                .map_while(|call_state| call_state.ok());
+
+            ((), call_states)
+        }
     });
     let app = Router::new().ws_rpc_route("/api", ws, 10000);
     Server::bind(&"0.0.0.0:9090".parse().unwrap())
