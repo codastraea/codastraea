@@ -5,13 +5,14 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
-use tokio::{
-    spawn,
-    sync::{broadcast, mpsc},
-};
+// TODO: Split this out into a separate crate (or put it in the server crate)?
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::spawn;
+use tokio::sync::broadcast;
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use crate::library::FunctionId;
 
@@ -84,37 +85,33 @@ impl CallStack {
     }
 }
 
-pub fn new_thread() -> (ThreadRunState, ThreadRunStateUpdater) {
-    let (update_sender, update_receiver) = mpsc::unbounded_channel();
-
-    let thread_run_state = ThreadRunState(Arc::new(RwLock::new(SharedThreadRunState {
-        history: Vec::new(),
-        last_completed: None,
-        current: CallStack::new(),
-        update_sender,
-    })));
-
-    let thread_run_state_updater = ThreadRunStateUpdater {
-        clients: Default::default(),
-        update_receiver,
-    };
-
-    (thread_run_state, thread_run_state_updater)
-}
-
 #[derive(Clone)]
 pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
+
+impl Default for ThreadRunState {
+    fn default() -> Self {
+        let (update_sender, _update_receiver) = broadcast::channel(1000);
+
+        Self(Arc::new(RwLock::new(SharedThreadRunState {
+            history: Vec::new(),
+            last_completed: None,
+            current: CallStack::new(),
+            update_sender,
+        })))
+    }
+}
 
 struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
-    update_sender: mpsc::UnboundedSender<(CallStack, RunState)>,
+    update_sender: broadcast::Sender<(CallStack, RunState)>,
 }
 
 impl SharedThreadRunState {
     fn update(&self, call_stack: CallStack, run_state: RunState) {
-        self.update_sender.send((call_stack, run_state)).unwrap()
+        // TODO: I think we want to ignore errors. What happens to the queue?
+        let _ = self.update_sender.send((call_stack, run_state));
     }
 }
 
@@ -191,6 +188,23 @@ impl ThreadRunState {
         data.current.pop();
     }
 
+    // TODO: Split this out into a separate crate (or put it in the server crate)?
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn subscribe(
+        &self,
+        open_nodes: impl Stream<Item = CallStack> + Send + 'static,
+    ) -> broadcast::Receiver<(CallStack, RunState)> {
+        let mut updater = ThreadRunStateUpdater {
+            clients: Default::default(),
+        };
+
+        let run_states = updater.subscribe(open_nodes);
+        let update_sender = self.read().update_sender.subscribe();
+        spawn(async move { updater.update_clients(update_sender).await });
+
+        run_states
+    }
+
     fn read(&self) -> RwLockReadGuard<'_, SharedThreadRunState> {
         self.0.read().unwrap()
     }
@@ -204,16 +218,21 @@ new_key_type! {struct ClientId; }
 
 pub struct ThreadRunStateUpdater {
     clients: Arc<RwLock<SlotMap<ClientId, Arc<Client>>>>,
-    update_receiver: mpsc::UnboundedReceiver<(CallStack, RunState)>,
 }
 
 impl ThreadRunStateUpdater {
-    pub async fn update_clients(&mut self) {
+    pub async fn update_clients(
+        &mut self,
+        update_receiver: broadcast::Receiver<(CallStack, RunState)>,
+    ) {
         // TODO(next): Update receiver should receive new subscriptions and updates, so
         // we don't have any ordering problems. It should put new subscriptions
         // in the map and send the initial values.
         // TODO(next): Send run state for newly opened nodes.
-        while let Some((call_stack, run_state)) = self.update_receiver.recv().await {
+        let mut updates =
+            BroadcastStream::new(update_receiver).map_while(|call_state| call_state.ok());
+
+        while let Some((call_stack, run_state)) = updates.next().await {
             if let Some(parent) = call_stack.parent() {
                 for client in self.clients.read().unwrap().values() {
                     if client.open_nodes.read().unwrap().contains(&parent) {
@@ -227,6 +246,8 @@ impl ThreadRunStateUpdater {
         }
     }
 
+    // TODO: Split this out into a separate crate (or put it in the server crate)?
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(
         &mut self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,

@@ -6,28 +6,29 @@ use axum::{Router, Server};
 use futures::stream::BoxStream;
 use serpent_automation_executor::{
     library::Library,
-    run::{new_thread, CallStack},
+    run::{CallStack, ThreadRunState},
     syntax_tree::parse,
     CODE,
 };
 use serpent_automation_server_api::ThreadSubscription;
-use tokio::spawn;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 #[tokio::main]
 async fn main() {
+    let thread_run_state = ThreadRunState::default();
+
+    thread::spawn({
+        let thread_run_state = thread_run_state.clone();
+
+        move || {
+            let lib = Library::link(parse(CODE).unwrap());
+            lib.run(&thread_run_state);
+        }
+    });
+
     let ws = WebSocketRouter::new().handle_subscription({
         move |updates: BoxStream<'static, CallStack>, _subscription: ThreadSubscription| {
-            // TODO: Naming
-            let (thread_run_state, mut thread_run_state_updater) = new_thread();
-            // TODO: Handle errors, particularly `Lagged`.
-            let receive_run_state = thread_run_state_updater.subscribe(updates);
-
-            spawn(async move { thread_run_state_updater.update_clients().await });
-            thread::spawn(move || {
-                let lib = Library::link(parse(CODE).unwrap());
-                lib.run(&thread_run_state);
-            });
+            let receive_run_state = thread_run_state.subscribe(updates);
 
             // TODO: Handle errors, particularly `Lagged`.
             let receive_run_state =

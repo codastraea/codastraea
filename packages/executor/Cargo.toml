@@ -14,5 +14,6 @@ scopeguard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
+tokio-stream = { workspace = true, features = ["sync"] }
 slotmap = { workspace = true }
 futures = { workspace = true }
