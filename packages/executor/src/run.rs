@@ -2,7 +2,7 @@ use std::{
     cmp::Ordering,
     collections::HashSet,
     pin::pin,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
 use futures::{Stream, StreamExt};
@@ -83,15 +83,16 @@ impl CallStack {
         self.0.pop();
     }
 }
+
 pub fn new_thread() -> (ThreadRunState, ThreadRunStateUpdater) {
     let (update_sender, update_receiver) = mpsc::unbounded_channel();
 
-    let thread_run_state = ThreadRunState {
+    let thread_run_state = ThreadRunState(Arc::new(RwLock::new(SharedThreadRunState {
         history: Vec::new(),
         last_completed: None,
         current: CallStack::new(),
         update_sender,
-    };
+    })));
 
     let thread_run_state_updater = ThreadRunStateUpdater {
         clients: Default::default(),
@@ -101,36 +102,39 @@ pub fn new_thread() -> (ThreadRunState, ThreadRunStateUpdater) {
     (thread_run_state, thread_run_state_updater)
 }
 
-pub struct ThreadRunState {
+#[derive(Clone)]
+pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
+
+struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
     update_sender: mpsc::UnboundedSender<(CallStack, RunState)>,
 }
 
+impl SharedThreadRunState {
+    fn update(&self, call_stack: CallStack, run_state: RunState) {
+        self.update_sender.send((call_stack, run_state)).unwrap()
+    }
+}
+
 impl ThreadRunState {
-    pub fn last_completed(&self) -> &Option<CallStack> {
-        &self.last_completed
-    }
-
-    pub fn current(&self) -> &CallStack {
-        &self.current
-    }
-
     pub fn run_state(&self, stack: &CallStack) -> RunState {
-        if self.current.starts_with(stack) {
+        let data = self.read();
+
+        if data.current.starts_with(stack) {
             return RunState::Running;
         }
 
-        if Some(stack) > self.last_completed.as_ref() {
+        if Some(stack) > data.last_completed.as_ref() {
             return RunState::NotRun;
         }
 
-        let insert_index = match self
+        let insert_index = match data
             .history
             .binary_search_by_key(&stack, |(call_stack, _)| call_stack)
         {
-            Ok(match_index) => return self.history[match_index].1,
+            Ok(match_index) => return data.history[match_index].1,
             Err(insert_index) => insert_index,
         };
 
@@ -138,7 +142,7 @@ impl ThreadRunState {
             return RunState::NotRun;
         }
 
-        let run_state = self.history[insert_index - 1].1;
+        let run_state = data.history[insert_index - 1].1;
 
         if run_state == RunState::PredicateSuccessful(false) {
             RunState::NotRun
@@ -147,26 +151,28 @@ impl ThreadRunState {
         }
     }
 
-    pub fn push(&mut self, item: StackFrame) {
-        self.current.push(item);
-        self.update(self.current.clone(), RunState::Running);
+    pub fn push(&self, item: StackFrame) {
+        let mut data = self.write();
+        data.current.push(item);
+        data.update(data.current.clone(), RunState::Running);
     }
 
-    pub fn pop_success(&mut self) {
+    pub fn pop_success(&self) {
         self.pop(RunState::Successful);
     }
 
-    pub fn pop_failed(&mut self) {
+    pub fn pop_failed(&self) {
         self.pop(RunState::Failed);
     }
 
-    pub fn pop_predicate_success(&mut self, result: bool) {
+    pub fn pop_predicate_success(&self, result: bool) {
         self.pop(RunState::PredicateSuccessful(result));
     }
 
-    fn pop(&mut self, run_state: RunState) {
-        let store_run_state = if let Some((last, last_run_state)) = self.history.last() {
-            assert!(last < &self.current);
+    fn pop(&self, run_state: RunState) {
+        let mut data = self.write();
+        let store_run_state = if let Some((last, last_run_state)) = data.history.last() {
+            assert!(last < &data.current);
 
             // We always need to store `PredicateSuccessful(false)` as that is used to
             // indicate the start of a gap of `NotRun`.
@@ -176,16 +182,21 @@ impl ThreadRunState {
         };
 
         if store_run_state {
-            self.history.push((self.current.clone(), run_state));
+            let current = data.current.clone();
+            data.history.push((current, run_state));
         }
 
-        self.last_completed = Some(self.current.clone());
-        self.update(self.current.clone(), run_state);
-        self.current.pop();
+        data.last_completed = Some(data.current.clone());
+        data.update(data.current.clone(), run_state);
+        data.current.pop();
     }
 
-    fn update(&self, call_stack: CallStack, run_state: RunState) {
-        self.update_sender.send((call_stack, run_state)).unwrap()
+    fn read(&self) -> RwLockReadGuard<'_, SharedThreadRunState> {
+        self.0.read().unwrap()
+    }
+
+    fn write(&self) -> RwLockWriteGuard<'_, SharedThreadRunState> {
+        self.0.write().unwrap()
     }
 }
 

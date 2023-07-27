@@ -19,14 +19,14 @@ async fn main() {
     let ws = WebSocketRouter::new().handle_subscription({
         move |updates: BoxStream<'static, CallStack>, _subscription: ThreadSubscription| {
             // TODO: Naming
-            let (mut thread_run_state, mut thread_run_state_updater) = new_thread();
+            let (thread_run_state, mut thread_run_state_updater) = new_thread();
             // TODO: Handle errors, particularly `Lagged`.
             let receive_run_state = thread_run_state_updater.subscribe(updates);
 
             spawn(async move { thread_run_state_updater.update_clients().await });
             thread::spawn(move || {
                 let lib = Library::link(parse(CODE).unwrap());
-                lib.run(&mut thread_run_state);
+                lib.run(&thread_run_state);
             });
 
             // TODO: Handle errors, particularly `Lagged`.

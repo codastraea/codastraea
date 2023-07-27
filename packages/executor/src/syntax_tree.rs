@@ -148,7 +148,7 @@ impl LinkedFunction {
         &self.body
     }
 
-    pub fn run(&self, args: &[Value], lib: &Library, call_states: &mut ThreadRunState) {
+    pub fn run(&self, args: &[Value], lib: &Library, call_states: &ThreadRunState) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(1));
 
@@ -224,7 +224,7 @@ impl Body<String> {
 }
 
 impl Body<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &mut ThreadRunState) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         for (index, stmt) in self.iter().enumerate() {
             call_states.push(StackFrame::Statement(index));
             stmt.run(lib, call_states);
@@ -337,7 +337,7 @@ impl Statement<String> {
 }
 
 impl Statement<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &mut ThreadRunState) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         match self {
             Self::Pass => (),
             Self::Expression(expr) => {
@@ -416,7 +416,7 @@ impl ElseClause<String> {
 }
 
 impl ElseClause<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &mut ThreadRunState) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         self.body.run(lib, call_states)
     }
 
@@ -443,7 +443,7 @@ pub enum Expression<FnId> {
 }
 
 impl Expression<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &mut ThreadRunState) -> Value {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) -> Value {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args, .. } => run_call(*name, args, lib, call_states),
@@ -456,7 +456,7 @@ pub(crate) fn run_call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     lib: &Library,
-    call_states: &mut ThreadRunState,
+    call_states: &ThreadRunState,
 ) -> Value {
     let args: Vec<_> = args
         .iter()

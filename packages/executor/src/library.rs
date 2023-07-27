@@ -73,7 +73,7 @@ impl Library {
     }
 
     // TODO: Type for (CallStack, RunState)?
-    pub fn run(&self, call_states: &mut ThreadRunState) {
+    pub fn run(&self, call_states: &ThreadRunState) {
         if let Some(main_id) = self.main_id() {
             run_call(main_id, &[], self, call_states);
         }
