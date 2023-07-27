@@ -1,3 +1,5 @@
+use std::thread;
+
 use arpy_axum::RpcRoute;
 use arpy_server::WebSocketRouter;
 use axum::{Router, Server};
@@ -22,7 +24,7 @@ async fn main() {
             let receive_run_state = thread_run_state_updater.subscribe(updates);
 
             spawn(async move { thread_run_state_updater.update_clients().await });
-            spawn(async move {
+            thread::spawn(move || {
                 let lib = Library::link(parse(CODE).unwrap());
                 lib.run(&mut thread_run_state);
             });
