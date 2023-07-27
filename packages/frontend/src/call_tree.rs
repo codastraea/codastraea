@@ -4,7 +4,7 @@ use futures::Future;
 use futures_signals::signal::{Mutable, ReadOnlyMutable};
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, NestedBlock, RunState, StackFrame, ThreadRunState},
+    run::{CallStack, NestedBlock, RunState, StackFrame},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 use tokio::sync::mpsc;
@@ -24,14 +24,12 @@ pub struct CallTree {
 
 #[derive(Clone)]
 struct RunStateMap {
-    thread_run_state: Rc<RefCell<ThreadRunState>>,
     run_state_map: Rc<RefCell<BTreeMap<CallStack, Mutable<RunState>>>>,
 }
 
 impl RunStateMap {
     pub fn new() -> Self {
         Self {
-            thread_run_state: Rc::new(RefCell::new(ThreadRunState::new())),
             run_state_map: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
@@ -44,7 +42,7 @@ impl RunStateMap {
     }
 
     pub fn insert(&self, call_stack: CallStack) -> Mutable<RunState> {
-        let run_state = Mutable::new(self.thread_run_state.borrow().run_state(&call_stack));
+        let run_state = Mutable::new(RunState::NotRun);
         self.run_state_map
             .borrow_mut()
             .insert(call_stack, run_state.clone());

@@ -364,7 +364,6 @@ impl Statement<FunctionId> {
                 }
 
                 if let Some(else_block) = else_block {
-                    // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
                     call_states.push(StackFrame::NestedBlock(block_index, NestedBlock::Predicate));
                     call_states.pop_predicate_success(drop_through);

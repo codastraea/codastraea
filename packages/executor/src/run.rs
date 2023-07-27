@@ -1,15 +1,17 @@
 use std::{
-    cmp::{min, Ordering},
+    cmp::Ordering,
     collections::HashSet,
     pin::pin,
     sync::{Arc, RwLock},
 };
 
 use futures::{Stream, StreamExt};
-use futures_signals::signal_map::{MutableBTreeMap, SignalMap};
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
-use tokio::{spawn, sync::mpsc};
+use tokio::{
+    spawn,
+    sync::{broadcast, mpsc},
+};
 
 use crate::library::FunctionId;
 
@@ -61,42 +63,10 @@ impl CallStack {
         self.0.starts_with(&other.0)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     // TODO: We need a "slice" for CallStacks
     pub fn parent(&self) -> Option<CallStack> {
         let mut parent = self.0.clone();
         parent.pop().map(|_| Self(parent))
-    }
-
-    pub fn common_prefix(&self, other: &Self) -> Self {
-        let mut result = Self::new();
-
-        for (i, j) in self.0.iter().zip(other.0.iter()) {
-            if i != j {
-                return result;
-            }
-
-            result.0.push(*i);
-        }
-
-        result
-    }
-
-    pub fn common_prefix_len(&self, other: &Self) -> usize {
-        for (len, (i, j)) in self.0.iter().zip(other.0.iter()).enumerate() {
-            if i != j {
-                return len;
-            }
-        }
-
-        min(self.0.len(), other.0.len())
     }
 
     pub fn push(&mut self, item: StackFrame) {
@@ -113,20 +83,32 @@ impl CallStack {
         self.0.pop();
     }
 }
+pub fn new_thread() -> (ThreadRunState, ThreadRunStateUpdater) {
+    let (update_sender, update_receiver) = mpsc::unbounded_channel();
 
-#[derive(Default)]
+    let thread_run_state = ThreadRunState {
+        history: Vec::new(),
+        last_completed: None,
+        current: CallStack::new(),
+        update_sender,
+    };
+
+    let thread_run_state_updater = ThreadRunStateUpdater {
+        clients: Default::default(),
+        update_receiver,
+    };
+
+    (thread_run_state, thread_run_state_updater)
+}
+
 pub struct ThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
-    updater: ThreadRunStateUpdater,
+    update_sender: mpsc::UnboundedSender<(CallStack, RunState)>,
 }
 
 impl ThreadRunState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn last_completed(&self) -> &Option<CallStack> {
         &self.last_completed
     }
@@ -167,7 +149,7 @@ impl ThreadRunState {
 
     pub fn push(&mut self, item: StackFrame) {
         self.current.push(item);
-        self.updater.update(self.current.clone(), RunState::Running);
+        self.update(self.current.clone(), RunState::Running);
     }
 
     pub fn pop_success(&mut self) {
@@ -198,39 +180,25 @@ impl ThreadRunState {
         }
 
         self.last_completed = Some(self.current.clone());
-        self.updater.update(self.current.clone(), run_state);
+        self.update(self.current.clone(), run_state);
         self.current.pop();
+    }
+
+    fn update(&self, call_stack: CallStack, run_state: RunState) {
+        self.update_sender.send((call_stack, run_state)).unwrap()
     }
 }
 
 new_key_type! {struct ClientId; }
 
-struct ThreadRunStateUpdater {
+pub struct ThreadRunStateUpdater {
     clients: Arc<RwLock<SlotMap<ClientId, Arc<Client>>>>,
     update_receiver: mpsc::UnboundedReceiver<(CallStack, RunState)>,
-    update_sender: mpsc::UnboundedSender<(CallStack, RunState)>,
-}
-
-impl Default for ThreadRunStateUpdater {
-    fn default() -> Self {
-        // TODO: Use bounded channel?
-        let (update_sender, update_receiver) = mpsc::unbounded_channel();
-
-        Self {
-            clients: Default::default(),
-            update_receiver,
-            update_sender,
-        }
-    }
 }
 
 impl ThreadRunStateUpdater {
-    pub fn update(&self, call_stack: CallStack, run_state: RunState) {
-        self.update_sender.send((call_stack, run_state)).unwrap()
-    }
-
     pub async fn update_clients(&mut self) {
-        // TODO: Update receiver should receive new subscriptions and updates, so we
+        // TODO(next): Update receiver should receive new subscriptions and updates, so we
         // don't have any ordering problems. It should put new subscriptions in the map
         // and send the initial values.
         while let Some((call_stack, run_state)) = self.update_receiver.recv().await {
@@ -239,8 +207,8 @@ impl ThreadRunStateUpdater {
                     if client.open_nodes.read().unwrap().contains(&parent) {
                         client
                             .view_nodes
-                            .lock_mut()
-                            .insert_cloned(call_stack.clone(), run_state);
+                            .send((call_stack.clone(), run_state))
+                            .unwrap();
                     }
                 }
             }
@@ -250,8 +218,10 @@ impl ThreadRunStateUpdater {
     pub fn subscribe(
         &mut self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,
-    ) -> impl SignalMap<Key = CallStack, Value = RunState> {
-        let client = Arc::new(Client::default());
+    ) -> broadcast::Receiver<(CallStack, RunState)> {
+        // TODO: Channel bounds
+        let (run_state_sender, run_state_receiver) = broadcast::channel(1000);
+        let client = Arc::new(Client::new(run_state_sender));
         let id = self.clients.write().unwrap().insert(client.clone());
 
         spawn({
@@ -263,7 +233,7 @@ impl ThreadRunStateUpdater {
                 let mut open_nodes = pin!(open_nodes);
 
                 while let Some(node) = open_nodes.next().await {
-                    // TODO: Don't write to open nodes here. Just send a message to `update_clients`
+                    // TODO(next): Don't write to open nodes here. Just send a message to `update_clients`
                     // saying we're interested.
                     client.open_nodes.write().unwrap().insert(node);
                 }
@@ -272,14 +242,22 @@ impl ThreadRunStateUpdater {
             }
         });
 
-        client.view_nodes.signal_map_cloned()
+        run_state_receiver
     }
 }
 
-#[derive(Default)]
 struct Client {
     open_nodes: RwLock<HashSet<CallStack>>,
-    view_nodes: MutableBTreeMap<CallStack, RunState>,
+    view_nodes: broadcast::Sender<(CallStack, RunState)>,
+}
+
+impl Client {
+    fn new(view_nodes: broadcast::Sender<(CallStack, RunState)>) -> Self {
+        Self {
+            open_nodes: RwLock::new(HashSet::new()),
+            view_nodes,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

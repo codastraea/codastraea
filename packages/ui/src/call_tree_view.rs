@@ -191,7 +191,6 @@ fn node_container(colour: Colour) -> Div {
 }
 
 fn node_dropdown(node: &NodeData, style: ButtonStyle, actions: &impl CallTreeActions) -> Dropdown {
-    // TODO: Get run state from call_tree
     let run_state = node.run_state.signal().map(|run_state| {
         match run_state {
             RunState::NotRun => Icon::circle().colour(Colour::Secondary),

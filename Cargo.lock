@@ -2318,6 +2318,7 @@ dependencies = [
  "arpy-axum",
  "arpy-server",
  "axum",
+ "futures",
  "futures-signals",
  "serde",
  "serpent-automation-executor",
