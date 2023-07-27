@@ -198,9 +198,10 @@ pub struct ThreadRunStateUpdater {
 
 impl ThreadRunStateUpdater {
     pub async fn update_clients(&mut self) {
-        // TODO(next): Update receiver should receive new subscriptions and updates, so we
-        // don't have any ordering problems. It should put new subscriptions in the map
-        // and send the initial values.
+        // TODO(next): Update receiver should receive new subscriptions and updates, so
+        // we don't have any ordering problems. It should put new subscriptions
+        // in the map and send the initial values.
+        // TODO(next): Send run state for newly opened nodes.
         while let Some((call_stack, run_state)) = self.update_receiver.recv().await {
             if let Some(parent) = call_stack.parent() {
                 for client in self.clients.read().unwrap().values() {
@@ -222,7 +223,7 @@ impl ThreadRunStateUpdater {
         // TODO: Channel bounds
         let (run_state_sender, run_state_receiver) = broadcast::channel(1000);
         let client = Arc::new(Client::new(run_state_sender));
-        let id = self.clients.write().unwrap().insert(client.clone());
+        let id = { self.clients.write().unwrap().insert(client.clone()) };
 
         spawn({
             // TODO: Use clone! from silkenweb
@@ -233,8 +234,8 @@ impl ThreadRunStateUpdater {
                 let mut open_nodes = pin!(open_nodes);
 
                 while let Some(node) = open_nodes.next().await {
-                    // TODO(next): Don't write to open nodes here. Just send a message to `update_clients`
-                    // saying we're interested.
+                    // TODO(next): Don't write to open nodes here. Just send a message to
+                    // `update_clients` saying we're interested.
                     client.open_nodes.write().unwrap().insert(node);
                 }
 
