@@ -14,19 +14,14 @@ use serpent_automation_executor::{
     CODE,
 };
 use serpent_automation_server_api::ThreadSubscription;
-use tokio::{
-    spawn,
-    sync::{broadcast, mpsc, watch},
-};
-use tokio_stream::{
-    wrappers::{BroadcastStream, ReceiverStream, WatchStream},
-    StreamExt,
-};
+use tokio::sync::broadcast;
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 fn main() {
     let lib = Library::link(parse(CODE).unwrap());
 
-    let (trace_send, trace_receive) = watch::channel(ThreadRunState::new());
+    // TODO: Need a strategy around channel size/lagging receivers
+    let (trace_send, trace_receive) = broadcast::channel(1000);
 
     thread::scope(|scope| {
         scope.spawn(|| server(trace_receive));
