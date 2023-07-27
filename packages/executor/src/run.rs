@@ -88,14 +88,26 @@ impl CallStack {
 #[derive(Clone)]
 pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
 
+// TODO: Split this out into a separate crate (or put it in the server crate)?
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for ThreadRunState {
     fn default() -> Self {
         let (update_sender, _update_receiver) = broadcast::channel(1000);
+        let updater = ThreadRunStateUpdater {
+            clients: Default::default(),
+        };
+
+        spawn({
+            let mut updater = updater.clone();
+            let update_sender = update_sender.subscribe();
+            async move { updater.update_clients(update_sender).await }
+        });
 
         Self(Arc::new(RwLock::new(SharedThreadRunState {
             history: Vec::new(),
             last_completed: None,
             current: CallStack::new(),
+            updater,
             update_sender,
         })))
     }
@@ -105,6 +117,7 @@ struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
+    updater: ThreadRunStateUpdater,
     update_sender: broadcast::Sender<(CallStack, RunState)>,
 }
 
@@ -194,15 +207,7 @@ impl ThreadRunState {
         &self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,
     ) -> broadcast::Receiver<(CallStack, RunState)> {
-        let mut updater = ThreadRunStateUpdater {
-            clients: Default::default(),
-        };
-
-        let run_states = updater.subscribe(open_nodes);
-        let update_sender = self.read().update_sender.subscribe();
-        spawn(async move { updater.update_clients(update_sender).await });
-
-        run_states
+        self.write().updater.subscribe(open_nodes)
     }
 
     fn read(&self) -> RwLockReadGuard<'_, SharedThreadRunState> {
@@ -216,6 +221,7 @@ impl ThreadRunState {
 
 new_key_type! {struct ClientId; }
 
+#[derive(Clone)]
 pub struct ThreadRunStateUpdater {
     clients: Arc<RwLock<SlotMap<ClientId, Arc<Client>>>>,
 }
