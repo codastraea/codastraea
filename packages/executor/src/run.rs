@@ -92,15 +92,14 @@ pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for ThreadRunState {
     fn default() -> Self {
-        let (update_sender, _update_receiver) = broadcast::channel(1000);
+        let (update_sender, update_receiver) = broadcast::channel(1000);
         let updater = ThreadRunStateUpdater {
             clients: Default::default(),
         };
 
         spawn({
             let mut updater = updater.clone();
-            let update_sender = update_sender.subscribe();
-            async move { updater.update_clients(update_sender).await }
+            async move { updater.update_clients(update_receiver).await }
         });
 
         Self(Arc::new(RwLock::new(SharedThreadRunState {
