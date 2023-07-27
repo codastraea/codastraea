@@ -11,7 +11,7 @@ use serpent_automation_executor::{
     CODE,
 };
 use serpent_automation_server_api::ThreadSubscription;
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use tokio_stream::wrappers::ReceiverStream;
 
 #[tokio::main]
 async fn main() {
@@ -28,13 +28,7 @@ async fn main() {
 
     let ws = WebSocketRouter::new().handle_subscription({
         move |updates: BoxStream<'static, CallStack>, _subscription: ThreadSubscription| {
-            let receive_run_state = thread_run_state.subscribe(updates);
-
-            // TODO: Handle errors, particularly `Lagged`.
-            let receive_run_state =
-                BroadcastStream::new(receive_run_state).map_while(|call_state| call_state.ok());
-
-            ((), receive_run_state)
+            ((), ReceiverStream::new(thread_run_state.subscribe(updates)))
         }
     });
 

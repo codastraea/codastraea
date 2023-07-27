@@ -5,14 +5,14 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use futures::{executor::block_on, Stream};
+use futures::Stream;
 use serde::{Deserialize, Serialize};
-use slotmap::{new_key_type, SlotMap};
+use slotmap::new_key_type;
 // TODO: Split this out into a separate crate (or put it in the server crate)?
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
-use tokio_stream::StreamExt;
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use crate::library::FunctionId;
 
@@ -88,25 +88,14 @@ impl CallStack {
 #[derive(Clone)]
 pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
 
-// TODO: Split this out into a separate crate (or put it in the server crate)?
-#[cfg(not(target_arch = "wasm32"))]
 impl Default for ThreadRunState {
     fn default() -> Self {
-        let (update_sender, update_receiver) = mpsc::channel(1000);
-        let updater = ThreadRunStateUpdater {
-            clients: Default::default(),
-        };
-
-        spawn({
-            let mut updater = updater.clone();
-            async move { updater.update_clients(update_receiver).await }
-        });
+        let (update_sender, _update_receiver) = broadcast::channel(1000);
 
         Self(Arc::new(RwLock::new(SharedThreadRunState {
             history: Vec::new(),
             last_completed: None,
             current: CallStack::new(),
-            updater,
             update_sender,
         })))
     }
@@ -116,13 +105,13 @@ struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
     last_completed: Option<CallStack>,
     current: CallStack,
-    updater: ThreadRunStateUpdater,
-    update_sender: mpsc::Sender<(CallStack, RunState)>,
+    update_sender: broadcast::Sender<(CallStack, RunState)>,
 }
 
 impl SharedThreadRunState {
     fn update(&self, call_stack: CallStack, run_state: RunState) {
-        block_on(self.update_sender.send((call_stack, run_state))).unwrap();
+        // TODO: I think we want to ignore errors. What happens to the queue?
+        let _ = self.update_sender.send((call_stack, run_state));
     }
 }
 
@@ -204,8 +193,58 @@ impl ThreadRunState {
     pub fn subscribe(
         &self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,
-    ) -> broadcast::Receiver<(CallStack, RunState)> {
-        self.write().updater.subscribe(open_nodes)
+    ) -> mpsc::Receiver<(CallStack, RunState)> {
+        let update_receiver = self.read().update_sender.subscribe();
+
+        // TODO: Channel bounds
+        let (run_state_sender, run_state_receiver) = mpsc::channel(1000);
+        let client = Arc::new(Client::new(run_state_sender));
+
+        spawn({
+            let client = client.clone();
+            Self::update_client(client, update_receiver)
+        });
+
+        spawn({
+            // TODO: Use clone! from silkenweb
+            let client = client.clone();
+
+            async move {
+                let mut open_nodes = pin!(open_nodes);
+
+                while let Some(node) = open_nodes.next().await {
+                    // TODO(next): Don't write to open nodes here. Just send a message to
+                    // `update_clients` saying we're interested.
+                    client.open_nodes.write().unwrap().insert(node);
+                }
+            }
+        });
+
+        run_state_receiver
+    }
+
+    async fn update_client(
+        client: Arc<Client>,
+        update_receiver: broadcast::Receiver<(CallStack, RunState)>,
+    ) {
+        // TODO(next): Update receiver should receive new subscriptions and updates, so
+        // we don't have any ordering problems. It should put new subscriptions
+        // in the map and send the initial values.
+        // TODO(next): Send run state for newly opened nodes.
+        let mut updates =
+            BroadcastStream::new(update_receiver).map_while(|call_state| call_state.ok());
+
+        while let Some((call_stack, run_state)) = updates.next().await {
+            if let Some(parent) = call_stack.parent() {
+                if client.open_nodes.read().unwrap().contains(&parent) {
+                    client
+                        .send_run_state
+                        .send((call_stack.clone(), run_state))
+                        .await
+                        .unwrap();
+                }
+            }
+        }
     }
 
     fn read(&self) -> RwLockReadGuard<'_, SharedThreadRunState> {
@@ -219,78 +258,16 @@ impl ThreadRunState {
 
 new_key_type! {struct ClientId; }
 
-#[derive(Clone)]
-pub struct ThreadRunStateUpdater {
-    clients: Arc<RwLock<SlotMap<ClientId, Arc<Client>>>>,
-}
-
-impl ThreadRunStateUpdater {
-    pub async fn update_clients(
-        &mut self,
-        mut update_receiver: mpsc::Receiver<(CallStack, RunState)>,
-    ) {
-        // TODO(next): Update receiver should receive new subscriptions and updates, so
-        // we don't have any ordering problems. It should put new subscriptions
-        // in the map and send the initial values.
-        // TODO(next): Send run state for newly opened nodes.
-
-        while let Some((call_stack, run_state)) = update_receiver.recv().await {
-            if let Some(parent) = call_stack.parent() {
-                for client in self.clients.read().unwrap().values() {
-                    if client.open_nodes.read().unwrap().contains(&parent) {
-                        client
-                            .view_nodes
-                            .send((call_stack.clone(), run_state))
-                            .unwrap();
-                    }
-                }
-            }
-        }
-    }
-
-    // TODO: Split this out into a separate crate (or put it in the server crate)?
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn subscribe(
-        &mut self,
-        open_nodes: impl Stream<Item = CallStack> + Send + 'static,
-    ) -> broadcast::Receiver<(CallStack, RunState)> {
-        // TODO: Channel bounds
-        let (run_state_sender, run_state_receiver) = broadcast::channel(1000);
-        let client = Arc::new(Client::new(run_state_sender));
-        let id = { self.clients.write().unwrap().insert(client.clone()) };
-
-        spawn({
-            // TODO: Use clone! from silkenweb
-            let client = client.clone();
-            let clients = self.clients.clone();
-
-            async move {
-                let mut open_nodes = pin!(open_nodes);
-
-                while let Some(node) = open_nodes.next().await {
-                    // TODO(next): Don't write to open nodes here. Just send a message to
-                    // `update_clients` saying we're interested.
-                    client.open_nodes.write().unwrap().insert(node);
-                }
-
-                clients.write().unwrap().remove(id);
-            }
-        });
-
-        run_state_receiver
-    }
-}
-
 struct Client {
     open_nodes: RwLock<HashSet<CallStack>>,
-    view_nodes: broadcast::Sender<(CallStack, RunState)>,
+    send_run_state: mpsc::Sender<(CallStack, RunState)>,
 }
 
 impl Client {
-    fn new(view_nodes: broadcast::Sender<(CallStack, RunState)>) -> Self {
+    fn new(send_run_state: mpsc::Sender<(CallStack, RunState)>) -> Self {
         Self {
             open_nodes: RwLock::new(HashSet::new()),
-            view_nodes,
+            send_run_state,
         }
     }
 }
