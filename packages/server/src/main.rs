@@ -17,10 +17,10 @@ fn main() {
     let lib = Library::link(parse(CODE).unwrap());
 
     // TODO: Need a strategy around channel size/lagging receivers
-    let (trace_send, trace_receive) = broadcast::channel(1000);
+    let (send_run_state, receive_run_state) = broadcast::channel(1000);
 
     thread::scope(|scope| {
-        scope.spawn(|| server(trace_receive));
+        scope.spawn(|| server(receive_run_state));
         scope.spawn(|| loop {
             let mut thread_run_state = ThreadRunState::new();
             lib.run(&mut thread_run_state);

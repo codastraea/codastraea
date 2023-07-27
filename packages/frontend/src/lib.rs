@@ -5,7 +5,7 @@ use gloo_console::log;
 use gloo_net::websocket::futures::WebSocket;
 use serpent_automation_executor::{
     library::FunctionId,
-    run::ThreadRunState,
+    run::{CallStack, RunState},
     syntax_tree::{Body, Expression, Statement},
 };
 use serpent_automation_server_api::ThreadSubscription;
@@ -34,7 +34,7 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 
-pub async fn server_connection(run_state: mpsc::Sender<ThreadRunState>) {
+pub async fn server_connection(run_state: mpsc::Sender<(CallStack, RunState)>) {
     // TODO: Error handling
     log!("Subscribing to thread");
     let ws = websocket::Connection::new(WebSocket::open("ws://127.0.0.1:9090/api").unwrap());

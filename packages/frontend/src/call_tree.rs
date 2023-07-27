@@ -1,8 +1,7 @@
-use std::{cell::RefCell, collections::BTreeMap, mem, ops::Bound, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use futures::Future;
 use futures_signals::signal::{Mutable, ReadOnlyMutable};
-use gloo_console::info;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, NestedBlock, RunState, StackFrame, ThreadRunState},
@@ -37,59 +36,11 @@ impl RunStateMap {
         }
     }
 
-    pub fn update_thread_run_state(&self, new_thread_run_state: ThreadRunState) {
-        let thread_run_state = self.thread_run_state.borrow();
-        let current_before = thread_run_state.current().clone();
-        let last_complete_before = thread_run_state.last_completed().clone();
-        mem::drop(thread_run_state);
-
-        self.thread_run_state.replace(new_thread_run_state);
-
-        let thread_run_state = self.thread_run_state.borrow();
-        let run_state_map = self.run_state_map.borrow();
-
-        // TODO: Better way to handle restarts
-        if &last_complete_before > thread_run_state.last_completed() {
-            info!("Update all");
-            self.update_nodes(run_state_map.iter());
-
-            return;
-        }
-
-        let last_complete_after = thread_run_state.last_completed();
-        let completed_start = last_complete_before.map_or(Bound::Unbounded, Bound::Excluded);
-        let completed_end = last_complete_after
-            .as_ref()
-            .map_or(Bound::Unbounded, Bound::Included);
-
-        let mut current_after = thread_run_state.current().clone();
-
-        info!("Start update");
-        self.update_nodes(run_state_map.range((completed_start.as_ref(), completed_end)));
-
-        let common_prefix_len = current_after.common_prefix_len(&current_before);
-
-        // Nodes start running in reverse order to when they complete. This means it's
-        // not possible to define a range for all the running nodes.
-        while current_after.len() > common_prefix_len {
-            if let Some(set_run_state) = run_state_map.get(&current_after) {
-                info!("Updating running node");
-                set_run_state.set(RunState::Running);
-            }
-            current_after.pop();
-        }
-    }
-
-    fn update_nodes<'a>(
-        &self,
-        nodes: impl Iterator<Item = (&'a CallStack, &'a Mutable<RunState>)>,
-    ) {
-        let thread_run_state = self.thread_run_state.borrow();
-
-        for (stack, set_run_state) in nodes {
-            info!("Updating completed node");
-            set_run_state.set_neq(thread_run_state.run_state(stack));
-        }
+    pub fn update_run_state(&self, call_stack: CallStack, new_run_state: RunState) {
+        self.run_state_map
+            .borrow_mut()
+            .entry(call_stack)
+            .and_modify(|run_state| run_state.set(new_run_state));
     }
 
     pub fn insert(&self, call_stack: CallStack) -> Mutable<RunState> {
@@ -129,13 +80,13 @@ impl CallTree {
 
     pub fn update_run_state(
         &self,
-        mut run_state_updates: mpsc::Receiver<ThreadRunState>,
+        mut run_state_updates: mpsc::Receiver<(CallStack, RunState)>,
     ) -> impl Future<Output = ()> + 'static {
         let run_state_map = self.run_state_map.clone();
 
         async move {
-            while let Some(new_run_state) = run_state_updates.recv().await {
-                run_state_map.update_thread_run_state(new_run_state);
+            while let Some((call_stack, new_run_state)) = run_state_updates.recv().await {
+                run_state_map.update_run_state(call_stack, new_run_state);
             }
         }
     }
