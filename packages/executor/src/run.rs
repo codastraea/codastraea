@@ -232,7 +232,7 @@ impl ThreadRunState {
         // in the map and send the initial values.
         // TODO(next): Send run state for newly opened nodes.
         let mut updates =
-            BroadcastStream::new(update_receiver).map_while(|call_state| call_state.ok());
+            BroadcastStream::new(update_receiver).map_while(Result::ok);
 
         while let Some((call_stack, run_state)) = updates.next().await {
             if let Some(parent) = call_stack.parent() {
