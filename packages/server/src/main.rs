@@ -3,10 +3,6 @@ use std::{thread, time::Duration};
 use arpy_axum::RpcRoute;
 use arpy_server::WebSocketRouter;
 use axum::{Router, Server};
-use futures_signals::{
-    signal::Broadcaster,
-    signal_map::{MutableBTreeMap, SignalMap, SignalMapExt},
-};
 use serpent_automation_executor::{
     library::Library,
     run::{CallStack, RunState, ThreadRunState},
@@ -26,10 +22,9 @@ fn main() {
     thread::scope(|scope| {
         scope.spawn(|| server(trace_receive));
         scope.spawn(|| loop {
-            // TODO: Send call state updates
-            lib.run(&trace_send);
+            let mut thread_run_state = ThreadRunState::new();
+            lib.run(&mut thread_run_state);
             thread::sleep(Duration::from_secs(3));
-            trace_send.send_replace(ThreadRunState::new());
         });
     });
 }
