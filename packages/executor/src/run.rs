@@ -213,8 +213,10 @@ impl ThreadRunState {
                 let mut open_nodes = pin!(open_nodes);
 
                 while let Some(node) = open_nodes.next().await {
-                    // TODO(next): Don't write to open nodes here. Just send a message to
-                    // `update_clients` saying we're interested.
+                    // TODO(next): Don't write to open nodes here. Just send a message to a channel
+                    // saying we're interested. Combine the receiver with `update_receiver` using
+                    // `futures::stream::select`.
+
                     client.open_nodes.write().unwrap().insert(node);
                 }
             }
@@ -231,8 +233,7 @@ impl ThreadRunState {
         // we don't have any ordering problems. It should put new subscriptions
         // in the map and send the initial values.
         // TODO(next): Send run state for newly opened nodes.
-        let mut updates =
-            BroadcastStream::new(update_receiver).map_while(Result::ok);
+        let mut updates = BroadcastStream::new(update_receiver).map_while(Result::ok);
 
         while let Some((call_stack, run_state)) = updates.next().await {
             if let Some(parent) = call_stack.parent() {
