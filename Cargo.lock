@@ -2288,7 +2288,6 @@ dependencies = [
  "nom_locate",
  "scopeguard",
  "serde",
- "slotmap",
  "thiserror",
  "tokio",
  "tokio-stream",

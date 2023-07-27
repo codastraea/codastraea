@@ -7,7 +7,6 @@ use std::{
 
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use slotmap::new_key_type;
 // TODO: Split this out into a separate crate (or put it in the server crate)?
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
@@ -256,8 +255,6 @@ impl ThreadRunState {
         self.0.write().unwrap()
     }
 }
-
-new_key_type! {struct ClientId; }
 
 struct Client {
     open_nodes: RwLock<HashSet<CallStack>>,
