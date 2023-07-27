@@ -167,6 +167,7 @@ impl ThreadRunState {
 
     pub fn push(&mut self, item: StackFrame) {
         self.current.push(item);
+        self.updater.update(self.current.clone(), RunState::Running);
     }
 
     pub fn pop_success(&mut self) {
@@ -197,6 +198,7 @@ impl ThreadRunState {
         }
 
         self.last_completed = Some(self.current.clone());
+        self.updater.update(self.current.clone(), run_state);
         self.current.pop();
     }
 }
