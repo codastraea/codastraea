@@ -5,14 +5,14 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use futures::Stream;
+use futures::{executor::block_on, Stream};
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 // TODO: Split this out into a separate crate (or put it in the server crate)?
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
-use tokio::sync::broadcast;
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use tokio::sync::{broadcast, mpsc};
+use tokio_stream::StreamExt;
 
 use crate::library::FunctionId;
 
@@ -92,7 +92,7 @@ pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for ThreadRunState {
     fn default() -> Self {
-        let (update_sender, update_receiver) = broadcast::channel(1000);
+        let (update_sender, update_receiver) = mpsc::channel(1000);
         let updater = ThreadRunStateUpdater {
             clients: Default::default(),
         };
@@ -117,13 +117,12 @@ struct SharedThreadRunState {
     last_completed: Option<CallStack>,
     current: CallStack,
     updater: ThreadRunStateUpdater,
-    update_sender: broadcast::Sender<(CallStack, RunState)>,
+    update_sender: mpsc::Sender<(CallStack, RunState)>,
 }
 
 impl SharedThreadRunState {
     fn update(&self, call_stack: CallStack, run_state: RunState) {
-        // TODO: I think we want to ignore errors. What happens to the queue?
-        let _ = self.update_sender.send((call_stack, run_state));
+        block_on(self.update_sender.send((call_stack, run_state))).unwrap();
     }
 }
 
@@ -228,16 +227,14 @@ pub struct ThreadRunStateUpdater {
 impl ThreadRunStateUpdater {
     pub async fn update_clients(
         &mut self,
-        update_receiver: broadcast::Receiver<(CallStack, RunState)>,
+        mut update_receiver: mpsc::Receiver<(CallStack, RunState)>,
     ) {
         // TODO(next): Update receiver should receive new subscriptions and updates, so
         // we don't have any ordering problems. It should put new subscriptions
         // in the map and send the initial values.
         // TODO(next): Send run state for newly opened nodes.
-        let mut updates =
-            BroadcastStream::new(update_receiver).map_while(|call_state| call_state.ok());
 
-        while let Some((call_stack, run_state)) = updates.next().await {
+        while let Some((call_stack, run_state)) = update_receiver.recv().await {
             if let Some(parent) = call_stack.parent() {
                 for client in self.clients.read().unwrap().values() {
                     if client.open_nodes.read().unwrap().contains(&parent) {
