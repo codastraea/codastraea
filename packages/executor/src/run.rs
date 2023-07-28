@@ -63,6 +63,15 @@ impl CallStack {
         self.0.starts_with(&other.0)
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     // TODO: We need a "slice" for CallStacks
     pub fn parent(&self) -> Option<CallStack> {
         let mut parent = self.0.clone();
@@ -107,7 +116,6 @@ impl Default for ThreadRunState {
 
         Self(Arc::new(RwLock::new(SharedThreadRunState {
             history: Vec::new(),
-            last_completed: None,
             current: CallStack::new(),
             update_sender,
         })))
@@ -116,7 +124,6 @@ impl Default for ThreadRunState {
 
 struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
-    last_completed: Option<CallStack>,
     current: CallStack,
     update_sender: broadcast::Sender<(CallStack, RunState)>,
 }
@@ -136,28 +143,12 @@ impl ThreadRunState {
             return RunState::Running;
         }
 
-        if Some(stack) > data.last_completed.as_ref() {
-            return RunState::NotRun;
-        }
-
-        let insert_index = match data
+        match data
             .history
             .binary_search_by_key(&stack, |(call_stack, _)| call_stack)
         {
-            Ok(match_index) => return data.history[match_index].1,
-            Err(insert_index) => insert_index,
-        };
-
-        if insert_index == 0 {
-            return RunState::NotRun;
-        }
-
-        let run_state = data.history[insert_index - 1].1;
-
-        if run_state == RunState::PredicateSuccessful(false) {
-            RunState::NotRun
-        } else {
-            run_state
+            Ok(match_index) => data.history[match_index].1,
+            Err(_) => RunState::NotRun,
         }
     }
 
@@ -181,22 +172,12 @@ impl ThreadRunState {
 
     fn pop(&self, run_state: RunState) {
         let mut data = self.write();
-        let store_run_state = if let Some((last, last_run_state)) = data.history.last() {
-            assert!(last < &data.current);
+        let current = data.current.clone();
+        // TODO: Only put in history if top of stack is function or predicate. Do we
+        // ever need to store anything else on the stack? Maybe put some data in
+        // Function and predicate variants.
+        data.history.push((current, run_state));
 
-            // We always need to store `PredicateSuccessful(false)` as that is used to
-            // indicate the start of a gap of `NotRun`.
-            *last_run_state == RunState::PredicateSuccessful(false) || *last_run_state != run_state
-        } else {
-            true
-        };
-
-        if store_run_state {
-            let current = data.current.clone();
-            data.history.push((current, run_state));
-        }
-
-        data.last_completed = Some(data.current.clone());
         data.update(data.current.clone(), run_state);
         data.current.pop();
     }
@@ -219,12 +200,20 @@ impl ThreadRunState {
         // TODO: Channel bounds
         let (run_state_sender, run_state_receiver) = mpsc::channel(1000);
 
-        spawn(Self::update_client(run_state_sender, updates));
+        spawn({
+            let thread_run_state = self.clone();
+            async move {
+                thread_run_state
+                    .update_client(run_state_sender, updates)
+                    .await
+            }
+        });
 
         run_state_receiver
     }
 
     async fn update_client(
+        &self,
         send_run_state: mpsc::Sender<(CallStack, RunState)>,
         updates: impl Stream<Item = UpdateClient>,
     ) {
@@ -245,8 +234,28 @@ impl ThreadRunState {
                 }
                 UpdateClient::OpenNode(call_stack) => {
                     println!("Opening node {call_stack:?}");
-                    open_nodes.insert(call_stack);
+
+                    let mut child_states = Vec::new();
+
+                    {
+                        let data = self.read();
+
+                        if data.current.starts_with(&call_stack) {
+                            let mut running_child = data.current.clone();
+
+                            while running_child.len() > call_stack.len() {
+                                child_states.push((running_child.clone(), RunState::Running));
+                                running_child.pop();
+                            }
+                        }
+                    }
+
+                    for state in child_states {
+                        send_run_state.send(state).await.unwrap();
+                    }
                     // TODO(next): Find all child node states and send them
+
+                    open_nodes.insert(call_stack);
                 }
             }
         }
