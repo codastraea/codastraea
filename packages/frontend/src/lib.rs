@@ -1,7 +1,6 @@
 use arpy::ConcurrentRpcClient;
 use arpy_reqwasm::websocket;
-use futures::{stream, StreamExt};
-use gloo_console::log;
+use futures::{stream, Stream};
 use gloo_net::websocket::futures::WebSocket;
 use serpent_automation_executor::{
     library::FunctionId,
@@ -9,7 +8,7 @@ use serpent_automation_executor::{
     syntax_tree::{Body, Expression, Statement},
 };
 use serpent_automation_server_api::ThreadSubscription;
-use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
 
 pub mod call_tree;
 pub mod tree;
@@ -34,20 +33,27 @@ pub fn is_expandable(body: &Body<FunctionId>) -> bool {
     body.iter().any(statement_is_expandable)
 }
 
-pub async fn server_connection(run_state: mpsc::Sender<(CallStack, RunState)>) {
-    // TODO: Error handling
-    log!("Subscribing to thread");
-    let ws = websocket::Connection::new(WebSocket::open("ws://127.0.0.1:9090/api").unwrap());
+pub struct ServerConnection {
+    ws: websocket::Connection,
+}
 
-    let ((), mut thread_run_states) = ws
-        .subscribe(ThreadSubscription, stream::pending())
-        .await
-        .unwrap();
+impl Default for ServerConnection {
+    fn default() -> Self {
+        let ws = websocket::Connection::new(WebSocket::open("ws://127.0.0.1:9090/api").unwrap());
 
-    while let Some(thread_run_state) = thread_run_states.next().await {
-        // TODO: Error handling
-        run_state.send(thread_run_state.unwrap()).await.unwrap();
+        Self { ws }
     }
+}
 
-    log!("Subscription closed");
+impl ServerConnection {
+    pub async fn subscribe(&self) -> impl Stream<Item = (CallStack, RunState)> {
+        // TODO: Error handling
+        let ((), subscription) = self
+            .ws
+            .subscribe(ThreadSubscription, stream::pending())
+            .await
+            .unwrap();
+
+        subscription.map_while(Result::ok)
+    }
 }

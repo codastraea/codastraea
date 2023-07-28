@@ -1,17 +1,18 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, pin::pin, rc::Rc};
 
-use futures::Future;
+use futures::{Future, StreamExt};
 use futures_signals::signal::{Mutable, ReadOnlyMutable};
+use gloo_console::info;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
     run::{CallStack, NestedBlock, RunState, StackFrame},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
-use tokio::sync::mpsc;
 
 use crate::{
     is_expandable,
     tree::{Expandable, TreeNode},
+    ServerConnection,
 };
 
 pub struct CallTree {
@@ -78,14 +79,20 @@ impl CallTree {
 
     pub fn update_run_state(
         &self,
-        mut run_state_updates: mpsc::Receiver<(CallStack, RunState)>,
+        server_connection: ServerConnection,
     ) -> impl Future<Output = ()> + 'static {
         let run_state_map = self.run_state_map.clone();
 
         async move {
-            while let Some((call_stack, new_run_state)) = run_state_updates.recv().await {
+            info!("Subscribing to thread state updates");
+            let run_state_updates = server_connection.subscribe().await;
+            let mut run_state_updates = pin!(run_state_updates);
+
+            while let Some((call_stack, new_run_state)) = run_state_updates.next().await {
                 run_state_map.update_run_state(call_stack, new_run_state);
             }
+
+            info!("Finished subscribing to thread state updates");
         }
     }
 

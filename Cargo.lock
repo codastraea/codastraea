@@ -2307,6 +2307,7 @@ dependencies = [
  "serpent-automation-executor",
  "serpent-automation-server-api",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

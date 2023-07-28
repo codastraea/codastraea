@@ -1,10 +1,7 @@
 use std::rc::Rc;
 
-use serpent_automation_executor::{
-    library::Library,
-    run::{CallStack, RunState},
-};
-use serpent_automation_frontend::call_tree::CallTree;
+use serpent_automation_executor::library::Library;
+use serpent_automation_frontend::{call_tree::CallTree, ServerConnection};
 use silkenweb::{
     node::element::ChildElement,
     prelude::{Element, ParentElement},
@@ -35,16 +32,12 @@ macro_rules! component {
 }
 
 use component;
-use tokio::sync::mpsc;
 
-pub fn app(
-    run_state: mpsc::Receiver<(CallStack, RunState)>,
-    library: &Rc<Library>,
-) -> impl ChildElement {
+pub fn app(library: &Rc<Library>) -> impl ChildElement {
     let main_id = library.main_id().unwrap();
     let call_tree = CallTree::root(main_id, library);
 
-    spawn_local(call_tree.update_run_state(run_state));
+    spawn_local(call_tree.update_run_state(ServerConnection::default()));
 
     column()
         .class(css::HEIGHT_FULLSCREEN)
