@@ -228,10 +228,6 @@ impl ThreadRunState {
         send_run_state: mpsc::Sender<(CallStack, RunState)>,
         updates: impl Stream<Item = UpdateClient>,
     ) {
-        // TODO(next): Update receiver should receive new subscriptions and updates, so
-        // we don't have any ordering problems. It should put new subscriptions
-        // in the map and send the initial values.
-        // TODO(next): Send run state for newly opened nodes.
         let mut open_nodes = HashSet::new();
         let mut updates = pin!(updates);
 
@@ -250,7 +246,7 @@ impl ThreadRunState {
                 UpdateClient::OpenNode(call_stack) => {
                     println!("Opening node {call_stack:?}");
                     open_nodes.insert(call_stack);
-                    // TODO(next): Find all current node states and send them
+                    // TODO(next): Find all child node states and send them
                 }
             }
         }
