@@ -212,6 +212,7 @@ impl ThreadRunState {
                 let mut open_nodes = pin!(open_nodes);
 
                 while let Some(node) = open_nodes.next().await {
+                    println!("Opened node {node:?}");
                     // TODO(next): Don't write to open nodes here. Just send a message to a channel
                     // saying we're interested. Combine the receiver with `update_receiver` using
                     // `futures::stream::select`.

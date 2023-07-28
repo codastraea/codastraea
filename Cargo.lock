@@ -2347,6 +2347,7 @@ dependencies = [
  "silkenweb",
  "silkenweb-bootstrap",
  "tokio",
+ "tokio-stream",
  "wasm-bindgen",
  "web-sys",
 ]

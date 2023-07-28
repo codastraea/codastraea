@@ -1,6 +1,6 @@
 use arpy::ConcurrentRpcClient;
 use arpy_reqwasm::websocket;
-use futures::{stream, Stream};
+use futures::Stream;
 use gloo_net::websocket::futures::WebSocket;
 use serpent_automation_executor::{
     library::FunctionId,
@@ -46,11 +46,14 @@ impl Default for ServerConnection {
 }
 
 impl ServerConnection {
-    pub async fn subscribe(&self) -> impl Stream<Item = (CallStack, RunState)> {
+    pub async fn subscribe(
+        &self,
+        opened_nodes: impl Stream<Item = CallStack> + 'static,
+    ) -> impl Stream<Item = (CallStack, RunState)> {
         // TODO: Error handling
         let ((), subscription) = self
             .ws
-            .subscribe(ThreadSubscription, stream::pending())
+            .subscribe(ThreadSubscription, opened_nodes)
             .await
             .unwrap();
 
