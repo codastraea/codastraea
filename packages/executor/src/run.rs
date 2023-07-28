@@ -66,7 +66,21 @@ impl CallStack {
     // TODO: We need a "slice" for CallStacks
     pub fn parent(&self) -> Option<CallStack> {
         let mut parent = self.0.clone();
-        parent.pop().map(|_| Self(parent))
+
+        parent.pop()?;
+
+        while let Some(top) = parent.last() {
+            match top {
+                StackFrame::Call(_) | StackFrame::NestedBlock(_, NestedBlock::Predicate) => {
+                    return Some(Self(parent))
+                }
+                _ => (),
+            }
+
+            parent.pop();
+        }
+
+        Some(Self(parent))
     }
 
     pub fn push(&mut self, item: StackFrame) {
@@ -193,56 +207,50 @@ impl ThreadRunState {
         &self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,
     ) -> mpsc::Receiver<(CallStack, RunState)> {
-        let update_receiver = self.read().update_sender.subscribe();
+        use futures::stream;
+
+        let run_state_updates = BroadcastStream::new(self.read().update_sender.subscribe())
+            .map_while(Result::ok)
+            .map(|(call_stack, run_state)| UpdateClient::UpdateRunState(call_stack, run_state));
+        let open_nodes = open_nodes.map(UpdateClient::OpenNode);
+
+        let updates = stream::select(run_state_updates, open_nodes);
 
         // TODO: Channel bounds
         let (run_state_sender, run_state_receiver) = mpsc::channel(1000);
-        let client = Arc::new(Client::new(run_state_sender));
 
-        spawn({
-            let client = client.clone();
-            Self::update_client(client, update_receiver)
-        });
-
-        spawn({
-            // TODO: Use clone! from silkenweb
-            let client = client.clone();
-
-            async move {
-                let mut open_nodes = pin!(open_nodes);
-
-                while let Some(node) = open_nodes.next().await {
-                    println!("Opened node {node:?}");
-                    // TODO(next): Don't write to open nodes here. Just send a message to a channel
-                    // saying we're interested. Combine the receiver with `update_receiver` using
-                    // `futures::stream::select`.
-
-                    client.open_nodes.write().unwrap().insert(node);
-                }
-            }
-        });
+        spawn(Self::update_client(run_state_sender, updates));
 
         run_state_receiver
     }
 
     async fn update_client(
-        client: Arc<Client>,
-        update_receiver: broadcast::Receiver<(CallStack, RunState)>,
+        send_run_state: mpsc::Sender<(CallStack, RunState)>,
+        updates: impl Stream<Item = UpdateClient>,
     ) {
         // TODO(next): Update receiver should receive new subscriptions and updates, so
         // we don't have any ordering problems. It should put new subscriptions
         // in the map and send the initial values.
         // TODO(next): Send run state for newly opened nodes.
-        let mut updates = BroadcastStream::new(update_receiver).map_while(Result::ok);
+        let mut open_nodes = HashSet::new();
+        let mut updates = pin!(updates);
 
-        while let Some((call_stack, run_state)) = updates.next().await {
-            if let Some(parent) = call_stack.parent() {
-                if client.open_nodes.read().unwrap().contains(&parent) {
-                    client
-                        .send_run_state
-                        .send((call_stack.clone(), run_state))
-                        .await
-                        .unwrap();
+        while let Some(update) = updates.next().await {
+            match update {
+                UpdateClient::UpdateRunState(call_stack, run_state) => {
+                    if let Some(parent) = call_stack.parent() {
+                        if open_nodes.contains(&parent) {
+                            send_run_state
+                                .send((call_stack.clone(), run_state))
+                                .await
+                                .unwrap();
+                        }
+                    }
+                }
+                UpdateClient::OpenNode(call_stack) => {
+                    println!("Opening node {call_stack:?}");
+                    open_nodes.insert(call_stack);
+                    // TODO(next): Find all current node states and send them
                 }
             }
         }
@@ -257,18 +265,10 @@ impl ThreadRunState {
     }
 }
 
-struct Client {
-    open_nodes: RwLock<HashSet<CallStack>>,
-    send_run_state: mpsc::Sender<(CallStack, RunState)>,
-}
-
-impl Client {
-    fn new(send_run_state: mpsc::Sender<(CallStack, RunState)>) -> Self {
-        Self {
-            open_nodes: RwLock::new(HashSet::new()),
-            send_run_state,
-        }
-    }
+#[derive(Clone)]
+enum UpdateClient {
+    OpenNode(CallStack),
+    UpdateRunState(CallStack, RunState),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
