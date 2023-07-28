@@ -175,7 +175,11 @@ impl ThreadRunState {
         let current = data.current.clone();
         // TODO: Only put in history if top of stack is function or predicate. Do we
         // ever need to store anything else on the stack? Maybe put some data in
-        // Function and predicate variants.
+        // Function and predicate variants to ensure ordering.
+        if let Some(last) = data.history.last() {
+            assert!(last.0 < current);
+        }
+
         data.history.push((current, run_state));
 
         data.update(data.current.clone(), run_state);
@@ -268,7 +272,6 @@ impl ThreadRunState {
                     for state in child_states {
                         send_run_state.send(state).await.unwrap();
                     }
-                    // TODO(next): Find all child node states and send them
 
                     open_nodes.insert(call_stack);
                 }
