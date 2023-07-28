@@ -248,6 +248,21 @@ impl ThreadRunState {
                                 running_child.pop();
                             }
                         }
+
+                        let mut last_matching = match data
+                            .history
+                            .binary_search_by_key(&&call_stack, |(call_stack, _)| call_stack)
+                        {
+                            Ok(match_index) => match_index,
+                            Err(insert_index) => insert_index,
+                        };
+
+                        while last_matching > 0
+                            && data.history[last_matching - 1].0.starts_with(&call_stack)
+                        {
+                            last_matching -= 1;
+                            child_states.push(data.history[last_matching].clone());
+                        }
                     }
 
                     for state in child_states {
