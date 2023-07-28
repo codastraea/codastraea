@@ -109,6 +109,7 @@ impl CallTree {
             let mut run_state_updates = pin!(run_state_updates);
 
             while let Some((call_stack, new_run_state)) = run_state_updates.next().await {
+                info!(format!("Updating node"));
                 run_state_map.update_run_state(call_stack, new_run_state);
             }
 

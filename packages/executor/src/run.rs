@@ -92,6 +92,18 @@ impl CallStack {
         Some(Self(parent))
     }
 
+    pub fn top(&self) -> Option<StackFrame> {
+        self.0.last().cloned()
+    }
+
+    pub fn is_node(&self) -> bool {
+        matches!(
+            self.top(),
+            None | Some(StackFrame::Call(_))
+                | Some(StackFrame::NestedBlock(_, NestedBlock::Predicate))
+        )
+    }
+
     pub fn push(&mut self, item: StackFrame) {
         self.0.push(item)
     }
@@ -173,16 +185,16 @@ impl ThreadRunState {
     fn pop(&self, run_state: RunState) {
         let mut data = self.write();
         let current = data.current.clone();
-        // TODO: Only put in history if top of stack is function or predicate. Do we
-        // ever need to store anything else on the stack? Maybe put some data in
-        // Function and predicate variants to ensure ordering.
+
         if let Some(last) = data.history.last() {
             assert!(last.0 < current);
         }
 
-        data.history.push((current, run_state));
+        if current.is_node() {
+            data.history.push((current.clone(), run_state));
+            data.update(current, run_state);
+        }
 
-        data.update(data.current.clone(), run_state);
         data.current.pop();
     }
 
@@ -244,12 +256,16 @@ impl ThreadRunState {
                     {
                         let data = self.read();
 
-                        if data.current.starts_with(&call_stack) {
+                        if data.current.is_node() && data.current.starts_with(&call_stack) {
                             let mut running_child = data.current.clone();
 
                             while running_child.len() > call_stack.len() {
                                 child_states.push((running_child.clone(), RunState::Running));
-                                running_child.pop();
+
+                                // TODO: Pretty inefficient
+                                if let Some(parent) = running_child.parent() {
+                                    running_child = parent;
+                                }
                             }
                         }
 
@@ -265,7 +281,12 @@ impl ThreadRunState {
                             && data.history[last_matching - 1].0.starts_with(&call_stack)
                         {
                             last_matching -= 1;
-                            child_states.push(data.history[last_matching].clone());
+                            // TODO: This is pretty inefficient
+                            let child_stack = &data.history[last_matching];
+
+                            if child_stack.0.parent().as_ref() == Some(&call_stack) {
+                                child_states.push(child_stack.clone());
+                            }
                         }
                     }
 
