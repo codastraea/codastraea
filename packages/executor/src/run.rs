@@ -74,22 +74,15 @@ impl CallStack {
 
     // TODO: We need a "slice" for CallStacks
     pub fn parent(&self) -> Option<CallStack> {
-        let mut parent = self.0.clone();
+        let mut parent = Self(self.0.clone());
 
-        parent.pop()?;
+        parent.0.pop()?;
 
-        while let Some(top) = parent.last() {
-            match top {
-                StackFrame::Call(_) | StackFrame::NestedBlock(_, NestedBlock::Predicate) => {
-                    return Some(Self(parent))
-                }
-                _ => (),
-            }
-
-            parent.pop();
+        while !parent.is_node() {
+            parent.0.pop();
         }
 
-        Some(Self(parent))
+        Some(parent)
     }
 
     pub fn top(&self) -> Option<StackFrame> {
@@ -167,7 +160,10 @@ impl ThreadRunState {
     pub fn push(&self, item: StackFrame) {
         let mut data = self.write();
         data.current.push(item);
-        data.update(data.current.clone(), RunState::Running);
+
+        if data.current.is_node() {
+            data.update(data.current.clone(), RunState::Running);
+        }
     }
 
     pub fn pop_success(&self) {
@@ -239,6 +235,8 @@ impl ThreadRunState {
         while let Some(update) = updates.next().await {
             match update {
                 UpdateClient::UpdateRunState(call_stack, run_state) => {
+                    assert!(call_stack.is_node());
+
                     if let Some(parent) = call_stack.parent() {
                         if open_nodes.contains(&parent) {
                             send_run_state
@@ -261,11 +259,7 @@ impl ThreadRunState {
 
                             while running_child.len() > call_stack.len() {
                                 child_states.push((running_child.clone(), RunState::Running));
-
-                                // TODO: Pretty inefficient
-                                if let Some(parent) = running_child.parent() {
-                                    running_child = parent;
-                                }
+                                running_child = running_child.parent().unwrap();
                             }
                         }
 
@@ -291,6 +285,7 @@ impl ThreadRunState {
                     }
 
                     for state in child_states {
+                        assert!(state.0.is_node());
                         send_run_state.send(state).await.unwrap();
                     }
 
