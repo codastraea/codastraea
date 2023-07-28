@@ -1,11 +1,11 @@
-use std::{cell::RefCell, collections::BTreeMap, mem, ops::Bound, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, pin::pin, rc::Rc};
 
-use futures::Future;
+use futures::{Future, Stream, StreamExt};
 use futures_signals::signal::{Mutable, ReadOnlyMutable};
 use gloo_console::info;
 use serpent_automation_executor::{
     library::{FunctionId, Library},
-    run::{CallStack, NestedBlock, RunState, StackFrame, ThreadRunState},
+    run::{CallStack, NestedBlock, RunState, StackFrame},
     syntax_tree::{self, ElseClause, LinkedBody, SrcSpan},
 };
 use tokio::sync::mpsc;
@@ -13,6 +13,7 @@ use tokio::sync::mpsc;
 use crate::{
     is_expandable,
     tree::{Expandable, TreeNode},
+    ServerConnection,
 };
 
 pub struct CallTree {
@@ -25,75 +26,25 @@ pub struct CallTree {
 
 #[derive(Clone)]
 struct RunStateMap {
-    thread_run_state: Rc<RefCell<ThreadRunState>>,
     run_state_map: Rc<RefCell<BTreeMap<CallStack, Mutable<RunState>>>>,
 }
 
 impl RunStateMap {
     pub fn new() -> Self {
         Self {
-            thread_run_state: Rc::new(RefCell::new(ThreadRunState::new())),
             run_state_map: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
-    pub fn update_thread_run_state(&self, new_thread_run_state: ThreadRunState) {
-        let thread_run_state = self.thread_run_state.borrow();
-        let current_before = thread_run_state.current().clone();
-        let last_complete_before = thread_run_state.last_completed().clone();
-        mem::drop(thread_run_state);
-
-        self.thread_run_state.replace(new_thread_run_state);
-
-        let thread_run_state = self.thread_run_state.borrow();
-        let run_state_map = self.run_state_map.borrow();
-
-        // TODO: Better way to handle restarts
-        if &last_complete_before > thread_run_state.last_completed() {
-            info!("Update all");
-            self.update_nodes(run_state_map.iter());
-
-            return;
-        }
-
-        let last_complete_after = thread_run_state.last_completed();
-        let completed_start = last_complete_before.map_or(Bound::Unbounded, Bound::Excluded);
-        let completed_end = last_complete_after
-            .as_ref()
-            .map_or(Bound::Unbounded, Bound::Included);
-
-        let mut current_after = thread_run_state.current().clone();
-
-        info!("Start update");
-        self.update_nodes(run_state_map.range((completed_start.as_ref(), completed_end)));
-
-        let common_prefix_len = current_after.common_prefix_len(&current_before);
-
-        // Nodes start running in reverse order to when they complete. This means it's
-        // not possible to define a range for all the running nodes.
-        while current_after.len() > common_prefix_len {
-            if let Some(set_run_state) = run_state_map.get(&current_after) {
-                info!("Updating running node");
-                set_run_state.set(RunState::Running);
-            }
-            current_after.pop();
-        }
-    }
-
-    fn update_nodes<'a>(
-        &self,
-        nodes: impl Iterator<Item = (&'a CallStack, &'a Mutable<RunState>)>,
-    ) {
-        let thread_run_state = self.thread_run_state.borrow();
-
-        for (stack, set_run_state) in nodes {
-            info!("Updating completed node");
-            set_run_state.set_neq(thread_run_state.run_state(stack));
-        }
+    pub fn update_run_state(&self, call_stack: CallStack, new_run_state: RunState) {
+        self.run_state_map
+            .borrow_mut()
+            .entry(call_stack)
+            .and_modify(|run_state| run_state.set(new_run_state));
     }
 
     pub fn insert(&self, call_stack: CallStack) -> Mutable<RunState> {
-        let run_state = Mutable::new(self.thread_run_state.borrow().run_state(&call_stack));
+        let run_state = Mutable::new(RunState::NotRun);
         self.run_state_map
             .borrow_mut()
             .insert(call_stack, run_state.clone());
@@ -101,20 +52,38 @@ impl RunStateMap {
     }
 }
 
+// TODO: Rename this
+#[derive(Clone)]
+struct Builder {
+    library: Rc<Library>,
+    opened_nodes: mpsc::UnboundedSender<CallStack>,
+    run_state_map: RunStateMap,
+}
+
 impl CallTree {
-    pub fn root(fn_id: FunctionId, library: &Rc<Library>) -> Self {
+    pub fn root(
+        fn_id: FunctionId,
+        library: &Rc<Library>,
+        opened_nodes: mpsc::UnboundedSender<CallStack>,
+    ) -> Self {
         let f = library.lookup(fn_id);
 
         let mut call_stack = CallStack::new();
+        opened_nodes.send(call_stack.clone()).unwrap();
         call_stack.push(StackFrame::Call(fn_id));
         let run_state_map = RunStateMap::new();
         let run_state = run_state_map.insert(call_stack.clone());
+        let builder = Builder {
+            library: library.clone(),
+            opened_nodes,
+            run_state_map: run_state_map.clone(),
+        };
 
         Self {
             span: f.span(),
             name: f.name().to_string(),
             run_state,
-            body: Body::from_linked_body(&run_state_map, call_stack, library, f.body()),
+            body: Body::from_linked_body(call_stack, &builder, f.body()),
             run_state_map,
         }
     }
@@ -129,14 +98,21 @@ impl CallTree {
 
     pub fn update_run_state(
         &self,
-        mut run_state_updates: mpsc::Receiver<ThreadRunState>,
+        server_connection: ServerConnection,
+        opened_nodes: impl Stream<Item = CallStack> + 'static,
     ) -> impl Future<Output = ()> + 'static {
         let run_state_map = self.run_state_map.clone();
 
         async move {
-            while let Some(new_run_state) = run_state_updates.recv().await {
-                run_state_map.update_thread_run_state(new_run_state);
+            info!("Subscribing to thread state updates");
+            let run_state_updates = server_connection.subscribe(opened_nodes).await;
+            let mut run_state_updates = pin!(run_state_updates);
+
+            while let Some((call_stack, new_run_state)) = run_state_updates.next().await {
+                run_state_map.update_run_state(call_stack, new_run_state);
             }
+
+            info!("Finished subscribing to thread state updates");
         }
     }
 
@@ -154,9 +130,8 @@ pub struct Body(Rc<Vec<Statement>>);
 
 impl Body {
     fn from_linked_body(
-        run_state_map: &RunStateMap,
         call_stack: CallStack,
-        library: &Rc<Library>,
+        builder: &Builder,
         body: &syntax_tree::LinkedBody,
     ) -> TreeNode<Expandable<Self>> {
         match body {
@@ -164,10 +139,12 @@ impl Body {
                 let body = body.clone();
 
                 TreeNode::Internal(Expandable::new({
-                    let run_state_map = run_state_map.clone();
-                    let library = library.clone();
+                    let builder = builder.clone();
 
-                    move || Self::from_body(&run_state_map, call_stack, &library, &body)
+                    move || {
+                        builder.opened_nodes.send(call_stack.clone()).unwrap();
+                        Self::from_body(call_stack, &builder, &body)
+                    }
                 }))
             }
             LinkedBody::Python | LinkedBody::Local(_) => TreeNode::Leaf,
@@ -175,9 +152,8 @@ impl Body {
     }
 
     fn from_body(
-        run_state_map: &RunStateMap,
         call_stack: CallStack,
-        library: &Rc<Library>,
+        builder: &Builder,
         body: &syntax_tree::Body<FunctionId>,
     ) -> Self {
         let mut stmts = Vec::new();
@@ -188,7 +164,7 @@ impl Body {
             match stmt {
                 syntax_tree::Statement::Pass => (),
                 syntax_tree::Statement::Expression(expr) => stmts.extend(
-                    Call::from_expression(run_state_map, call_stack, library, expr)
+                    Call::from_expression(call_stack, builder, expr)
                         .into_iter()
                         .map(Statement::Call),
                 ),
@@ -198,13 +174,7 @@ impl Body {
                     then_block,
                     else_block,
                 } => stmts.push(Statement::If(If::new(
-                    run_state_map,
-                    call_stack,
-                    library,
-                    *if_span,
-                    condition,
-                    then_block,
-                    else_block,
+                    call_stack, builder, *if_span, condition, then_block, else_block,
                 ))),
             }
         }
@@ -235,27 +205,20 @@ pub struct Call {
 }
 
 impl Call {
-    fn new(
-        run_state_map: &RunStateMap,
-        call_stack: CallStack,
-        library: &Rc<Library>,
-        span: SrcSpan,
-        name: FunctionId,
-    ) -> Self {
-        let function = &library.lookup(name);
+    fn new(call_stack: CallStack, builder: &Builder, span: SrcSpan, name: FunctionId) -> Self {
+        let function = &builder.library.lookup(name);
 
         Self {
             span,
             name: function.name().to_string(),
-            run_state: run_state_map.insert(call_stack.clone()),
-            body: Body::from_linked_body(run_state_map, call_stack, library, function.body()),
+            run_state: builder.run_state_map.insert(call_stack.clone()),
+            body: Body::from_linked_body(call_stack, builder, function.body()),
         }
     }
 
     fn from_expression(
-        run_state_map: &RunStateMap,
         call_stack: CallStack,
-        library: &Rc<Library>,
+        builder: &Builder,
         expr: &syntax_tree::Expression<FunctionId>,
     ) -> Vec<Call> {
         match expr {
@@ -267,17 +230,15 @@ impl Call {
 
                 for (index, arg) in args.iter().enumerate() {
                     calls.extend(Self::from_expression(
-                        run_state_map,
                         call_stack.push_cloned(StackFrame::Argument(index)),
-                        library,
+                        builder,
                         arg,
                     ));
                 }
 
                 calls.push(Self::new(
-                    run_state_map,
                     call_stack.push_cloned(StackFrame::Call(*name)),
-                    library,
+                    builder,
                     *span,
                     *name,
                 ));
@@ -313,24 +274,22 @@ pub struct If {
 
 impl If {
     fn new(
-        run_state_map: &RunStateMap,
-        mut call_stack: CallStack,
-        library: &Rc<Library>,
+        call_stack: CallStack,
+        builder: &Builder,
         span: SrcSpan,
         condition: &syntax_tree::Expression<FunctionId>,
         then_block: &syntax_tree::Body<FunctionId>,
         else_block: &Option<syntax_tree::ElseClause<FunctionId>>,
     ) -> Self {
         // TODO: Tidy this
-        call_stack.push(StackFrame::NestedBlock(0, NestedBlock::Predicate));
+        let condition_call_stack =
+            call_stack.push_cloned(StackFrame::NestedBlock(0, NestedBlock::Predicate));
 
-        let calls = Call::from_expression(run_state_map, call_stack.clone(), library, condition);
-        let run_state = run_state_map.insert(call_stack.clone());
-        call_stack.pop();
+        let calls = Call::from_expression(condition_call_stack.clone(), builder, condition);
+        let run_state = builder.run_state_map.insert(condition_call_stack.clone());
         let then_block = Body::from_body(
-            run_state_map,
             call_stack.push_cloned(StackFrame::NestedBlock(0, NestedBlock::Body)),
-            library,
+            builder,
             then_block,
         );
 
@@ -340,12 +299,17 @@ impl If {
             condition: if calls.is_empty() {
                 TreeNode::Leaf
             } else {
-                TreeNode::Internal(Expandable::new(|| calls))
+                let builder = builder.clone();
+
+                TreeNode::Internal(Expandable::new(move || {
+                    builder.opened_nodes.send(condition_call_stack).unwrap();
+                    calls
+                }))
             },
             then_block,
             else_block: else_block
                 .as_ref()
-                .map(|else_block| Else::new(1, run_state_map, call_stack, library, else_block)),
+                .map(|else_block| Else::new(1, call_stack, builder, else_block)),
         }
     }
 
@@ -379,12 +343,12 @@ pub struct Else {
 impl Else {
     fn new(
         block_index: usize,
-        run_state_map: &RunStateMap,
+
         mut call_stack: CallStack,
-        library: &Rc<Library>,
+        builder: &Builder,
         else_block: &ElseClause<FunctionId>,
     ) -> Self {
-        let run_state = run_state_map.insert(
+        let run_state = builder.run_state_map.insert(
             call_stack.push_cloned(StackFrame::NestedBlock(block_index, NestedBlock::Predicate)),
         );
 
@@ -393,7 +357,7 @@ impl Else {
         Self {
             span: else_block.span(),
             run_state,
-            body: Body::from_body(run_state_map, call_stack, library, else_block.body()),
+            body: Body::from_body(call_stack, builder, else_block.body()),
         }
     }
 

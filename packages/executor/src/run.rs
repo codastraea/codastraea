@@ -1,6 +1,17 @@
-use std::cmp::{min, Ordering};
+use std::{
+    cmp::Ordering,
+    collections::HashSet,
+    pin::pin,
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
 
+use futures::Stream;
 use serde::{Deserialize, Serialize};
+// TODO: Split this out into a separate crate (or put it in the server crate)?
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::spawn;
+use tokio::sync::{broadcast, mpsc};
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use crate::library::FunctionId;
 
@@ -56,32 +67,29 @@ impl CallStack {
         self.0.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn common_prefix(&self, other: &Self) -> Self {
-        let mut result = Self::new();
+    // TODO: We need a "slice" for CallStacks
+    pub fn parent(&self) -> Option<CallStack> {
+        let mut parent = self.0.clone();
 
-        for (i, j) in self.0.iter().zip(other.0.iter()) {
-            if i != j {
-                return result;
+        parent.pop()?;
+
+        while let Some(top) = parent.last() {
+            match top {
+                StackFrame::Call(_) | StackFrame::NestedBlock(_, NestedBlock::Predicate) => {
+                    return Some(Self(parent))
+                }
+                _ => (),
             }
 
-            result.0.push(*i);
+            parent.pop();
         }
 
-        result
-    }
-
-    pub fn common_prefix_len(&self, other: &Self) -> usize {
-        for (len, (i, j)) in self.0.iter().zip(other.0.iter()).enumerate() {
-            if i != j {
-                return len;
-            }
-        }
-
-        min(self.0.len(), other.0.len())
+        Some(Self(parent))
     }
 
     pub fn push(&mut self, item: StackFrame) {
@@ -99,90 +107,191 @@ impl CallStack {
     }
 }
 
-#[derive(Default, Clone, Serialize, Deserialize, Debug)]
-pub struct ThreadRunState {
+#[derive(Clone)]
+pub struct ThreadRunState(Arc<RwLock<SharedThreadRunState>>);
+
+impl Default for ThreadRunState {
+    fn default() -> Self {
+        let (update_sender, _update_receiver) = broadcast::channel(1000);
+
+        Self(Arc::new(RwLock::new(SharedThreadRunState {
+            history: Vec::new(),
+            current: CallStack::new(),
+            update_sender,
+        })))
+    }
+}
+
+struct SharedThreadRunState {
     history: Vec<(CallStack, RunState)>,
-    last_completed: Option<CallStack>,
     current: CallStack,
+    update_sender: broadcast::Sender<(CallStack, RunState)>,
+}
+
+impl SharedThreadRunState {
+    fn update(&self, call_stack: CallStack, run_state: RunState) {
+        // TODO: I think we want to ignore errors. What happens to the queue?
+        let _ = self.update_sender.send((call_stack, run_state));
+    }
 }
 
 impl ThreadRunState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn last_completed(&self) -> &Option<CallStack> {
-        &self.last_completed
-    }
-
-    pub fn current(&self) -> &CallStack {
-        &self.current
-    }
-
     pub fn run_state(&self, stack: &CallStack) -> RunState {
-        if self.current.starts_with(stack) {
+        let data = self.read();
+
+        if data.current.starts_with(stack) {
             return RunState::Running;
         }
 
-        if Some(stack) > self.last_completed.as_ref() {
-            return RunState::NotRun;
-        }
-
-        let insert_index = match self
+        match data
             .history
             .binary_search_by_key(&stack, |(call_stack, _)| call_stack)
         {
-            Ok(match_index) => return self.history[match_index].1,
-            Err(insert_index) => insert_index,
-        };
-
-        if insert_index == 0 {
-            return RunState::NotRun;
-        }
-
-        let run_state = self.history[insert_index - 1].1;
-
-        if run_state == RunState::PredicateSuccessful(false) {
-            RunState::NotRun
-        } else {
-            run_state
+            Ok(match_index) => data.history[match_index].1,
+            Err(_) => RunState::NotRun,
         }
     }
 
-    pub fn push(&mut self, item: StackFrame) {
-        self.current.push(item);
+    pub fn push(&self, item: StackFrame) {
+        let mut data = self.write();
+        data.current.push(item);
+        data.update(data.current.clone(), RunState::Running);
     }
 
-    pub fn pop_success(&mut self) {
+    pub fn pop_success(&self) {
         self.pop(RunState::Successful);
     }
 
-    pub fn pop_failed(&mut self) {
+    pub fn pop_failed(&self) {
         self.pop(RunState::Failed);
     }
 
-    pub fn pop_predicate_success(&mut self, result: bool) {
+    pub fn pop_predicate_success(&self, result: bool) {
         self.pop(RunState::PredicateSuccessful(result));
     }
 
-    fn pop(&mut self, run_state: RunState) {
-        let store_run_state = if let Some((last, last_run_state)) = self.history.last() {
-            assert!(last < &self.current);
-
-            // We always need to store `PredicateSuccessful(false)` as that is used to
-            // indicate the start of a gap of `NotRun`.
-            *last_run_state == RunState::PredicateSuccessful(false) || *last_run_state != run_state
-        } else {
-            true
-        };
-
-        if store_run_state {
-            self.history.push((self.current.clone(), run_state));
+    fn pop(&self, run_state: RunState) {
+        let mut data = self.write();
+        let current = data.current.clone();
+        // TODO: Only put in history if top of stack is function or predicate. Do we
+        // ever need to store anything else on the stack? Maybe put some data in
+        // Function and predicate variants to ensure ordering.
+        if let Some(last) = data.history.last() {
+            assert!(last.0 < current);
         }
 
-        self.last_completed = Some(self.current.clone());
-        self.current.pop();
+        data.history.push((current, run_state));
+
+        data.update(data.current.clone(), run_state);
+        data.current.pop();
     }
+
+    // TODO: Split this out into a separate crate (or put it in the server crate)?
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn subscribe(
+        &self,
+        open_nodes: impl Stream<Item = CallStack> + Send + 'static,
+    ) -> mpsc::Receiver<(CallStack, RunState)> {
+        use futures::stream;
+
+        let run_state_updates = BroadcastStream::new(self.read().update_sender.subscribe())
+            .map_while(Result::ok)
+            .map(|(call_stack, run_state)| UpdateClient::UpdateRunState(call_stack, run_state));
+        let open_nodes = open_nodes.map(UpdateClient::OpenNode);
+
+        let updates = stream::select(run_state_updates, open_nodes);
+
+        // TODO: Channel bounds
+        let (run_state_sender, run_state_receiver) = mpsc::channel(1000);
+
+        spawn({
+            let thread_run_state = self.clone();
+            async move {
+                thread_run_state
+                    .update_client(run_state_sender, updates)
+                    .await
+            }
+        });
+
+        run_state_receiver
+    }
+
+    async fn update_client(
+        &self,
+        send_run_state: mpsc::Sender<(CallStack, RunState)>,
+        updates: impl Stream<Item = UpdateClient>,
+    ) {
+        let mut open_nodes = HashSet::new();
+        let mut updates = pin!(updates);
+
+        while let Some(update) = updates.next().await {
+            match update {
+                UpdateClient::UpdateRunState(call_stack, run_state) => {
+                    if let Some(parent) = call_stack.parent() {
+                        if open_nodes.contains(&parent) {
+                            send_run_state
+                                .send((call_stack.clone(), run_state))
+                                .await
+                                .unwrap();
+                        }
+                    }
+                }
+                UpdateClient::OpenNode(call_stack) => {
+                    println!("Opening node {call_stack:?}");
+
+                    let mut child_states = Vec::new();
+
+                    {
+                        let data = self.read();
+
+                        if data.current.starts_with(&call_stack) {
+                            let mut running_child = data.current.clone();
+
+                            while running_child.len() > call_stack.len() {
+                                child_states.push((running_child.clone(), RunState::Running));
+                                running_child.pop();
+                            }
+                        }
+
+                        let mut last_matching = match data
+                            .history
+                            .binary_search_by_key(&&call_stack, |(call_stack, _)| call_stack)
+                        {
+                            Ok(match_index) => match_index,
+                            Err(insert_index) => insert_index,
+                        };
+
+                        while last_matching > 0
+                            && data.history[last_matching - 1].0.starts_with(&call_stack)
+                        {
+                            last_matching -= 1;
+                            child_states.push(data.history[last_matching].clone());
+                        }
+                    }
+
+                    for state in child_states {
+                        send_run_state.send(state).await.unwrap();
+                    }
+
+                    open_nodes.insert(call_stack);
+                }
+            }
+        }
+    }
+
+    fn read(&self) -> RwLockReadGuard<'_, SharedThreadRunState> {
+        self.0.read().unwrap()
+    }
+
+    fn write(&self) -> RwLockWriteGuard<'_, SharedThreadRunState> {
+        self.0.write().unwrap()
+    }
+}
+
+#[derive(Clone)]
+enum UpdateClient {
+    OpenNode(CallStack),
+    UpdateRunState(CallStack, RunState),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

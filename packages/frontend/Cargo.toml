@@ -16,3 +16,4 @@ gloo-console = { workspace = true }
 futures-signals = { workspace = true }
 once_cell = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = { workspace = true }

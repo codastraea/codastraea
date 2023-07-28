@@ -12,9 +12,7 @@ use nom::{
 };
 use nom_greedyerror::{convert_error, GreedyError};
 use nom_locate::LocatedSpan;
-use scopeguard::defer;
 use thiserror::Error;
-use tokio::sync::watch;
 
 use crate::{
     library::{FunctionId, Library},
@@ -150,7 +148,7 @@ impl LinkedFunction {
         &self.body
     }
 
-    pub fn run(&self, args: &[Value], lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
+    pub fn run(&self, args: &[Value], lib: &Library, call_states: &ThreadRunState) {
         println!("Running function '{}'", self.name());
         sleep(Duration::from_secs(1));
 
@@ -226,11 +224,11 @@ impl Body<String> {
 }
 
 impl Body<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         for (index, stmt) in self.iter().enumerate() {
-            call_states.send_modify(|t| t.push(StackFrame::Statement(index)));
-            defer! {call_states.send_modify(|t| t.pop_success());}
+            call_states.push(StackFrame::Statement(index));
             stmt.run(lib, call_states);
+            call_states.pop_success();
         }
     }
 }
@@ -339,7 +337,7 @@ impl Statement<String> {
 }
 
 impl Statement<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         match self {
             Self::Pass => (),
             Self::Expression(expr) => {
@@ -354,34 +352,27 @@ impl Statement<FunctionId> {
                 let mut drop_through = true;
 
                 // TODO: Tidy this
-                call_states
-                    .send_modify(|t| t.push(StackFrame::NestedBlock(0, NestedBlock::Predicate)));
+                call_states.push(StackFrame::NestedBlock(0, NestedBlock::Predicate));
                 let truthy = condition.run(lib, call_states).truthy();
-                call_states.send_modify(|t| t.pop_predicate_success(truthy));
+                call_states.pop_predicate_success(truthy);
 
                 if truthy {
                     drop_through = false;
-                    call_states
-                        .send_modify(|t| t.push(StackFrame::NestedBlock(0, NestedBlock::Body)));
-                    defer! {call_states.send_modify(|t| t.pop_success());}
+                    call_states.push(StackFrame::NestedBlock(0, NestedBlock::Body));
                     then_block.run(lib, call_states);
+                    call_states.pop_success();
                 }
 
                 if let Some(else_block) = else_block {
-                    // TODO: Functions to `send_modify` `push` and `pop` stack
                     let block_index = 1;
-                    call_states.send_modify(|t| {
-                        t.push(StackFrame::NestedBlock(block_index, NestedBlock::Predicate))
-                    });
-                    call_states.send_modify(|t| t.pop_predicate_success(drop_through));
+                    call_states.push(StackFrame::NestedBlock(block_index, NestedBlock::Predicate));
+                    call_states.pop_predicate_success(drop_through);
 
                     if drop_through {
-                        call_states.send_modify(|t| {
-                            t.push(StackFrame::NestedBlock(block_index, NestedBlock::Body))
-                        });
-                        defer! {call_states.send_modify(|t| t.pop_success());}
+                        call_states.push(StackFrame::NestedBlock(block_index, NestedBlock::Body));
 
-                        else_block.run(lib, call_states)
+                        else_block.run(lib, call_states);
+                        call_states.pop_success();
                     }
                 }
             }
@@ -425,7 +416,7 @@ impl ElseClause<String> {
 }
 
 impl ElseClause<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) {
         self.body.run(lib, call_states)
     }
 
@@ -452,7 +443,7 @@ pub enum Expression<FnId> {
 }
 
 impl Expression<FunctionId> {
-    pub fn run(&self, lib: &Library, call_states: &watch::Sender<ThreadRunState>) -> Value {
+    pub fn run(&self, lib: &Library, call_states: &ThreadRunState) -> Value {
         match self {
             Expression::Variable { name } => todo!("Variable {name}"),
             Expression::Call { name, args, .. } => run_call(*name, args, lib, call_states),
@@ -465,20 +456,21 @@ pub(crate) fn run_call(
     name: FunctionId,
     args: &[Expression<FunctionId>],
     lib: &Library,
-    call_states: &watch::Sender<ThreadRunState>,
+    call_states: &ThreadRunState,
 ) -> Value {
     let args: Vec<_> = args
         .iter()
         .enumerate()
         .map(|(index, arg)| {
-            call_states.send_modify(|t| t.push(StackFrame::Argument(index)));
-            defer! {call_states.send_modify(|t| t.pop_success());}
-            arg.run(lib, call_states)
+            call_states.push(StackFrame::Argument(index));
+            let value = arg.run(lib, call_states);
+            call_states.pop_success();
+            value
         })
         .collect();
-    call_states.send_modify(|t| t.push(StackFrame::Call(name)));
-    defer! {call_states.send_modify(|t| t.pop_success());}
+    call_states.push(StackFrame::Call(name));
     lib.lookup(name).run(&args, lib, call_states);
+    call_states.pop_success();
     Value::None
 }
 

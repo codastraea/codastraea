@@ -16,3 +16,4 @@ derive_more = { workspace = true }
 gloo-console = { workspace = true }
 wasm-bindgen = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
+tokio-stream = { workspace = true, features = ["sync"] }
