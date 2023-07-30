@@ -473,6 +473,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
+name = "clonelet"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8364f77ca2a71a615ea2ca094f7e33e46aac47032a09797a66467201e156f013"
+
+[[package]]
 name = "cloudabi"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2299,6 +2305,7 @@ version = "0.1.0"
 dependencies = [
  "arpy",
  "arpy-reqwasm",
+ "clonelet",
  "futures",
  "futures-signals",
  "gloo-console",
@@ -2318,6 +2325,7 @@ dependencies = [
  "arpy-axum",
  "arpy-server",
  "axum",
+ "clonelet",
  "futures",
  "serde",
  "serpent-automation-executor",

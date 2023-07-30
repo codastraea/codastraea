@@ -3,6 +3,7 @@ use std::thread;
 use arpy_axum::RpcRoute;
 use arpy_server::WebSocketRouter;
 use axum::{Router, Server};
+use clonelet::clone;
 use futures::stream::BoxStream;
 use serpent_automation_executor::{
     library::Library,
@@ -19,7 +20,7 @@ async fn main() {
     let thread_run_state = ThreadRunState::default();
 
     thread::spawn({
-        let thread_run_state = thread_run_state.clone();
+        clone!(thread_run_state);
 
         move || {
             let lib = Library::link(parse(CODE).unwrap());

@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, pin::pin, rc::Rc};
 
+use clonelet::clone;
 use futures::{Future, Stream, StreamExt};
 use futures_signals::signal::{Mutable, ReadOnlyMutable};
 use gloo_console::info;
@@ -137,10 +138,10 @@ impl Body {
     ) -> TreeNode<Expandable<Self>> {
         match body {
             LinkedBody::Local(body) if is_expandable(body) => {
-                let body = body.clone();
+                clone!(body);
 
                 TreeNode::Internal(Expandable::new({
-                    let builder = builder.clone();
+                    clone!(builder);
 
                     move || {
                         builder.opened_nodes.send(call_stack.clone()).unwrap();
@@ -300,7 +301,7 @@ impl If {
             condition: if calls.is_empty() {
                 TreeNode::Leaf
             } else {
-                let builder = builder.clone();
+                clone!(builder);
 
                 TreeNode::Internal(Expandable::new(move || {
                     builder.opened_nodes.send(condition_call_stack).unwrap();
