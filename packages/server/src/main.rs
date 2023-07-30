@@ -11,6 +11,7 @@ use serpent_automation_executor::{
     CODE,
 };
 use serpent_automation_server_api::ThreadSubscription;
+use tokio::spawn;
 use tokio_stream::wrappers::ReceiverStream;
 
 #[tokio::main]
@@ -28,7 +29,9 @@ async fn main() {
 
     let ws = WebSocketRouter::new().handle_subscription({
         move |updates: BoxStream<'static, CallStack>, _subscription: ThreadSubscription| {
-            ((), ReceiverStream::new(thread_run_state.subscribe(updates)))
+            let (run_state_receiver, update_client) = thread_run_state.subscribe(updates);
+            spawn(update_client);
+            ((), ReceiverStream::new(run_state_receiver))
         }
     });
 

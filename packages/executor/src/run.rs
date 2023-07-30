@@ -5,11 +5,10 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use futures::Stream;
+use futures::{Stream, Future, stream};
 use serde::{Deserialize, Serialize};
 // TODO: Split this out into a separate crate (or put it in the server crate)?
 #[cfg(not(target_arch = "wasm32"))]
-use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
@@ -194,14 +193,13 @@ impl ThreadRunState {
         data.current.pop();
     }
 
-    // TODO: Split this out into a separate crate (or put it in the server crate)?
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn subscribe(
         &self,
         open_nodes: impl Stream<Item = CallStack> + Send + 'static,
-    ) -> mpsc::Receiver<(CallStack, RunState)> {
-        use futures::stream;
-
+    ) -> (
+        mpsc::Receiver<(CallStack, RunState)>,
+        impl Future<Output = ()> + Send + 'static,
+    ) {
         let run_state_updates = BroadcastStream::new(self.read().update_sender.subscribe())
             .map_while(Result::ok)
             .map(|(call_stack, run_state)| UpdateClient::UpdateRunState(call_stack, run_state));
@@ -212,16 +210,16 @@ impl ThreadRunState {
         // TODO: Channel bounds
         let (run_state_sender, run_state_receiver) = mpsc::channel(1000);
 
-        spawn({
+        let update_client = {
             let thread_run_state = self.clone();
             async move {
                 thread_run_state
                     .update_client(run_state_sender, updates)
                     .await
             }
-        });
+        };
 
-        run_state_receiver
+        (run_state_receiver, update_client)
     }
 
     async fn update_client(
