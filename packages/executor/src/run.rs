@@ -5,6 +5,7 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
+use clonelet::clone;
 use futures::{stream, Future, Stream};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, mpsc};
@@ -177,7 +178,7 @@ impl ThreadRunState {
 
     fn pop(&self, run_state: RunState) {
         let mut data = self.write();
-        let current = data.current.clone();
+        clone!(data.current);
 
         if let Some(last) = data.history.last() {
             assert!(last.0 < current);
@@ -251,11 +252,11 @@ impl ThreadRunState {
                         let data = self.read();
 
                         if data.current.is_node() && data.current.starts_with(&call_stack) {
-                            let mut running_child = data.current.clone();
+                            clone!(mut data.current);
 
-                            while running_child.len() > call_stack.len() {
-                                child_states.push((running_child.clone(), RunState::Running));
-                                running_child = running_child.parent().unwrap();
+                            while current.len() > call_stack.len() {
+                                child_states.push((current.clone(), RunState::Running));
+                                current = current.parent().unwrap();
                             }
                         }
 

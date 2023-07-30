@@ -102,7 +102,7 @@ impl CallTree {
         server_connection: ServerConnection,
         opened_nodes: impl Stream<Item = CallStack> + 'static,
     ) -> impl Future<Output = ()> + 'static {
-        let run_state_map = self.run_state_map.clone();
+        clone!(self.run_state_map);
 
         async move {
             info!("Subscribing to thread state updates");

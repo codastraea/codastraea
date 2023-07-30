@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use clonelet::clone;
 use futures_signals::signal::{Mutable, Signal};
 use once_cell::unsync::Lazy;
 
@@ -39,7 +40,7 @@ impl<Item: Clone> Expandable<Item> {
     }
 
     pub fn signal(&self) -> impl Signal<Item = Option<Item>> {
-        let item = self.item.clone();
+        clone!(self.item);
 
         self.expanded
             .signal_ref(move |expanded| expanded.then(|| (*item).clone()))
