@@ -5,10 +5,8 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use futures::{Stream, Future, stream};
+use futures::{stream, Future, Stream};
 use serde::{Deserialize, Serialize};
-// TODO: Split this out into a separate crate (or put it in the server crate)?
-#[cfg(not(target_arch = "wasm32"))]
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
