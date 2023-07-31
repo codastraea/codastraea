@@ -13,10 +13,10 @@ serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb" }
 silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb" }
-arpy = { git = "https://github.com/simon-bourne/arpy" }
-arpy-server = { git = "https://github.com/simon-bourne/arpy" }
-arpy-axum = { git = "https://github.com/simon-bourne/arpy" }
-arpy-reqwasm = { git = "https://github.com/simon-bourne/arpy" }
+arpy = "0.2.0"
+arpy-server = "0.2.0"
+arpy-axum = "0.2.0"
+arpy-reqwasm = "0.2.0"
 futures-signals = "0.3.31"
 web-sys = "0.3.60"
 derive_more = "0.99.17"
