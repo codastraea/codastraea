@@ -144,6 +144,10 @@ impl Body {
                     clone!(builder);
 
                     move || {
+                        // TODO: `send`s fail if there's no-one listening, which happens if we're
+                        // not connected to the server. We need a queue that buffers sends even when
+                        // there's no listeners, or make sure the server connection end re-uses the
+                        // queue on reconnect.
                         builder.opened_nodes.send(call_stack.clone()).unwrap();
                         Self::from_body(call_stack, &builder, &body)
                     }
