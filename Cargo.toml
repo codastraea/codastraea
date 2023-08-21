@@ -11,7 +11,7 @@ authors = ["Simon Bourne <simonbourne@gmail.com>"]
 serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
-silkenweb = { git = "https://github.com/silkenweb/silkenweb" }
+silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = ["css-transpile"] }
 silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb" }
 arpy = "0.2.0"
 arpy-server = "0.2.0"
