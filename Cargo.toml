@@ -37,3 +37,4 @@ once_cell = "1.17.1"
 axum = "0.6.19"
 slotmap = "1.0.6"
 clonelet = "0.2.0"
+xtask-base = { git = "https://github.com/simon-bourne/rust-xtask-base" }
