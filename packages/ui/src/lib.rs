@@ -13,7 +13,6 @@ use thread_view::ThreadView;
 mod animation;
 mod call_tree_view;
 mod source_view;
-mod splitter;
 mod thread_view;
 mod css {
     silkenweb::css!(path = "serpent-automation.css");
