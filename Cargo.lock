@@ -2406,6 +2406,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "serpent-automation-shoelace"
+version = "0.1.0"
+dependencies = [
+ "silkenweb",
+]
+
+[[package]]
 name = "serpent-automation-ui"
 version = "0.1.0"
 dependencies = [

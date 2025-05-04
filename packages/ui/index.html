@@ -10,9 +10,13 @@
     <link data-trunk rel="copy-dir" href="bootstrap-icons-1.9.1/fonts" />
     <link data-trunk rel="css" href="serpent-automation.css" />
     <link data-trunk rel="rust" data-wasm-opt="z" />
-    <link data-trunk rel="copy-file" href="codemirror-bundler/dist/codemirror-bundle.esm.js" />
+    <link data-trunk rel="copy-file" href="js-bundler/dist/serpent-automation-js-bundle.esm.js" />
+    <link data-trunk rel="copy-dir" href="js-bundler/dist/shoelace" />
     <link data-trunk rel="copy-file" href="bootstrap-5.2.2/js/bootstrap.bundle.min.js" />
-    <script type="module" src="./codemirror-bundle.esm.js"></script>
+    <link rel="stylesheet" media="(prefers-color-scheme:light)" href="shoelace/themes/light.css" />
+    <link rel="stylesheet" media="(prefers-color-scheme:dark)" href="shoelace/themes/dark.css"
+        onload="document.documentElement.classList.add('sl-theme-dark');" />
+    <script type="module" src="./serpent-automation-js-bundle.esm.js"></script>
     <script type="module" src="./bootstrap.bundle.min.js"></script>
     <base data-trunk-public-url />
 </head>
