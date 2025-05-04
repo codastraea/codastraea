@@ -2410,6 +2410,7 @@ name = "serpent-automation-shoelace"
 version = "0.1.0"
 dependencies = [
  "silkenweb",
+ "web-sys",
 ]
 
 [[package]]

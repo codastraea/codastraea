@@ -6,4 +6,5 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-silkenweb = { workspace = true }
+silkenweb.workspace = true
+web-sys.workspace = true
