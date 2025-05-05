@@ -34,7 +34,7 @@ mod elements {
             Self(
                 self.0
                     .child(tab.attribute("panel", name).slot("nav"))
-                    .child(panel.attribute("panel", name).slot(None as Option<String>)),
+                    .child(panel.attribute("name", name).slot(None as Option<String>)),
             )
         }
     }

@@ -1,21 +1,12 @@
 use derive_more::Into;
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal::Mutable;
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
 use serpent_automation_frontend::call_tree::CallTree;
-use silkenweb::{
-    clone,
-    elements::html::{self, div, Div},
-    node::Node,
-    prelude::{ElementEvents, ParentElement},
-    value::Sig,
-    Value,
-};
+use serpent_automation_shoelace::tab_group;
+use silkenweb::{elements::html::div, node::Node, prelude::ParentElement, Value};
 use silkenweb_bootstrap::{
     column,
-    tab_bar::{tab_bar, Style},
-    utility::{
-        Active, Display, Overflow, SetDisplay, SetGap, SetOverflow, SetSpacing, Size::Size3,
-    },
+    utility::{Overflow, SetDisplay, SetGap, SetOverflow, SetSpacing, Size::Size3},
 };
 
 use crate::{
@@ -43,16 +34,25 @@ impl ThreadView {
                 .overflow(Overflow::Hidden)
                 .padding(Size3)
                 .gap(Size3)
-                .child(tab_bar().style(Style::Tabs).children([
-                    tab(Tab::CallTree, "Call Tree", &active),
-                    tab(Tab::SourceCode, "Source Code", &active),
-                ]))
-                .children([
-                    content(Tab::CallTree, &active, call_tree_view).overflow(Overflow::Auto),
-                    content(Tab::SourceCode, &active, SourceView::new(&editor))
-                        .flex_column()
-                        .overflow(Overflow::Hidden),
-                ])
+                .child(
+                    tab_group::container()
+                        .child(
+                            "CallTree",
+                            tab_group::nav().text("Call Tree"),
+                            tab_group::panel()
+                                .child(div().child(call_tree_view).overflow(Overflow::Auto)),
+                        )
+                        .child(
+                            "SourceCode",
+                            tab_group::nav().text("Source Code"),
+                            tab_group::panel().child(
+                                div()
+                                    .child(SourceView::new(&editor))
+                                    .flex_column()
+                                    .overflow(Overflow::Hidden),
+                            ),
+                        ),
+                )
                 .into(),
         )
     }
@@ -69,28 +69,6 @@ impl CallTreeActions for Actions {
         self.editor.set_selection(span);
         self.active.set_neq(Tab::SourceCode);
     }
-}
-
-fn tab(tab: Tab, name: &str, active: &Mutable<Tab>) -> html::Button {
-    html::button()
-        .text(name)
-        .active(Sig(active.signal().eq(tab)))
-        .on_click({
-            clone!(active);
-            move |_, _| active.set(tab)
-        })
-}
-
-fn content(tab: Tab, active: &Mutable<Tab>, content: impl Into<Node>) -> Div {
-    div()
-        .display(Sig(active.signal().map(move |active| {
-            if active == tab {
-                Display::Block
-            } else {
-                Display::None
-            }
-        })))
-        .child(content.into())
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
