@@ -1,10 +1,11 @@
 [package]
 name = "serpent-automation-shoelace"
 publish = false
-authors = { workspace = true }
-version = { workspace = true }
-edition = { workspace = true }
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 silkenweb.workspace = true
+strum = { workspace = true, features = ["derive"] }
 web-sys.workspace = true
