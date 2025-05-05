@@ -1,7 +1,7 @@
 import { EditorView, basicSetup } from "codemirror"
 import { EditorState, EditorSelection } from "@codemirror/state"
 import { python } from "@codemirror/lang-python"
-import '@shoelace-style/shoelace/dist/components/button/button.js';
+import '@shoelace-style/shoelace';
 import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
 
 setBasePath('/shoelace');

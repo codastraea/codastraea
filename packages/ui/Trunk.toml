@@ -1,3 +1,6 @@
+[watch]
+ignore = ["js-bundler/dist", "js-bundler/node_modules"]
+
 [[hooks]]
 stage = "pre_build"
 command = "make"

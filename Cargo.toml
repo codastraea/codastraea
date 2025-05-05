@@ -11,7 +11,10 @@ authors = ["Simon Bourne <simonbourne@gmail.com>"]
 serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
-silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = ["css-transpile"] }
+serpent-automation-shoelace = { path = "packages/shoelace" }
+silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
+    "css-transpile",
+] }
 silkenweb-bootstrap = { git = "https://github.com/silkenweb/silkenweb" }
 arpy = "0.2.0"
 arpy-server = "0.2.0"
@@ -28,6 +31,7 @@ nom-greedyerror = "0.5.0"
 nom_locate = "4.0.0"
 scopeguard = "1.1.0"
 serde = "1.0.145"
+strum = "0.27.1"
 thiserror = "1.0.32"
 tokio = "1.21.2"
 tokio-stream = "0.1.14"
