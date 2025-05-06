@@ -4,10 +4,12 @@ use strum::{Display, IntoStaticStr};
 mod elements {
     use silkenweb::{
         custom_html_element,
-        dom::Dom,
+        dom::{DefaultDom, Dom},
+        node::element::ElementHandle,
         parent_element,
         prelude::{Element, HtmlElement, ParentElement},
     };
+    use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
     use super::Activation;
     use crate::Edge;
@@ -29,13 +31,37 @@ mod elements {
         }
     );
 
+    pub struct Control<D: Dom = DefaultDom>(ElementHandle<D, web_sys::HtmlElement>);
+
+    impl<D: Dom> Clone for Control<D> {
+        fn clone(&self) -> Self {
+            Self(self.0.clone())
+        }
+    }
+
+    #[wasm_bindgen(inline_js = "export function show(tab_group, name) { tab_group.show(name) }")]
+    extern "C" {
+        fn show(tab_group: JsValue, name: &str);
+    }
+
+    impl<D: Dom> Control<D> {
+        pub fn show(&self, name: impl AsRef<str>) {
+            show(self.0.dom_element().into(), name.as_ref())
+        }
+    }
+
     impl<D: Dom> SlTabGroup<D> {
-        pub fn child(self, name: &str, tab: SlTab<D>, panel: SlTabPanel<D>) -> Self {
+        pub fn child(self, name: impl AsRef<str>, tab: SlTab<D>, panel: SlTabPanel<D>) -> Self {
+            let name = name.as_ref();
             Self(
                 self.0
                     .child(tab.attribute("panel", name).slot("nav"))
                     .child(panel.attribute("name", name).slot(None as Option<String>)),
             )
+        }
+
+        pub fn control(&self) -> Control<D> {
+            Control(self.handle())
         }
     }
 
@@ -43,7 +69,6 @@ mod elements {
         sl_tab = {
             dom_type: web_sys::HtmlElement;
             attributes {
-                active: bool,
                 closable: bool,
                 disabled: bool,
             };
@@ -59,9 +84,6 @@ mod elements {
     custom_html_element!(
         sl_tab_panel = {
             dom_type: web_sys::HtmlElement;
-            attributes {
-                active: bool,
-            };
         }
     );
 
@@ -69,7 +91,7 @@ mod elements {
 }
 
 pub use elements::{
-    sl_tab as nav, sl_tab_group as container, sl_tab_panel as panel, SlTab as Nav,
+    sl_tab as nav, sl_tab_group as container, sl_tab_panel as panel, Control, SlTab as Nav,
     SlTabGroup as Container, SlTabPanel as Panel,
 };
 
