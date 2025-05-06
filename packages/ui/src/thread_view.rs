@@ -2,12 +2,7 @@ use derive_more::Into;
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
 use serpent_automation_frontend::call_tree::CallTree;
 use serpent_automation_shoelace::tab_group;
-use silkenweb::{
-    elements::html::div,
-    node::Node,
-    prelude::ParentElement,
-    Value,
-};
+use silkenweb::{elements::html::div, node::Node, prelude::ParentElement, Value};
 use silkenweb_bootstrap::{
     column,
     utility::{Overflow, SetDisplay, SetGap, SetOverflow, SetSpacing, Size::Size3},
