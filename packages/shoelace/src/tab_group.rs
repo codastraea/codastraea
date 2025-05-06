@@ -9,7 +9,7 @@ mod elements {
         parent_element,
         prelude::{Element, HtmlElement, ParentElement},
     };
-    use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+    use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
 
     use super::Activation;
     use crate::Edge;
@@ -39,14 +39,20 @@ mod elements {
         }
     }
 
-    #[wasm_bindgen(inline_js = "export function show(tab_group, name) { tab_group.show(name) }")]
+    #[wasm_bindgen]
     extern "C" {
-        fn show(tab_group: JsValue, name: &str);
+        type TabGroup;
+
+        #[wasm_bindgen(method)]
+        fn show(this: &TabGroup, name: &str);
     }
 
     impl<D: Dom> Control<D> {
         pub fn show(&self, name: impl AsRef<str>) {
-            show(self.0.dom_element().into(), name.as_ref())
+            self.0
+                .dom_element()
+                .unchecked_ref::<TabGroup>()
+                .show(name.as_ref())
         }
     }
 
