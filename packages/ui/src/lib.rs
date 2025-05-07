@@ -4,10 +4,9 @@ use serpent_automation_executor::library::Library;
 use serpent_automation_frontend::{call_tree::CallTree, ServerConnection};
 use silkenweb::{
     node::element::ChildElement,
-    prelude::{Element, ParentElement},
+    prelude::{html::div, Element, ParentElement},
     task::spawn_local,
 };
-use silkenweb_bootstrap::column;
 use thread_view::ThreadView;
 
 mod animation;
@@ -42,7 +41,5 @@ pub fn app(library: &Rc<Library>) -> impl ChildElement {
     let opened_nodes_receiver = UnboundedReceiverStream::new(opened_nodes_receiver);
     spawn_local(call_tree.update_run_state(ServerConnection::default(), opened_nodes_receiver));
 
-    column()
-        .class(css::HEIGHT_FULLSCREEN)
-        .child(ThreadView::new(call_tree))
+    div().class(css::FULL_HEIGHT).child(ThreadView::new(call_tree))
 }

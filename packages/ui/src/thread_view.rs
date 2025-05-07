@@ -2,15 +2,16 @@ use derive_more::Into;
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
 use serpent_automation_frontend::call_tree::CallTree;
 use serpent_automation_shoelace::tab_group;
-use silkenweb::{elements::html::div, node::Node, prelude::ParentElement, Value};
-use silkenweb_bootstrap::{
-    column,
-    utility::{Overflow, SetDisplay, SetGap, SetOverflow, SetSpacing, Size::Size3},
+use silkenweb::{
+    node::{element::Element, Node},
+    prelude::ParentElement,
+    Value,
 };
 use strum::AsRefStr;
 
 use crate::{
     call_tree_view::{CallTreeActions, CallTreeView},
+    css,
     source_view::{Editor, SourceView},
 };
 
@@ -20,7 +21,7 @@ pub struct ThreadView(Node);
 impl ThreadView {
     pub fn new(call_tree: CallTree) -> Self {
         let editor = Editor::new(CODE);
-        let tab_group = tab_group::container();
+        let tab_group = tab_group::container().class(css::FULL_HEIGHT);
         let call_tree_view = CallTreeView::new(
             call_tree,
             Actions {
@@ -30,28 +31,16 @@ impl ThreadView {
         );
 
         Self(
-            column()
-                .overflow(Overflow::Hidden)
-                .padding(Size3)
-                .gap(Size3)
+            tab_group
                 .child(
-                    tab_group
-                        .child(
-                            Tab::CallTree,
-                            tab_group::nav().text("Call Tree"),
-                            tab_group::panel()
-                                .child(div().child(call_tree_view).overflow(Overflow::Auto)),
-                        )
-                        .child(
-                            Tab::SourceCode,
-                            tab_group::nav().text("Source Code"),
-                            tab_group::panel().child(
-                                div()
-                                    .child(SourceView::new(&editor))
-                                    .flex_column()
-                                    .overflow(Overflow::Hidden),
-                            ),
-                        ),
+                    Tab::CallTree,
+                    tab_group::nav().text("Call Tree"),
+                    tab_group::panel().child(call_tree_view),
+                )
+                .child(
+                    Tab::SourceCode,
+                    tab_group::nav().text("Source Code"),
+                    tab_group::panel().child(SourceView::new(&editor)),
                 )
                 .into(),
         )

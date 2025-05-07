@@ -29,7 +29,7 @@ use silkenweb_bootstrap::{
 };
 
 use self::conditional::if_node;
-use crate::{animation::AnimatedExpand, component};
+use crate::{animation::AnimatedExpand, component, css};
 
 mod conditional;
 
@@ -49,7 +49,7 @@ impl CallTreeView {
 
         Self(
             div()
-                .class(class::container())
+                .class(css::SCROLLABLE)
                 .child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )
