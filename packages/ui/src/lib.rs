@@ -41,5 +41,7 @@ pub fn app(library: &Rc<Library>) -> impl ChildElement {
     let opened_nodes_receiver = UnboundedReceiverStream::new(opened_nodes_receiver);
     spawn_local(call_tree.update_run_state(ServerConnection::default(), opened_nodes_receiver));
 
-    div().class(css::FULL_HEIGHT).child(ThreadView::new(call_tree))
+    div()
+        .class(css::FULL_HEIGHT)
+        .child(ThreadView::new(call_tree))
 }
