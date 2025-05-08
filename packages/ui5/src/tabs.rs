@@ -50,5 +50,4 @@ impl Attribute for Design {
     }
 }
 
-// TODO: Can we have a blanket `AsAttribute` in Silkenweb?
 impl AsAttribute<Design> for Design {}
