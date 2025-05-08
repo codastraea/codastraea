@@ -29,11 +29,11 @@ use silkenweb_bootstrap::{
 };
 
 use self::conditional::if_node;
-use crate::{animation::AnimatedExpand, component, css};
+use crate::{animation::AnimatedExpand, css, css_module};
 
 mod conditional;
 
-component!("call-tree");
+css_module!("call-tree");
 
 #[derive(Into, Value)]
 pub struct CallTreeView(Node);

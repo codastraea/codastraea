@@ -13,7 +13,7 @@ mod animation;
 mod call_tree_view;
 mod source_view;
 mod thread_view;
-macro_rules! component {
+macro_rules! css_module {
     ($path:literal) => {
         silkenweb::css!(
             path = concat("css/", $path, ".css"),
@@ -24,12 +24,12 @@ macro_rules! component {
 }
 
 mod css {
-    component!("shared");
+    css_module!("shared");
 
     pub use class::*;
 }
 
-use component;
+use css_module;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
