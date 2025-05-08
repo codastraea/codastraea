@@ -1,15 +1,4 @@
-/* TODO: Tidy this up once we use UI5 tabs */
-.scrollable {
-    height: 100%;
-    overflow: auto;
-}
-
-.full-height,
-sl-tab-group.full-height,
-sl-tab-group.full-height::part(base),
-sl-tab-group.full-height::part(body),
-sl-tab-group.full-height>sl-tab-panel,
-sl-tab-group.full-height>sl-tab-panel::part(base) {
+.full-height {
     height: 100%;
 }
 

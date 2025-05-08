@@ -1,5 +1,5 @@
 [package]
-name = "serpent-automation-shoelace"
+name = "silkenweb-ui5"
 publish = false
 authors.workspace = true
 version.workspace = true

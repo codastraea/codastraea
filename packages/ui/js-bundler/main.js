@@ -1,10 +1,8 @@
 import { EditorView, basicSetup } from "codemirror"
 import { EditorState, EditorSelection } from "@codemirror/state"
 import { python } from "@codemirror/lang-python"
-import '@shoelace-style/shoelace';
-import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
-
-setBasePath('/shoelace');
+import "@ui5/webcomponents/dist/TabContainer.js";
+import "@ui5/webcomponents/dist/Tab.js";
 
 export function codemirror_new(doc) {
   return new EditorView({

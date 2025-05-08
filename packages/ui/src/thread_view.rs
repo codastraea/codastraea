@@ -1,12 +1,13 @@
 use derive_more::Into;
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
 use serpent_automation_frontend::call_tree::CallTree;
-use serpent_automation_shoelace::tab_group;
 use silkenweb::{
     node::{element::Element, Node},
-    prelude::ParentElement,
+    prelude::{Mutable, ParentElement, SignalExt},
+    value::Sig,
     Value,
 };
+use silkenweb_ui5::tabs;
 use strum::AsRefStr;
 
 use crate::{
@@ -21,27 +22,27 @@ pub struct ThreadView(Node);
 impl ThreadView {
     pub fn new(call_tree: CallTree) -> Self {
         let editor = Editor::new(CODE);
-        let tab_group = tab_group::container().class(css::full_height());
+        let tab_group = tabs::container().class(css::full_height());
+        let selected_tab = Mutable::new(Tab::CallTree);
         let call_tree_view = CallTreeView::new(
             call_tree,
             Actions {
-                tab_control: tab_group.control(),
+                selected_tab: selected_tab.clone(),
                 editor: editor.clone(),
             },
         );
+        let tab = |tab: Tab| {
+            tabs::tab().text(tab.as_ref()).selected(Sig(selected_tab
+                .signal()
+                .map(move |selected| selected == tab)))
+        };
 
         Self(
             tab_group
-                .child(
-                    Tab::CallTree,
-                    tab_group::nav().text("Call Tree"),
-                    tab_group::panel().child(call_tree_view),
-                )
-                .child(
-                    Tab::SourceCode,
-                    tab_group::nav().text("Source Code"),
-                    tab_group::panel().child(SourceView::new(&editor)),
-                )
+                .children([
+                    tab(Tab::CallTree).child(call_tree_view),
+                    tab(Tab::SourceCode).child(SourceView::new(&editor)),
+                ])
                 .into(),
         )
     }
@@ -49,14 +50,14 @@ impl ThreadView {
 
 #[derive(Clone)]
 struct Actions {
-    tab_control: tab_group::Control,
+    selected_tab: Mutable<Tab>,
     editor: Editor,
 }
 
 impl CallTreeActions for Actions {
     fn view_code(&self, span: SrcSpan) {
         self.editor.set_selection(span);
-        self.tab_control.show(Tab::SourceCode);
+        self.selected_tab.set(Tab::SourceCode);
     }
 }
 
