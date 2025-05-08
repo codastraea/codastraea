@@ -1,4 +1,4 @@
-//! [TNT icon names](https://sdk.openui5.org/test-resources/sap/m/demokit/iconExplorer/webapp/index.html#/overview/SAP-icons-TNT)
+//! [TNT icon names](https://ui5.sap.com/test-resources/sap/m/demokit/iconExplorer/webapp/index.html#/overview/BusinessSuiteInAppSymbols)
 use super::Name;
 
 pub fn grid_layout_1x2() -> Name {
