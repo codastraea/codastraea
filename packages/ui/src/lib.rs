@@ -13,12 +13,6 @@ mod animation;
 mod call_tree_view;
 mod source_view;
 mod thread_view;
-mod css {
-    silkenweb::css!(path = "serpent-automation.css");
-
-    pub use class::*;
-}
-
 macro_rules! component {
     ($path:literal) => {
         silkenweb::css!(
@@ -27,6 +21,12 @@ macro_rules! component {
             transpile = (modules)
         );
     };
+}
+
+mod css {
+    component!("shared");
+
+    pub use class::*;
 }
 
 use component;
@@ -42,6 +42,6 @@ pub fn app(library: &Rc<Library>) -> impl ChildElement {
     spawn_local(call_tree.update_run_state(ServerConnection::default(), opened_nodes_receiver));
 
     div()
-        .class(css::FULL_HEIGHT)
+        .class(css::full_height())
         .child(ThreadView::new(call_tree))
 }

@@ -21,7 +21,7 @@ pub struct ThreadView(Node);
 impl ThreadView {
     pub fn new(call_tree: CallTree) -> Self {
         let editor = Editor::new(CODE);
-        let tab_group = tab_group::container().class(css::FULL_HEIGHT);
+        let tab_group = tab_group::container().class(css::full_height());
         let call_tree_view = CallTreeView::new(
             call_tree,
             Actions {

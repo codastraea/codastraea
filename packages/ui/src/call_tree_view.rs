@@ -49,7 +49,7 @@ impl CallTreeView {
 
         Self(
             div()
-                .class(css::SCROLLABLE)
+                .class(css::scrollable())
                 .child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )

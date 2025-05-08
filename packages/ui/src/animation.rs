@@ -30,7 +30,7 @@ impl AnimatedExpand for Div {
         let element = self.handle().dom_element();
         let delayed_is_expanded_signal = delayed_is_expanded.signal();
 
-        self.class(css::TRANSITION)
+        self.class(css::transition())
             .style(Sig(style.signal_cloned()))
             .optional_child(Sig(child.map({
                 clone!(initial_bounds);

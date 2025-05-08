@@ -1,0 +1,24 @@
+/* TODO: Tidy this up once we use UI5 tabs */
+.scrollable {
+    height: 100%;
+    overflow: auto;
+}
+
+.full-height,
+sl-tab-group.full-height,
+sl-tab-group.full-height::part(base),
+sl-tab-group.full-height::part(body),
+sl-tab-group.full-height>sl-tab-panel,
+sl-tab-group.full-height>sl-tab-panel::part(base) {
+    height: 100%;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+/* TODO: Remove */
+.transition {
+    transition: all 200ms;
+}

@@ -14,7 +14,7 @@ pub struct SourceView(Node);
 
 impl SourceView {
     pub fn new(editor: &Editor) -> Self {
-        let codemirror_container = div().class(css::FULL_HEIGHT);
+        let codemirror_container = div().class(css::full_height());
         codemirror_container
             .handle()
             .dom_element()

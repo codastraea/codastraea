@@ -1,3 +1,4 @@
+/* TODO: Remove once we use a tree view */
 :root {
     --sqrt-2: 1.41421356237;
 }
@@ -12,31 +13,5 @@
 }
 
 .cm-editor {
-    height: 100%;
-}
-
-/* Utilities */
-
-/* A short transition animation */
-.transition {
-    transition: all 200ms;
-}
-
-.scrollable {
-    height: 100%;
-    overflow: auto;
-}
-
-.full-height,
-sl-tab-group.full-height,
-sl-tab-group.full-height::part(base),
-sl-tab-group.full-height::part(body),
-sl-tab-group.full-height>sl-tab-panel,
-sl-tab-group.full-height>sl-tab-panel::part(base) {
-    height: 100%;
-}
-
-html,
-body {
     height: 100%;
 }
