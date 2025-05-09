@@ -57,7 +57,6 @@ pub use elements::{
 use silkenweb::StrAttribute;
 use strum::AsRefStr;
 
-// TODO: Derive macro for StrAttribute that calls `as_ref`
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum Layout {
     Inline,
