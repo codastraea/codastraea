@@ -54,60 +54,30 @@ pub use elements::{
     ui5_tab as tab, ui5_tab_separator as separator, ui5_tabcontainer as container, Ui5Tab as Tab,
     Ui5TabSeparator as Separator, Ui5Tabcontainer as Container,
 };
-use silkenweb::attribute::{AsAttribute, Attribute};
+use silkenweb::StrAttribute;
 use strum::AsRefStr;
 
 // TODO: Derive macro for StrAttribute that calls `as_ref`
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum Layout {
     Inline,
     Standard,
 }
 
-impl Attribute for Layout {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<Layout> for Layout {}
-
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum OverflowMode {
     End,
     StartAndEnd,
 }
 
-impl Attribute for OverflowMode {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<OverflowMode> for OverflowMode {}
-
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum BackgroundDesign {
     Solid,
     Transparent,
     Translucent,
 }
 
-impl Attribute for BackgroundDesign {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<BackgroundDesign> for BackgroundDesign {}
-
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum Design {
     Default,
     Positive,
@@ -115,13 +85,3 @@ pub enum Design {
     Critical,
     Neutral,
 }
-
-impl Attribute for Design {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<Design> for Design {}

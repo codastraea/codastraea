@@ -1,4 +1,7 @@
-use silkenweb::attribute::{AsAttribute, Attribute};
+use silkenweb::{
+    attribute::{AsAttribute, Attribute},
+    StrAttribute,
+};
 use strum::AsRefStr;
 
 pub mod base;
@@ -27,7 +30,7 @@ mod elements {
 
 pub use elements::{ui5_icon as element, Ui5Icon as Element};
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
 pub enum Design {
     Contrast,
     Critical,
@@ -39,32 +42,12 @@ pub enum Design {
     Positive,
 }
 
-impl Attribute for Design {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<Design> for Design {}
-
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
 pub enum Mode {
     Image,
     Decorative,
     Interactive,
 }
-
-impl Attribute for Mode {
-    type Text<'a> = &'a str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.as_ref())
-    }
-}
-
-impl AsAttribute<Mode> for Mode {}
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Name(&'static str);
