@@ -1,7 +1,7 @@
 mod elements {
-    use silkenweb::{custom_html_element, parent_element};
+    use silkenweb::{custom_html_element, elements::CustomEvent, parent_element};
 
-    use super::{BackgroundDesign, Design, Layout, OverflowMode};
+    use super::{BackgroundDesign, Design, Layout, OverflowMode, TabSelectEvent};
     use crate::icon;
 
     custom_html_element!(
@@ -18,9 +18,7 @@ mod elements {
             };
 
             events {
-                tab_select: web_sys::CustomEvent,
-                move_over: web_sys::CustomEvent,
-                r#move: web_sys::CustomEvent,
+                tab_select: CustomEvent<TabSelectEvent>,
             };
         }
     );
@@ -56,6 +54,19 @@ pub use elements::{
 };
 use silkenweb::StrAttribute;
 use strum::AsRefStr;
+use wasm_bindgen::prelude::wasm_bindgen;
+use web_sys::HtmlElement;
+
+#[wasm_bindgen]
+extern "C" {
+    pub type TabSelectEvent;
+
+    #[wasm_bindgen(method, getter = tab, structural)]
+    pub fn tab(this: &TabSelectEvent) -> HtmlElement;
+
+    #[wasm_bindgen(method, getter = tabIndex, structural)]
+    pub fn tab_index(this: &TabSelectEvent) -> usize;
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum Layout {
