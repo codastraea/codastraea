@@ -1,4 +1,13 @@
-use silkenweb::{custom_html_element, parent_element, StrAttribute};
+use silkenweb::{
+    custom_html_element,
+    dom::Dom,
+    elements::HtmlElement,
+    node::{ChildNode, Node},
+    parent_element,
+    prelude::{ParentElement, SignalVec, SignalVecExt},
+    value::SignalOrValue,
+    StrAttribute,
+};
 use strum::AsRefStr;
 
 use crate::{icon, ItemType, TextState};
@@ -78,6 +87,47 @@ custom_html_element!(
 );
 
 parent_element!(custom_item);
+
+// TODO: Divide this into silkenweb macros: `element_slot` and
+// `element_multi_slot`. Add an optional trait for child elements.
+impl<D: Dom> CustomItem<D> {
+    pub fn content_child(
+        self,
+        child: impl SignalOrValue<Item = impl HtmlElement + ChildNode<D>>,
+    ) -> Self {
+        Self(self.0.child(child.map(|child| child.slot("content"))))
+    }
+
+    pub fn content_optional_child(
+        self,
+        child: impl SignalOrValue<Item = Option<impl HtmlElement + ChildNode<D>>>,
+    ) -> Self {
+        Self(
+            self.0
+                .optional_child(child.map(|child| child.map(|child| child.slot("content")))),
+        )
+    }
+
+    pub fn content_children<N>(self, children: impl IntoIterator<Item = N>) -> Self
+    where
+        N: HtmlElement + Into<Node<D>>,
+    {
+        Self(
+            self.0
+                .children(children.into_iter().map(|child| child.slot("content"))),
+        )
+    }
+
+    pub fn content_children_signal<N>(self, children: impl SignalVec<Item = N> + 'static) -> Self
+    where
+        N: HtmlElement + Into<Node<D>>,
+    {
+        Self(
+            self.0
+                .children_signal(children.map(|child| child.slot("content"))),
+        )
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum SelectionMode {
