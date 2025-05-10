@@ -7,7 +7,7 @@ use silkenweb::{
     value::Sig,
     Value,
 };
-use silkenweb_ui5::tabs;
+use silkenweb_ui5::tab;
 use strum::AsRefStr;
 
 use crate::{
@@ -22,7 +22,7 @@ pub struct ThreadView(Node);
 impl ThreadView {
     pub fn new(call_tree: CallTree) -> Self {
         let editor = Editor::new(CODE);
-        let tab_group = tabs::container().class(css::full_height());
+        let tab_group = tab::container().class(css::full_height());
         let selected_tab = Mutable::new(Tab::CallTree);
         let call_tree_view = CallTreeView::new(
             call_tree,
@@ -32,7 +32,7 @@ impl ThreadView {
             },
         );
         let tab = |tab: Tab| {
-            tabs::tab().text(tab.as_ref()).selected(Sig(selected_tab
+            tab::content().text(tab.as_ref()).selected(Sig(selected_tab
                 .signal()
                 .map(move |selected| selected == tab)))
         };

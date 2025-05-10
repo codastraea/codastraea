@@ -27,7 +27,7 @@ custom_html_element!(
 parent_element!(container);
 
 custom_html_element!(
-    tab("ui5-tab") = {
+    content("ui5-tab") = {
         dom_type: web_sys::HtmlElement;
         attributes {
             text: String,
@@ -40,7 +40,7 @@ custom_html_element!(
     }
 );
 
-parent_element!(tab);
+parent_element!(content);
 
 custom_html_element!(
     separator("ui5-tab-separator") = {

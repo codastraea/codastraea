@@ -1,2 +1,2 @@
 pub mod icon;
-pub mod tabs;
+pub mod tab;
