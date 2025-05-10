@@ -4,8 +4,12 @@
         {
             "label": "Format",
             "type": "shell",
-            "command": "xtask",
-            "args": ["fmt"]
+            "command": "cargo",
+            "args": [
+                "xtask",
+                "fmt"
+            ],
+            "problemMatcher": []
         }
     ]
 }
