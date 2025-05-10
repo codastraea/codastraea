@@ -1,6 +1,7 @@
 use silkenweb::StrAttribute;
 use strum::AsRefStr;
 
+pub mod button;
 pub mod icon;
 pub mod tab;
 pub mod tree;
