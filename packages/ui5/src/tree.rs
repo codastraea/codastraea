@@ -51,6 +51,34 @@ custom_html_element!(
 
 parent_element!(item);
 
+custom_html_element!(
+    custom_item("ui5-tree-item-custom") = {
+        dom_type: web_sys::HtmlElement;
+
+        attributes {
+            hide_selection_element: bool,
+            icon: icon::Name,
+            expanded: bool,
+            movable: bool,
+            indeterminate: bool,
+            has_children: bool,
+            additional_text_state: TextState,
+            accessible_name: String,
+            r#type: ItemType,
+            navigated: bool,
+            tooltip: String,
+            highlight: TextState,
+            selected: bool,
+        };
+
+        events {
+            detail_click: web_sys::CustomEvent,
+        };
+    }
+);
+
+parent_element!(custom_item);
+
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum SelectionMode {
     None,
