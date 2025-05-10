@@ -1,61 +1,52 @@
-mod elements {
-    use silkenweb::{custom_html_element, elements::CustomEvent, parent_element};
-
-    use super::{BackgroundDesign, Design, Layout, OverflowMode, TabSelectEvent};
-    use crate::icon;
-
-    custom_html_element!(
-        ui5_tabcontainer = {
-            dom_type: web_sys::HtmlElement;
-
-            attributes {
-                collapsed: bool,
-                tab_layout: Layout,
-                overflow_mode: OverflowMode,
-                header_background_design: BackgroundDesign,
-                content_background_design: BackgroundDesign,
-                no_auto_selection: bool,
-            };
-
-            events {
-                tab_select: CustomEvent<TabSelectEvent>,
-            };
-        }
-    );
-
-    parent_element!(ui5_tabcontainer);
-
-    custom_html_element!(
-        ui5_tab = {
-            dom_type: web_sys::HtmlElement;
-            attributes {
-                text: String,
-                disabled: bool,
-                additional_text: String,
-                icon: icon::Name,
-                design: Design,
-                selected: bool,
-            };
-        }
-    );
-
-    parent_element!(ui5_tab);
-
-    custom_html_element!(
-        ui5_tab_separator = {
-            dom_type: web_sys::HtmlElement;
-        }
-    );
-}
-
-pub use elements::{
-    ui5_tab as tab, ui5_tab_separator as separator, ui5_tabcontainer as container, Ui5Tab as Tab,
-    Ui5TabSeparator as Separator, Ui5Tabcontainer as Container,
-};
-use silkenweb::StrAttribute;
+use silkenweb::{custom_html_element, elements::CustomEvent, parent_element, StrAttribute};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::HtmlElement;
+
+use crate::icon;
+
+custom_html_element!(
+    container("ui5-tabcontainer") = {
+        dom_type: web_sys::HtmlElement;
+
+        attributes {
+            collapsed: bool,
+            tab_layout: Layout,
+            overflow_mode: OverflowMode,
+            header_background_design: BackgroundDesign,
+            content_background_design: BackgroundDesign,
+            no_auto_selection: bool,
+        };
+
+        events {
+            tab_select: CustomEvent<TabSelectEvent>,
+        };
+    }
+);
+
+parent_element!(container);
+
+custom_html_element!(
+    tab("ui5-tab") = {
+        dom_type: web_sys::HtmlElement;
+        attributes {
+            text: String,
+            disabled: bool,
+            additional_text: String,
+            icon: icon::Name,
+            design: Design,
+            selected: bool,
+        };
+    }
+);
+
+parent_element!(tab);
+
+custom_html_element!(
+    separator("ui5-tab-separator") = {
+        dom_type: web_sys::HtmlElement;
+    }
+);
 
 #[wasm_bindgen]
 extern "C" {
