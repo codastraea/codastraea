@@ -9,7 +9,7 @@ pub mod business_suite;
 pub mod tnt;
 
 custom_html_element!(
-    element("ui5-icon") = {
+    icon("ui5-icon") = {
         dom_type: web_sys::HtmlElement;
 
         attributes {
