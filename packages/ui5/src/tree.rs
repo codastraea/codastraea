@@ -1,7 +1,7 @@
 use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute};
 use strum::AsRefStr;
 
-use crate::{button::Button, icon, ItemType, Highlight};
+use crate::{button::Button, icon, Highlight, ItemType};
 
 custom_html_element!(
     container("ui5-tree") = {

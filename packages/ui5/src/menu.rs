@@ -7,7 +7,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     button::Button,
     icon::{self, Icon},
-    ItemType, Highlight,
+    link::Link,
+    Highlight, ItemType,
 };
 
 custom_html_element!(
@@ -70,7 +71,7 @@ custom_html_element!(
 
 pub trait EndContent {}
 impl EndContent for Button {}
-// TODO: impl EndContent for Link {}
+impl EndContent for Link {}
 impl EndContent for Icon {}
 
 element_slot!(item, item, None::<String>, impl Child);
