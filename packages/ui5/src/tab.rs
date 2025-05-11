@@ -1,4 +1,6 @@
-use silkenweb::{custom_html_element, elements::CustomEvent, parent_element, StrAttribute};
+use silkenweb::{
+    custom_html_element, element_slot, elements::CustomEvent, parent_element, StrAttribute,
+};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::HtmlElement;
@@ -24,7 +26,11 @@ custom_html_element!(
     }
 );
 
-parent_element!(container);
+pub trait Child {}
+impl Child for Content {}
+impl Child for Separator {}
+
+element_slot!(container, content, None::<String>, impl Child);
 
 custom_html_element!(
     content("ui5-tab") = {
@@ -41,6 +47,7 @@ custom_html_element!(
 );
 
 parent_element!(content);
+element_slot!(content, item, "items", impl Child);
 
 custom_html_element!(
     separator("ui5-tab-separator") = {

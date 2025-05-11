@@ -1,16 +1,7 @@
-use silkenweb::{
-    custom_html_element,
-    dom::Dom,
-    elements::HtmlElement,
-    node::{ChildNode, Node},
-    parent_element,
-    prelude::{ParentElement, SignalVec, SignalVecExt},
-    value::SignalOrValue,
-    StrAttribute,
-};
+use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute};
 use strum::AsRefStr;
 
-use crate::{icon, ItemType, TextState};
+use crate::{button::Button, icon, ItemType, TextState};
 
 custom_html_element!(
     container("ui5-tree") = {
@@ -29,7 +20,12 @@ custom_html_element!(
     }
 );
 
-parent_element!(container);
+pub trait Child {}
+impl Child for Item {}
+impl Child for CustomItem {}
+
+element_slot!(container, item, None::<String>, impl Child);
+element_slot!(container, header, "header");
 
 custom_html_element!(
     item("ui5-tree-item") = {
@@ -58,7 +54,8 @@ custom_html_element!(
     }
 );
 
-parent_element!(item);
+element_slot!(item, item, None::<String>, impl Child);
+element_slot_single!(item, delete_button, "deleteButton", Button);
 
 custom_html_element!(
     custom_item("ui5-tree-item-custom") = {
@@ -86,48 +83,9 @@ custom_html_element!(
     }
 );
 
-parent_element!(custom_item);
-
-// TODO: Divide this into silkenweb macros: `element_slot` and
-// `element_multi_slot`. Add an optional trait for child elements.
-impl<D: Dom> CustomItem<D> {
-    pub fn content_child(
-        self,
-        child: impl SignalOrValue<Item = impl HtmlElement + ChildNode<D>>,
-    ) -> Self {
-        Self(self.0.child(child.map(|child| child.slot("content"))))
-    }
-
-    pub fn content_optional_child(
-        self,
-        child: impl SignalOrValue<Item = Option<impl HtmlElement + ChildNode<D>>>,
-    ) -> Self {
-        Self(
-            self.0
-                .optional_child(child.map(|child| child.map(|child| child.slot("content")))),
-        )
-    }
-
-    pub fn content_children<N>(self, children: impl IntoIterator<Item = N>) -> Self
-    where
-        N: HtmlElement + Into<Node<D>>,
-    {
-        Self(
-            self.0
-                .children(children.into_iter().map(|child| child.slot("content"))),
-        )
-    }
-
-    pub fn content_children_signal<N>(self, children: impl SignalVec<Item = N> + 'static) -> Self
-    where
-        N: HtmlElement + Into<Node<D>>,
-    {
-        Self(
-            self.0
-                .children_signal(children.map(|child| child.slot("content"))),
-        )
-    }
-}
+element_slot!(custom_item, item, None::<String>, impl Child);
+element_slot!(custom_item, content, "content");
+element_slot_single!(custom_item, delete_button, "deleteButton", Button);
 
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
 pub enum SelectionMode {

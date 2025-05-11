@@ -1,4 +1,7 @@
-use silkenweb::{custom_html_element, elements::CustomEvent, parent_element, StrAttribute};
+use silkenweb::{
+    custom_html_element, elements::CustomEvent, prelude::ParentElement, value::RefSignalOrValue,
+    StrAttribute,
+};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -28,7 +31,14 @@ custom_html_element!(
     }
 );
 
-parent_element!(button);
+impl Button {
+    pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
+    where
+        T: 'a + AsRef<str> + Into<String>,
+    {
+        Self(self.0.text(child))
+    }
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
 pub enum Design {

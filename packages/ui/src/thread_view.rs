@@ -39,7 +39,7 @@ impl ThreadView {
 
         Self(
             tab_group
-                .children([
+                .content_children([
                     tab(Tab::CallTree).child(call_tree_view),
                     tab(Tab::SourceCode).child(SourceView::new(&editor)),
                 ])
