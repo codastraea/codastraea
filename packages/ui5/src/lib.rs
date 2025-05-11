@@ -3,6 +3,7 @@ use strum::AsRefStr;
 
 pub mod button;
 pub mod icon;
+pub mod menu;
 pub mod tab;
 pub mod tree;
 
