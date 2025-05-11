@@ -43,7 +43,7 @@ impl<D: Dom> Button<D> {
         Self(self.0.text(child))
     }
 
-    pub fn toggle_on_click(self, menu: &menu::Container<D>) -> Self {
+    pub fn menu_opener(self, menu: &menu::Container<D>) -> Self {
         menu.set_opener(&self.handle().dom_element());
         let dom_menu = menu.handle().dom_element();
         let open_attr = "open";
