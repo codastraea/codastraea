@@ -1,8 +1,9 @@
 use silkenweb::{
-    custom_html_element, element_slot, element_slot_single, elements::CustomEvent, StrAttribute,
+    custom_html_element, dom::Dom, element_slot, element_slot_single, elements::CustomEvent,
+    prelude::Element, StrAttribute,
 };
 use strum::AsRefStr;
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::{prelude::wasm_bindgen, JsCast};
 
 use crate::{
     button::Button,
@@ -33,6 +34,15 @@ custom_html_element!(
         };
     }
 );
+
+impl<D: Dom> Container<D> {
+    pub fn set_opener(&self, element: &web_sys::HtmlElement) {
+        self.handle()
+            .dom_element()
+            .unchecked_ref::<MenuDomElement>()
+            .set_opener(element);
+    }
+}
 
 pub trait Child {}
 impl Child for Item {}
@@ -111,4 +121,9 @@ extern "C" {
 
     #[wasm_bindgen(method, getter = escPressed, structural)]
     pub fn esc_pressed(this: &BeforeCloseEvent) -> bool;
+
+    type MenuDomElement;
+
+    #[wasm_bindgen(method, setter = opener, structural)]
+    fn set_opener(this: &MenuDomElement, element: &web_sys::HtmlElement);
 }

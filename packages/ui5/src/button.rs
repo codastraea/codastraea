@@ -1,10 +1,15 @@
 use silkenweb::{
-    custom_html_element, elements::CustomEvent, prelude::ParentElement, value::RefSignalOrValue,
+    custom_html_element,
+    dom::Dom,
+    elements::CustomEvent,
+    prelude::{Element, ParentElement},
+    value::RefSignalOrValue,
     StrAttribute,
 };
 use strum::AsRefStr;
+use wasm_bindgen::UnwrapThrowExt;
 
-use crate::{icon, AccessibleRole, ClickEvent};
+use crate::{icon, menu, AccessibleRole, ClickEvent};
 
 custom_html_element!(
     button("ui5-button") = {
@@ -30,12 +35,26 @@ custom_html_element!(
     }
 );
 
-impl Button {
+impl<D: Dom> Button<D> {
     pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
     where
         T: 'a + AsRef<str> + Into<String>,
     {
         Self(self.0.text(child))
+    }
+
+    pub fn toggle_on_click(self, menu: &menu::Container<D>) -> Self {
+        menu.set_opener(&self.handle().dom_element());
+        let dom_menu = menu.handle().dom_element();
+        let open_attr = "open";
+
+        self.on_click(move |_, _| {
+            if dom_menu.has_attribute(open_attr) {
+                dom_menu.remove_attribute(open_attr).unwrap_throw();
+            } else {
+                dom_menu.set_attribute(open_attr, "").unwrap_throw();
+            }
+        })
     }
 }
 
