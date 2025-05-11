@@ -59,7 +59,7 @@ custom_html_element!(
 extern "C" {
     pub type TabSelectEvent;
 
-    #[wasm_bindgen(method, getter = tab, structural)]
+    #[wasm_bindgen(method, getter, structural)]
     pub fn tab(this: &TabSelectEvent) -> HtmlElement;
 
     #[wasm_bindgen(method, getter = tabIndex, structural)]
