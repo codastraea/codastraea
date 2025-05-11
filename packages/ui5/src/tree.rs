@@ -1,7 +1,7 @@
 use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute};
 use strum::AsRefStr;
 
-use crate::{button::Button, icon, ItemType, TextState};
+use crate::{button::Button, icon, ItemType, Highlight};
 
 custom_html_element!(
     container("ui5-tree") = {
@@ -39,12 +39,12 @@ custom_html_element!(
             movable: bool,
             indeterminate: bool,
             has_children: bool,
-            additional_text_state: TextState,
+            additional_text_state: Highlight,
             accessible_name: String,
             r#type: ItemType,
             navigated: bool,
             tooltip: String,
-            highlight: TextState,
+            highlight: Highlight,
             selected: bool,
         };
 
@@ -68,12 +68,12 @@ custom_html_element!(
             movable: bool,
             indeterminate: bool,
             has_children: bool,
-            additional_text_state: TextState,
+            additional_text_state: Highlight,
             accessible_name: String,
             r#type: ItemType,
             navigated: bool,
             tooltip: String,
-            highlight: TextState,
+            highlight: Highlight,
             selected: bool,
         };
 

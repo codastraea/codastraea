@@ -8,7 +8,7 @@ pub mod tab;
 pub mod tree;
 
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
-pub enum TextState {
+pub enum Highlight {
     None,
     Positive,
     Critical,

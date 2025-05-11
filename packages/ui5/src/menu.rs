@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     button::Button,
     icon::{self, Icon},
-    ItemType, TextState,
+    ItemType, Highlight,
 };
 
 custom_html_element!(
@@ -54,7 +54,7 @@ custom_html_element!(
             tooltip: String,
             r#type: ItemType,
             navigated: bool,
-            highlight: TextState,
+            highlight: Highlight,
             selected: bool
         };
 
