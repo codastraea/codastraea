@@ -144,6 +144,7 @@ fn node_dropdown(
         }
     });
 
+    // TODO: on_click doesn't work,when using the keyboard. We should use the menu on_
     let menu = menu::container().item_child(menu::item().text("View code").on_click({
         clone!(actions);
         let span = node.span;
