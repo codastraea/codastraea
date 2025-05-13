@@ -39,9 +39,8 @@ pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> Vec<tree::Custom
 }
 
 fn else_body(node: &NodeData, body: &Body, actions: &impl CallTreeActions) -> tree::CustomItem {
-    let item = tree::custom_item().content_child(node_dropdown(node, NodeType::Condition, actions));
-
-    item.item_children(body_statements(body.iter(), actions))
+    node_dropdown(node, NodeType::Condition, actions)
+        .item_children(body_statements(body.iter(), actions))
 }
 
 fn condition_node(
