@@ -7,7 +7,6 @@ edition.workspace = true
 
 [dependencies]
 silkenweb.workspace = true
-silkenweb-bootstrap.workspace = true
 serpent-automation-frontend.workspace = true
 serpent-automation-executor.workspace = true
 silkenweb-ui5.workspace = true

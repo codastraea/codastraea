@@ -2573,7 +2573,6 @@ dependencies = [
  "serpent-automation-executor",
  "serpent-automation-frontend",
  "silkenweb",
- "silkenweb-bootstrap",
  "silkenweb-ui5",
  "strum",
  "tokio",
@@ -2667,30 +2666,6 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "silkenweb-bootstrap"
-version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#356347c18b8b8616dd19b55704c106cc5f3b85c6"
-dependencies = [
- "derive_more 1.0.0",
- "futures-signals",
- "silkenweb",
- "silkenweb-bootstrap-macros",
-]
-
-[[package]]
-name = "silkenweb-bootstrap-macros"
-version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#356347c18b8b8616dd19b55704c106cc5f3b85c6"
-dependencies = [
- "heck 0.5.0",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "silkenweb-css",
- "syn 2.0.101",
 ]
 
 [[package]]
