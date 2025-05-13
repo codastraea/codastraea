@@ -13,7 +13,7 @@ use silkenweb::{
     Value,
 };
 use silkenweb_ui5::{
-    button::{button, Design},
+    button::{badge, button, BadgeDesign, Design},
     icon, menu, tree,
 };
 
@@ -128,12 +128,20 @@ fn node_dropdown(
         NodeType::Function => Design::Default,
         NodeType::Condition => Design::Emphasized,
     };
-    let run_state = node.run_state.signal().map(|run_state| match run_state {
+    let run_state = &node.run_state;
+    let icon = run_state.signal().map(|run_state| match run_state {
         RunState::NotRun => icon::base::circle_task(),
         RunState::Running => icon::base::busy(),
         RunState::Successful | RunState::PredicateSuccessful(true) => icon::base::sys_enter(),
         RunState::PredicateSuccessful(false) => icon::base::circle_task_2(),
         RunState::Failed => icon::base::error(),
+    });
+    let badge = node.run_state.signal().map(|run_state| {
+        if run_state == RunState::Running {
+            Some(badge().design(BadgeDesign::AttentionDot))
+        } else {
+            None
+        }
     });
 
     let menu = menu::container().item_child(menu::item().text("View code").on_click({
@@ -144,9 +152,10 @@ fn node_dropdown(
     let button = button()
         .design(design)
         .text(node.name)
-        .icon(Sig(run_state))
+        .icon(Sig(icon))
         .end_icon(icon::base::slim_arrow_down())
-        .menu_opener(&menu);
+        .menu_opener(&menu)
+        .badge_optional_child(Sig(badge));
     tree::custom_item()
         .content_child(button)
         .content_child(menu)

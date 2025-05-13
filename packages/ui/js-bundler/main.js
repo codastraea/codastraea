@@ -2,6 +2,7 @@ import { EditorView, basicSetup } from "codemirror"
 import { EditorState, EditorSelection } from "@codemirror/state"
 import { python } from "@codemirror/lang-python"
 import "@ui5/webcomponents/dist/Button.js";
+import "@ui5/webcomponents/dist/ButtonBadge.js";
 import "@ui5/webcomponents/dist/Icon.js";
 import "@ui5/webcomponents-icons/dist/busy.js";
 import "@ui5/webcomponents-icons/dist/circle-task.js";
