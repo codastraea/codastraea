@@ -1,4 +1,4 @@
-use silkenweb::StrAttribute;
+use silkenweb::{StrAttribute, Value};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -9,7 +9,7 @@ pub mod menu;
 pub mod tab;
 pub mod tree;
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum Highlight {
     None,
     Positive,
@@ -18,7 +18,7 @@ pub enum Highlight {
     Information,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum ItemType {
     Inactive,
     Active,
@@ -26,7 +26,7 @@ pub enum ItemType {
     Navigation,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum AccessibleRole {
     Button,
     Link,

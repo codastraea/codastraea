@@ -1,6 +1,6 @@
 use silkenweb::{
     custom_html_element, elements::CustomEvent, prelude::ParentElement, value::RefSignalOrValue,
-    StrAttribute,
+    StrAttribute, Value,
 };
 use strum::AsRefStr;
 
@@ -41,20 +41,20 @@ impl Link {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Design {
     Default,
     Subtle,
     Emphasized,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum InteractiveAreaSize {
     Normal,
     Large,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, StrAttribute, Value)]
 pub enum Target {
     SelfTarget,
     Top,
@@ -75,7 +75,7 @@ impl AsRef<str> for Target {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum WrappingType {
     None,
     Normal,

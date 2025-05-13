@@ -3,8 +3,8 @@ use silkenweb::{
     dom::Dom,
     elements::CustomEvent,
     prelude::{Element, ParentElement},
-    value::RefSignalOrValue,
-    StrAttribute,
+    value::{RefSignalOrValue, Value},
+    StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::UnwrapThrowExt;
@@ -58,7 +58,7 @@ impl<D: Dom> Button<D> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Design {
     Default,
     Positive,
@@ -68,7 +68,7 @@ pub enum Design {
     Attention,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Type {
     Button,
     Submit,

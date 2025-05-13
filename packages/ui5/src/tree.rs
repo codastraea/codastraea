@@ -1,4 +1,4 @@
-use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute};
+use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute, Value};
 use strum::AsRefStr;
 
 use crate::{button::Button, icon, Highlight, ItemType};
@@ -87,7 +87,7 @@ element_slot!(custom_item, item, None::<String>, impl Child);
 element_slot!(custom_item, content, "content");
 element_slot_single!(custom_item, delete_button, "deleteButton", Button);
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum SelectionMode {
     None,
     Single,

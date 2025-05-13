@@ -1,6 +1,6 @@
 use silkenweb::{
     attribute::{AsAttribute, Attribute},
-    custom_html_element, StrAttribute,
+    custom_html_element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 
@@ -22,7 +22,7 @@ custom_html_element!(
     }
 );
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Design {
     Contrast,
     Critical,
@@ -34,14 +34,14 @@ pub enum Design {
     Positive,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Mode {
     Image,
     Decorative,
     Interactive,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Value)]
 pub struct Name(&'static str);
 
 impl Attribute for Name {

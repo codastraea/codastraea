@@ -1,5 +1,5 @@
 use silkenweb::{
-    custom_html_element, element_slot, elements::CustomEvent, parent_element, StrAttribute,
+    custom_html_element, element_slot, elements::CustomEvent, parent_element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -66,26 +66,26 @@ extern "C" {
     pub fn tab_index(this: &TabSelectEvent) -> usize;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum Layout {
     Inline,
     Standard,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum OverflowMode {
     End,
     StartAndEnd,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum BackgroundDesign {
     Solid,
     Transparent,
     Translucent,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum Design {
     Default,
     Positive,

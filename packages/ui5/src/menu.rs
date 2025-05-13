@@ -1,6 +1,6 @@
 use silkenweb::{
     custom_html_element, dom::Dom, element_slot, element_slot_single, elements::CustomEvent,
-    prelude::Element, StrAttribute,
+    prelude::Element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue, UnwrapThrowExt};
@@ -97,7 +97,7 @@ custom_html_element!(
     }
 );
 
-#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute)]
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Align {
     Center,
     Start,
