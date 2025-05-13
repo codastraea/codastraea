@@ -144,11 +144,11 @@ fn node_dropdown(
     let button = button()
         .design(design)
         .text(node.name)
+        .icon(Sig(run_state))
         .end_icon(icon::base::slim_arrow_down())
         .menu_opener(&menu);
     tree::custom_item()
         .content_child(button)
-        .content_child(icon::icon().name(Sig(run_state)))
         .content_child(menu)
 }
 
