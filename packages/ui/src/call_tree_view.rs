@@ -14,7 +14,7 @@ use silkenweb::{
 };
 use silkenweb_ui5::{
     button::{badge, button, BadgeDesign, Design},
-    icon, menu, tree,
+    icon, menu, tree, ComponentSize,
 };
 
 use self::conditional::if_node;
@@ -35,6 +35,7 @@ impl CallTreeView {
 
         Self(
             tree::container()
+                .compact_size(true)
                 .item_child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )
@@ -144,7 +145,8 @@ fn node_dropdown(
         }
     });
 
-    // TODO: on_click doesn't work,when using the keyboard. We should use the menu on_
+    // TODO: on_click doesn't work,when using the keyboard. We should use the menu
+    // on_
     let menu = menu::container().item_child(menu::item().text("View code").on_click({
         clone!(actions);
         let span = node.span;

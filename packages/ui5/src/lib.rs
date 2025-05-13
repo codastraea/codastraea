@@ -1,4 +1,4 @@
-use silkenweb::{StrAttribute, Value};
+use silkenweb::{prelude::HtmlElement, value::RefSignalOrValue, StrAttribute, Value};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -50,4 +50,14 @@ extern "C" {
 
     #[wasm_bindgen(method, getter = shiftKey, structural)]
     pub fn shift_key(this: &ClickEvent) -> bool;
+}
+
+pub trait ComponentSize {
+    fn compact_size<'a>(self, on: impl RefSignalOrValue<'a, Item = bool>) -> Self;
+}
+
+impl<T: HtmlElement> ComponentSize for T {
+    fn compact_size<'a>(self, use_compact_size: impl RefSignalOrValue<'a, Item = bool>) -> Self {
+        self.attribute("data-ui5-compact-size", use_compact_size)
+    }
 }
