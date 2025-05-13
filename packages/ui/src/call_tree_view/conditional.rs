@@ -3,97 +3,80 @@ use serpent_automation_frontend::{
     call_tree::{Body, Call, If},
     tree::{Expandable, TreeNode},
 };
-use silkenweb::{clone, node::element::GenericElement, prelude::ParentElement};
-use silkenweb_bootstrap::{
-    button::{button, ButtonStyle},
-    column,
-    dropdown::{dropdown, dropdown_menu},
-    utility::{Align, Axis, Colour, SetAlign, SetDisplay, SetSpacing, Size},
+use silkenweb::{
+    clone,
+    prelude::{
+        html::{div, span},
+        ParentElement,
+    },
 };
+use silkenweb_ui5::tree;
 
-use super::{
-    body_statements, call_node, dropdown_item, indented_block, internal_node, leaf_node,
-    node_container, CallTreeActions, NodeData,
-};
+use super::{body_statements, call_node, node_dropdown, CallTreeActions, NodeData, NodeType};
 
-pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> GenericElement {
-    column()
-        .align_items(Align::Start)
-        .child(branch_body(
-            &NodeData::new(if_stmt.span(), "if", if_stmt.run_state()),
-            if_stmt.condition(),
-            if_stmt.then_block(),
+pub fn if_node(if_stmt: &If, actions: &impl CallTreeActions) -> Vec<tree::CustomItem> {
+    let mut items = vec![node_dropdown(
+        &NodeData::new(if_stmt.span(), "if", if_stmt.run_state()),
+        NodeType::Condition,
+        actions,
+    )
+    .item_child(condition_node(if_stmt.condition(), actions))
+    .item_child(
+        tree::custom_item()
+            .content_child(span().text("then"))
+            .item_children(body_statements(if_stmt.then_block().iter(), actions)),
+    )];
+
+    if let Some(else_block) = if_stmt.else_block() {
+        items.push(else_body(
+            &NodeData::new(else_block.span(), "else", else_block.run_state()),
+            else_block.body(),
             actions,
         ))
-        .optional_child(if_stmt.else_block().as_ref().map(|else_block| {
-            branch_body(
-                &NodeData::new(else_block.span(), "else", else_block.run_state()),
-                &TreeNode::Leaf,
-                else_block.body(),
-                actions,
-            )
-        }))
-        .into()
+    }
+
+    items
 }
 
-fn branch_body(
-    node: &NodeData,
-    condition: &TreeNode<Expandable<Vec<Call>>>,
-    body: &Body,
-    actions: &impl CallTreeActions,
-) -> GenericElement {
-    let condition = condition_node(node, condition, actions);
+fn else_body(node: &NodeData, body: &Body, actions: &impl CallTreeActions) -> tree::CustomItem {
+    let item = tree::custom_item().content_child(node_dropdown(node, NodeType::Condition, actions));
 
-    let body_elem = if !body.is_empty() {
-        indented_block().children(body_statements(body.iter(), actions))
-    } else {
-        indented_block().child(
-            node_container(Colour::Secondary).child(dropdown(
-                button("button", "pass", ButtonStyle::Solid(Colour::Secondary))
-                    .padding_on_axis((Size::Size4, Axis::X)),
-                dropdown_menu().child(dropdown_item("View code")),
-            )),
-        )
-    };
-
-    column()
-        .align_self(Align::Stretch)
-        .child(condition)
-        .child(body_elem)
-        .into()
+    item.item_children(body_statements(body.iter(), actions))
 }
 
 fn condition_node(
-    node: &NodeData,
     condition: &TreeNode<Expandable<Vec<Call>>>,
     actions: &impl CallTreeActions,
-) -> GenericElement {
+) -> tree::CustomItem {
+    let item = tree::custom_item().content_child(span().text("condition"));
+
     if let TreeNode::Internal(condition) = condition {
-        // TODO: Condition text (maybe truncated), with tooltip (how does that work on
-        // touch)
-        internal_node(
-            node,
-            condition.is_expanded(),
-            CONDITION_COLOUR,
-            actions,
-            condition.signal().map({
-                clone!(actions);
-                move |expandable_condition| {
-                    expandable_condition.map({
-                        clone!(actions);
-                        move |condition| {
-                            indented_block().children(condition.iter().map(|call| {
-                                let actions = &actions;
-                                call_node(&NodeData::from_call(call), call.body(), actions)
-                            }))
-                        }
-                    })
-                }
-            }),
+        condition.is_expanded().set(true);
+        // TODO: Do this when a tree item is expanded. Need to watch the `expanded`
+        // attribute.
+        item.item_children_signal(
+            condition
+                .signal()
+                .map({
+                    clone!(actions);
+                    move |loadable_condition| {
+                        loadable_condition
+                            .map(|condition| {
+                                condition
+                                    .iter()
+                                    .map(|call| {
+                                        call_node(&NodeData::from_call(call), call.body(), &actions)
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or(vec![
+                                tree::custom_item().content_child(div().text("Loading..."))
+                            ])
+                    }
+                })
+                .to_signal_vec(),
         )
     } else {
-        leaf_node(node, CONDITION_COLOUR, actions)
+        item
     }
 }
-
-const CONDITION_COLOUR: Colour = Colour::Info;

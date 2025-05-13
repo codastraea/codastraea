@@ -3,6 +3,11 @@ import { EditorState, EditorSelection } from "@codemirror/state"
 import { python } from "@codemirror/lang-python"
 import "@ui5/webcomponents/dist/Button.js";
 import "@ui5/webcomponents/dist/Icon.js";
+import "@ui5/webcomponents-icons/dist/busy.js";
+import "@ui5/webcomponents-icons/dist/circle-task.js";
+import "@ui5/webcomponents-icons/dist/circle-task-2.js";
+import "@ui5/webcomponents-icons/dist/error.js";
+import "@ui5/webcomponents-icons/dist/sys-enter.js";
 import "@ui5/webcomponents/dist/Link.js";
 import "@ui5/webcomponents/dist/Menu.js";
 import "@ui5/webcomponents/dist/MenuItem.js";

@@ -9,7 +9,6 @@ use silkenweb::{
 };
 use thread_view::ThreadView;
 
-mod animation;
 mod call_tree_view;
 mod source_view;
 mod thread_view;
@@ -29,7 +28,6 @@ mod css {
     pub use class::*;
 }
 
-use css_module;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
