@@ -1,9 +1,10 @@
 use silkenweb::{
     custom_html_element,
     dom::Dom,
+    element_slot_single,
     elements::CustomEvent,
     prelude::{Element, ParentElement},
-    value::{RefSignalOrValue, Value},
+    value::RefSignalOrValue,
     StrAttribute, Value,
 };
 use strum::AsRefStr;
@@ -35,6 +36,8 @@ custom_html_element!(
     }
 );
 
+element_slot_single!(button, badge, "badge", Badge);
+
 impl<D: Dom> Button<D> {
     pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
     where
@@ -56,6 +59,24 @@ impl<D: Dom> Button<D> {
             }
         })
     }
+}
+
+custom_html_element!(
+    badge("ui5-button-badge") = {
+        dom_type: web_sys::HtmlElement;
+
+        attributes {
+            text: String,
+            design: BadgeDesign,
+        };
+    }
+);
+
+#[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
+pub enum BadgeDesign {
+    InlineText,
+    OverlayText,
+    AttentionDot,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
