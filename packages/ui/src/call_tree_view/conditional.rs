@@ -50,9 +50,9 @@ fn condition_node(
     let item = tree::custom_item().content_child(span().text("condition"));
 
     if let TreeNode::Internal(condition) = condition {
-        condition.is_expanded().set(true);
         // TODO: Do this when a tree item is expanded. Need to watch the `expanded`
         // attribute.
+        condition.is_expanded().set(true);
         item.item_children_signal(
             condition
                 .signal()
