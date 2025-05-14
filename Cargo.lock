@@ -2631,7 +2631,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "caseless",
  "clonelet",
@@ -2644,6 +2644,7 @@ dependencies = [
  "html-escape",
  "indexmap",
  "itertools 0.14.0",
+ "js-sys",
  "parcel_selectors",
  "paste",
  "pin-project",
@@ -2661,7 +2662,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -2671,7 +2672,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-css"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "anyhow",
  "clonelet",
@@ -2686,7 +2687,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "derive_more 1.0.0",
  "proc-macro-error",
@@ -2709,7 +2710,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-signals-ext"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "futures-signals",
  "paste",
@@ -2719,7 +2720,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-task"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#a5aaca9abdc226e9dd3c802f8cc6a8c0c861b7f9"
+source = "git+https://github.com/silkenweb/silkenweb#263e6abc8058d78ca3389be221790e2cf698919b"
 dependencies = [
  "clonelet",
  "crossbeam",
