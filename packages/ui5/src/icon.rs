@@ -4,6 +4,16 @@ use silkenweb::{
 };
 use strum::AsRefStr;
 
+macro_rules! define_icons {
+    ($collection:literal { $($name:ident = $str_name:literal),* $(,)? }) => {
+        $(
+            pub fn $name() -> $crate::icon::Name {
+                $crate::icon::Name(concat!($collection, "/", $str_name))
+            }
+        )*
+    }
+}
+
 pub mod base;
 pub mod business_suite;
 pub mod tnt;
