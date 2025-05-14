@@ -1,6 +1,10 @@
 use silkenweb::{
-    custom_html_element, dom::Dom, element_slot, element_slot_single, elements::CustomEvent,
-    prelude::Element, StrAttribute, Value,
+    clone, custom_html_element,
+    dom::Dom,
+    element_slot, element_slot_single,
+    elements::CustomEvent,
+    prelude::{Element, ElementEvents},
+    StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue, UnwrapThrowExt};
@@ -81,6 +85,20 @@ custom_html_element!(
         };
     }
 );
+
+impl<D: Dom> Item<D> {
+    pub fn on_select(self, mut handler: impl FnMut() + Clone + 'static) -> Self {
+        self.on_click({
+            clone!(mut handler);
+            move |_, _| handler()
+        })
+        .on_keydown(move |ev, _| {
+            if ev.key() == "Enter" {
+                handler()
+            }
+        })
+    }
+}
 
 pub trait EndContent {}
 impl EndContent for Button {}

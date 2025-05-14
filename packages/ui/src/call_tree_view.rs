@@ -8,7 +8,7 @@ use serpent_automation_frontend::{
 use silkenweb::{
     clone,
     node::Node,
-    prelude::{html::div, ElementEvents, ParentElement},
+    prelude::{html::div, ParentElement},
     value::Sig,
     Value,
 };
@@ -144,12 +144,10 @@ fn node_dropdown(
         }
     });
 
-    // TODO: on_click doesn't work,when using the keyboard. We should use the menu
-    // on_
-    let menu = menu::container().item_child(menu::item().text("View code").on_click({
+    let menu = menu::container().item_child(menu::item().text("View code").on_select({
         clone!(actions);
         let span = node.span;
-        move |_, _| actions.view_code(span)
+        move || actions.view_code(span)
     }));
     let button = button()
         .compact_size(true)
