@@ -1,6 +1,7 @@
 use silkenweb::{StrAttribute, Value};
 use strum::{AsRefStr, Display};
 
+pub mod button;
 pub mod icon;
 pub mod tab;
 pub mod tree;
@@ -12,4 +13,12 @@ pub enum Edge {
     Bottom,
     Start,
     End,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Display, AsRefStr, StrAttribute, Value)]
+#[strum(serialize_all = "kebab-case")]
+pub enum Size {
+    Small,
+    Medium,
+    Large,
 }
