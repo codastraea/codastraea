@@ -92,7 +92,7 @@ custom_html_element!(
 
 parent_element!(panel);
 
-#[derive(Display, AsRefStr, StrAttribute, Value)]
+#[derive(Copy, Clone, Eq, PartialEq, Display, AsRefStr, StrAttribute, Value)]
 #[strum(serialize_all = "kebab-case")]
 pub enum Activation {
     Auto,
