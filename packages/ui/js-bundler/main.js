@@ -20,6 +20,11 @@ import "@ui5/webcomponents/dist/Tree.js";
 import "@ui5/webcomponents/dist/TreeItem.js";
 import "@ui5/webcomponents/dist/TreeItemCustom.js";
 
+import '@shoelace-style/shoelace';
+import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js';
+
+setBasePath('/shoelace');
+
 export function codemirror_new(doc) {
   return new EditorView({
     extensions: [
