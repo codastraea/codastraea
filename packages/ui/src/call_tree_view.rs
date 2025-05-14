@@ -12,10 +12,10 @@ use silkenweb::{
     value::Sig,
     Value,
 };
-use silkenweb_shoelace::tree;
-use silkenweb_ui5::{
-    button::{badge, button, BadgeDesign, Design},
-    icon, menu, ComponentSize,
+use silkenweb_shoelace::{
+    button::{button, Variant},
+    dropdown::dropdown,
+    icon, menu, tree, Size,
 };
 
 use self::conditional::if_node;
@@ -120,24 +120,22 @@ fn node_dropdown(
     node_type: NodeType,
     actions: &impl CallTreeActions,
 ) -> tree::Item {
-    let design = match node_type {
-        NodeType::Function => Design::Default,
-        NodeType::Condition => Design::Emphasized,
+    let variant = match node_type {
+        NodeType::Function => Variant::Default,
+        NodeType::Condition => Variant::Primary,
     };
     let run_state = &node.run_state;
-    let icon = run_state.signal().map(|run_state| match run_state {
-        RunState::NotRun => icon::base::circle_task(),
-        RunState::Running => icon::base::busy(),
-        RunState::Successful | RunState::PredicateSuccessful(true) => icon::base::sys_enter(),
-        RunState::PredicateSuccessful(false) => icon::base::circle_task_2(),
-        RunState::Failed => icon::base::error(),
-    });
-    let badge = node.run_state.signal().map(|run_state| {
-        if run_state == RunState::Running {
-            Some(badge().design(BadgeDesign::AttentionDot))
-        } else {
-            None
+    let icon = run_state.signal().map(|run_state| {
+        match run_state {
+            RunState::NotRun => icon::default::circle(),
+            RunState::Running => icon::default::play_circle(),
+            RunState::Successful | RunState::PredicateSuccessful(true) => {
+                icon::default::check_circle()
+            }
+            RunState::PredicateSuccessful(false) => icon::default::dash_circle_dotted(),
+            RunState::Failed => icon::default::exclamation_circle(),
         }
+        .icon()
     });
 
     let menu = menu::container().item_child(menu::item().text("View code").on_select({
@@ -145,15 +143,19 @@ fn node_dropdown(
         let span = node.span;
         move || actions.view_code(span)
     }));
-    let button = button()
-        .compact_size(true)
-        .design(design)
-        .text(node.name)
-        .icon(Sig(icon))
-        .end_icon(icon::base::slim_arrow_down())
-        .menu_opener(&menu)
-        .badge_optional_child(Sig(badge));
-    tree::item().child(button).child(menu)
+    tree::item().child(
+        dropdown()
+            .trigger_child(
+                button()
+                    .variant(variant)
+                    .pill(true)
+                    .caret(true)
+                    .text(node.name)
+                    .prefix_child(Sig(icon))
+                    .size(Size::Small),
+            )
+            .menu_child(menu),
+    )
 }
 
 fn body_statements<'a>(
