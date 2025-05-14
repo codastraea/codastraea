@@ -35,7 +35,6 @@ impl CallTreeView {
 
         Self(
             tree::container()
-                .compact_size(true)
                 .item_child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )
@@ -153,6 +152,7 @@ fn node_dropdown(
         move |_, _| actions.view_code(span)
     }));
     let button = button()
+        .compact_size(true)
         .design(design)
         .text(node.name)
         .icon(Sig(icon))
