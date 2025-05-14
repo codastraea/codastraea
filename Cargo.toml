@@ -12,6 +12,7 @@ serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
 silkenweb-ui5 = { path = "packages/ui5" }
+silkenweb-shoelace = { path = "packages/shoelace" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",
 ] }

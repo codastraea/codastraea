@@ -2573,6 +2573,7 @@ dependencies = [
  "serpent-automation-executor",
  "serpent-automation-frontend",
  "silkenweb",
+ "silkenweb-shoelace",
  "silkenweb-ui5",
  "strum",
  "tokio",

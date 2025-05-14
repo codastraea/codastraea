@@ -10,6 +10,7 @@ silkenweb.workspace = true
 serpent-automation-frontend.workspace = true
 serpent-automation-executor.workspace = true
 silkenweb-ui5.workspace = true
+silkenweb-shoelace.workspace = true
 futures-signals.workspace = true
 web-sys = { workspace = true, features = ["DomRect", "Element"] }
 derive_more.workspace = true
