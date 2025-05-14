@@ -6,12 +6,10 @@
     "build": "vite build"
   },
   "devDependencies": {
-    "vite": "^6.2.7",
-    "vite-plugin-static-copy": "^2.3.1"
+    "vite": "^6.2.7"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.0.4",
-    "@shoelace-style/shoelace": "^2.20.1",
     "@ui5/webcomponents": "^2.10.0",
     "@ui5/webcomponents-icons": "^2.10.0",
     "@ui5/webcomponents-icons-business-suite": "^2.10.0",

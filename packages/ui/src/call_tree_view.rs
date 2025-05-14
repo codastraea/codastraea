@@ -8,21 +8,18 @@ use serpent_automation_frontend::{
 use silkenweb::{
     clone,
     node::Node,
-    prelude::{Element, ParentElement},
+    prelude::{html::span, ParentElement},
     value::Sig,
     Value,
 };
-use silkenweb_shoelace::tree;
 use silkenweb_ui5::{
     button::{badge, button, BadgeDesign, Design},
-    icon, menu, ComponentSize,
+    icon, menu, tree, ComponentSize,
 };
 
 use self::conditional::if_node;
 
 mod conditional;
-
-css_module!("call-tree");
 
 #[derive(Into, Value)]
 pub struct CallTreeView(Node);
@@ -38,8 +35,8 @@ impl CallTreeView {
 
         Self(
             tree::container()
-                .class(class::call_tree())
-                .child(call_node(&node_data, call_tree.body(), &actions))
+                .compact_size(true)
+                .item_child(call_node(&node_data, call_tree.body(), &actions))
                 .into(),
         )
     }
@@ -73,7 +70,7 @@ fn call_node(
     node: &NodeData,
     body: &TreeNode<Expandable<Body>>,
     actions: &impl CallTreeActions,
-) -> tree::Item {
+) -> tree::CustomItem {
     if let TreeNode::Internal(body) = body {
         internal_node(
             node,
@@ -100,18 +97,26 @@ fn internal_node(
     is_expanded: &Mutable<bool>,
     node_type: NodeType,
     actions: &impl CallTreeActions,
-    loadable_body: impl Signal<Item = Option<Vec<tree::Item>>> + 'static,
-) -> tree::Item {
+    loadable_body: impl Signal<Item = Option<Vec<tree::CustomItem>>> + 'static,
+) -> tree::CustomItem {
     let body = loadable_body
-        .map(|body| body.unwrap_or(vec![tree::item().text("Loading...")]))
+        .map(|body| {
+            body.unwrap_or(vec![
+                tree::custom_item().content_child(span().text("Loading..."))
+            ])
+        })
         .to_signal_vec();
     // TODO: Do this when a tree item is expanded. Need to watch the `expanded`
     // attribute.
     is_expanded.set(true);
-    node_dropdown(node, node_type, actions).children_signal(body)
+    node_dropdown(node, node_type, actions).item_children_signal(body)
 }
 
-fn leaf_node(node: &NodeData, node_type: NodeType, actions: &impl CallTreeActions) -> tree::Item {
+fn leaf_node(
+    node: &NodeData,
+    node_type: NodeType,
+    actions: &impl CallTreeActions,
+) -> tree::CustomItem {
     node_dropdown(node, node_type, actions)
 }
 
@@ -119,7 +124,7 @@ fn node_dropdown(
     node: &NodeData,
     node_type: NodeType,
     actions: &impl CallTreeActions,
-) -> tree::Item {
+) -> tree::CustomItem {
     let design = match node_type {
         NodeType::Function => Design::Default,
         NodeType::Condition => Design::Emphasized,
@@ -146,20 +151,21 @@ fn node_dropdown(
         move || actions.view_code(span)
     }));
     let button = button()
-        .compact_size(true)
         .design(design)
         .text(node.name)
         .icon(Sig(icon))
         .end_icon(icon::base::slim_arrow_down())
         .menu_opener(&menu)
         .badge_optional_child(Sig(badge));
-    tree::item().child(button).child(menu)
+    tree::custom_item()
+        .content_child(button)
+        .content_child(menu)
 }
 
 fn body_statements<'a>(
     stmts: impl Iterator<Item = &'a Statement> + 'a,
     actions: &'a impl CallTreeActions,
-) -> impl Iterator<Item = tree::Item> + 'a {
+) -> impl Iterator<Item = tree::CustomItem> + 'a {
     stmts.flat_map(|stmt| match stmt {
         Statement::Call(call) => vec![call_node(&NodeData::from_call(call), call.body(), actions)],
         Statement::If(if_stmt) => if_node(if_stmt, actions),
