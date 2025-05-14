@@ -1,11 +1,6 @@
 use silkenweb::{
-    custom_html_element,
-    dom::Dom,
-    element_slot_single,
-    elements::CustomEvent,
-    prelude::{Element, ParentElement},
-    value::RefSignalOrValue,
-    StrAttribute, Value,
+    custom_html_element, dom::Dom, element_slot_single, elements::CustomEvent, prelude::Element,
+    text_parent_element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::UnwrapThrowExt;
@@ -36,16 +31,10 @@ custom_html_element!(
     }
 );
 
+text_parent_element!(button);
 element_slot_single!(button, badge, "badge", Badge);
 
 impl<D: Dom> Button<D> {
-    pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
-    where
-        T: 'a + AsRef<str> + Into<String>,
-    {
-        Self(self.0.text(child))
-    }
-
     pub fn menu_opener(self, menu: &menu::Container<D>) -> Self {
         menu.set_opener(&self.handle().dom_element());
         let dom_menu = menu.handle().dom_element();

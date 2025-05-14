@@ -8,7 +8,7 @@ use serpent_automation_frontend::{
 use silkenweb::{
     clone,
     node::Node,
-    prelude::{html::span, ParentElement},
+    prelude::{html::span, TextParentElement},
     value::Sig,
     Value,
 };

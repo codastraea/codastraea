@@ -1,9 +1,5 @@
 use silkenweb::{
-    clone, custom_html_element,
-    dom::Dom,
-    element_slot,
-    prelude::{ElementEvents, ParentElement},
-    value::RefSignalOrValue,
+    clone, custom_html_element, dom::Dom, element_slot, prelude::ElementEvents, text_parent_element,
 };
 
 custom_html_element!(
@@ -23,15 +19,10 @@ custom_html_element!(
     }
 );
 
+text_parent_element!(item);
+
 // TODO: element_text_slot! macro.
 impl<D: Dom> Item<D> {
-    pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
-    where
-        T: 'a + AsRef<str> + Into<String>,
-    {
-        Self(self.0.text(child))
-    }
-
     pub fn on_select(self, mut handler: impl FnMut() + Clone + 'static) -> Self {
         self.on_click({
             clone!(mut handler);

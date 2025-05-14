@@ -2631,7 +2631,7 @@ dependencies = [
 [[package]]
 name = "silkenweb"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "caseless",
  "clonelet",
@@ -2662,7 +2662,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-base"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -2672,7 +2672,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-css"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "anyhow",
  "clonelet",
@@ -2687,7 +2687,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-macros"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "derive_more 1.0.0",
  "proc-macro-error",
@@ -2710,7 +2710,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-signals-ext"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "futures-signals",
  "paste",
@@ -2720,7 +2720,7 @@ dependencies = [
 [[package]]
 name = "silkenweb-task"
 version = "0.9.0"
-source = "git+https://github.com/silkenweb/silkenweb#57c95d121660e5e01431d94bda1cdfd9f6f5e0f4"
+source = "git+https://github.com/silkenweb/silkenweb#bf7bff87eec42b7b0928d8d67ab1f41ef33a9ace"
 dependencies = [
  "clonelet",
  "crossbeam",

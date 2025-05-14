@@ -1,6 +1,5 @@
 use silkenweb::{
-    custom_html_element, elements::CustomEvent, prelude::ParentElement, value::RefSignalOrValue,
-    StrAttribute, Value,
+    custom_html_element, elements::CustomEvent, text_parent_element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 
@@ -32,14 +31,7 @@ custom_html_element!(
     }
 );
 
-impl Link {
-    pub fn text<'a, T>(self, child: impl RefSignalOrValue<'a, Item = T>) -> Self
-    where
-        T: 'a + AsRef<str> + Into<String>,
-    {
-        Self(self.0.text(child))
-    }
-}
+text_parent_element!(link);
 
 #[derive(Copy, Clone, Eq, PartialEq, AsRefStr, StrAttribute, Value)]
 pub enum Design {

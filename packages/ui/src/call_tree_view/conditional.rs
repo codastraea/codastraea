@@ -6,7 +6,7 @@ use serpent_automation_frontend::{
 };
 use silkenweb::{
     clone,
-    prelude::{html::span, Mutable, ParentElement},
+    prelude::{html::span, Mutable, TextParentElement},
 };
 use silkenweb_ui5::tree;
 
