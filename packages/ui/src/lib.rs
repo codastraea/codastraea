@@ -9,9 +9,6 @@ use silkenweb::{
 };
 use thread_view::ThreadView;
 
-mod call_tree_view;
-mod source_view;
-mod thread_view;
 macro_rules! css_module {
     ($path:literal) => {
         silkenweb::css!(
@@ -22,6 +19,9 @@ macro_rules! css_module {
     };
 }
 
+mod call_tree_view;
+mod source_view;
+mod thread_view;
 mod css {
     css_module!("shared");
 
