@@ -2,7 +2,9 @@ use silkenweb::{StrAttribute, Value};
 use strum::{AsRefStr, Display};
 
 pub mod button;
+pub mod dropdown;
 pub mod icon;
+pub mod menu;
 pub mod tab;
 pub mod tree;
 
