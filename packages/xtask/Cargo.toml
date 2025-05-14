@@ -5,4 +5,5 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+clap.workspace = true
 xtask-base.workspace = true
