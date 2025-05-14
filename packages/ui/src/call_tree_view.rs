@@ -110,7 +110,7 @@ fn internal_node(
         .item_children_signal(body)
         .observe_mutations(move |observer| {
             clone!(is_expanded);
-            observer.expanded(move |elem| is_expanded.set(elem.has_attribute("expanded")))
+            observer.expanded(move |elem, _prev| is_expanded.set(elem.has_attribute("expanded")))
         })
 }
 
