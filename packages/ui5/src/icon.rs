@@ -1,7 +1,4 @@
-use silkenweb::{
-    attribute::{AsAttribute, Attribute},
-    custom_html_element, StrAttribute, Value,
-};
+use silkenweb::{custom_html_element, StrAttribute, Value};
 use strum::AsRefStr;
 
 macro_rules! define_icons {
@@ -51,15 +48,11 @@ pub enum Mode {
     Interactive,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Value)]
+#[derive(Copy, Clone, Eq, PartialEq, StrAttribute, Value)]
 pub struct Name(&'static str);
 
-impl Attribute for Name {
-    type Text<'a> = &'static str;
-
-    fn text(&self) -> Option<Self::Text<'_>> {
-        Some(self.0)
+impl AsRef<str> for Name {
+    fn as_ref(&self) -> &str {
+        self.0
     }
 }
-
-impl AsAttribute<Name> for Name {}
