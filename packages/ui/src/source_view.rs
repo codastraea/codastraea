@@ -1,8 +1,8 @@
 use derive_more::Into;
 use serpent_automation_executor::syntax_tree::SrcSpan;
 use silkenweb::{
-    node::Node,
-    prelude::{html::div, Element},
+    elements::html::div,
+    node::{element::Element, Node},
     Value,
 };
 use wasm_bindgen::prelude::wasm_bindgen;

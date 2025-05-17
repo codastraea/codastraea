@@ -1,10 +1,9 @@
 use silkenweb::{
     custom_html_element,
     dom::{DefaultDom, Dom},
-    node::element::ElementHandle,
-    parent_element,
-    prelude::{Element, HtmlElement, ParentElement},
-    StrAttribute, Value,
+    elements::HtmlElement,
+    node::element::{Element, ElementHandle, ParentElement},
+    parent_element, StrAttribute, Value,
 };
 use strum::{AsRefStr, Display};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast};

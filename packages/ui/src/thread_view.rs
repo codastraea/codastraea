@@ -1,9 +1,12 @@
 use derive_more::Into;
+use futures_signals::signal::{Mutable, SignalExt};
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
 use serpent_automation_frontend::call_tree::CallTree;
 use silkenweb::{
-    node::{element::Element, Node},
-    prelude::{Mutable, ParentElement, SignalExt},
+    node::{
+        element::{Element, ParentElement},
+        Node,
+    },
     value::Sig,
     Value,
 };

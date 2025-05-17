@@ -2,8 +2,8 @@ use silkenweb::{
     clone, custom_html_element,
     dom::Dom,
     element_slot, element_slot_single,
-    elements::CustomEvent,
-    prelude::{Element, ElementEvents},
+    elements::{CustomEvent, ElementEvents},
+    node::element::Element,
     StrAttribute, Value,
 };
 use strum::AsRefStr;

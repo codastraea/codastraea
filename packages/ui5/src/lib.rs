@@ -1,4 +1,4 @@
-use silkenweb::{prelude::HtmlElement, value::RefSignalOrValue, StrAttribute, Value};
+use silkenweb::{elements::HtmlElement, value::RefSignalOrValue, StrAttribute, Value};
 use strum::AsRefStr;
 use wasm_bindgen::prelude::wasm_bindgen;
 

@@ -1,6 +1,6 @@
 use silkenweb::{
-    custom_html_element, dom::Dom, element_slot_single, elements::CustomEvent, prelude::Element,
-    text_parent_element, StrAttribute, Value,
+    custom_html_element, dom::Dom, element_slot_single, elements::CustomEvent,
+    node::element::Element, text_parent_element, StrAttribute, Value,
 };
 use strum::AsRefStr;
 use wasm_bindgen::UnwrapThrowExt;

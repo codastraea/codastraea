@@ -1,13 +1,10 @@
-use futures_signals::signal::SignalExt;
+use futures_signals::signal::{Mutable, SignalExt};
 use serpent_automation_executor::{run::RunState, syntax_tree::SrcSpan};
 use serpent_automation_frontend::{
     call_tree::{Body, Call, If},
     tree::{Expandable, TreeNode},
 };
-use silkenweb::{
-    clone,
-    prelude::{html::span, Mutable, TextParentElement},
-};
+use silkenweb::{clone, elements::html::span, node::element::TextParentElement};
 use silkenweb_ui5::tree;
 
 use super::{

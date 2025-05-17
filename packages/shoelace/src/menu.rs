@@ -1,5 +1,6 @@
 use silkenweb::{
-    clone, custom_html_element, dom::Dom, element_slot, prelude::ElementEvents, text_parent_element,
+    clone, custom_html_element, dom::Dom, element_slot, elements::ElementEvents,
+    text_parent_element,
 };
 
 custom_html_element!(

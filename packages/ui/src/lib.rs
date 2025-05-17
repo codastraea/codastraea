@@ -3,8 +3,8 @@ use std::rc::Rc;
 use serpent_automation_executor::library::Library;
 use serpent_automation_frontend::{call_tree::CallTree, ServerConnection};
 use silkenweb::{
-    node::element::ChildElement,
-    prelude::{html::div, Element, ParentElement},
+    elements::html::div,
+    node::element::{ChildElement, Element, ParentElement},
     task::spawn_local,
 };
 use thread_view::ThreadView;
