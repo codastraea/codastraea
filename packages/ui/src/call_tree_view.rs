@@ -80,16 +80,17 @@ fn call_node(
             body.signal().map({
                 clone!(actions);
                 move |expandable_body| {
-                    expandable_body.map({
-                        clone!(actions);
-                        move |body| body_statements(body.iter(), &actions).collect()
-                    })
+                    expandable_body.map(|body| body_statements(body.iter(), &actions).collect())
                 }
             }),
         )
     } else {
         leaf_node(node, NodeType::Function, actions)
     }
+}
+
+fn loading_node() -> tree::CustomItem {
+    tree::custom_item().content_child(span().text("Loading..."))
 }
 
 fn internal_node(
@@ -101,11 +102,7 @@ fn internal_node(
 ) -> tree::CustomItem {
     clone!(is_expanded);
     let body = loadable_body
-        .map(|body| {
-            body.unwrap_or(vec![
-                tree::custom_item().content_child(span().text("Loading..."))
-            ])
-        })
+        .map(|body| body.unwrap_or(vec![loading_node()]))
         .to_signal_vec();
     node_dropdown(node, node_type, actions)
         .item_children_signal(body)
