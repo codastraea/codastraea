@@ -99,6 +99,7 @@ fn internal_node(
     actions: &impl CallTreeActions,
     loadable_body: impl Signal<Item = Option<Vec<tree::CustomItem>>> + 'static,
 ) -> tree::CustomItem {
+    clone!(is_expanded);
     let body = loadable_body
         .map(|body| {
             body.unwrap_or(vec![
@@ -108,10 +109,7 @@ fn internal_node(
         .to_signal_vec();
     node_dropdown(node, node_type, actions)
         .item_children_signal(body)
-        .observe_mutations(move |observer| {
-            clone!(is_expanded);
-            observer.expanded(move |elem, _prev| is_expanded.set(elem.has_attribute("expanded")))
-        })
+        .on_toggle(move |expanded| is_expanded.set(expanded == tree::Toggle::Expand))
 }
 
 fn leaf_node(

@@ -1,4 +1,6 @@
-use silkenweb::{custom_html_element, element_slot, element_slot_single, StrAttribute, Value};
+use silkenweb::{
+    custom_html_element, dom::Dom, element_slot, element_slot_single, StrAttribute, Value,
+};
 use strum::AsRefStr;
 
 use crate::{button::Button, icon, Highlight, ItemType};
@@ -57,6 +59,27 @@ custom_html_element!(
 element_slot!(item, item, None::<String>, impl Child);
 element_slot_single!(item, delete_button, "deleteButton", Button);
 
+macro_rules! on_toggle {
+    ($typ:ident) => {
+        impl<D: Dom> $typ<D> {
+            /// Listen for the item being expanded/collapsed.
+            pub fn on_toggle(self, mut f: impl FnMut(Toggle) + 'static) -> Self {
+                self.observe_mutations(move |observer| {
+                    observer.expanded(move |elem, _prev| {
+                        f(if elem.has_attribute("expanded") {
+                            Toggle::Expand
+                        } else {
+                            Toggle::Collapse
+                        })
+                    })
+                })
+            }
+        }
+    };
+}
+
+on_toggle!(Item);
+
 custom_html_element!(
     custom_item("ui5-tree-item-custom") = {
         dom_type: web_sys::HtmlElement;
@@ -86,6 +109,14 @@ custom_html_element!(
 element_slot!(custom_item, item, None::<String>, impl Child);
 element_slot!(custom_item, content, "content");
 element_slot_single!(custom_item, delete_button, "deleteButton", Button);
+
+on_toggle!(CustomItem);
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum Toggle {
+    Expand,
+    Collapse,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, AsRefStr, StrAttribute, Value)]
 pub enum SelectionMode {
