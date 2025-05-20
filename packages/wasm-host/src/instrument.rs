@@ -13,7 +13,6 @@ pub fn instrument(wasm_module: &[u8]) -> Vec<u8> {
             ExportItem::Global(id) => Some(*id),
             _ => None,
         },
-        ExportItem::Global,
     );
 
     export_private_items(
@@ -24,7 +23,6 @@ pub fn instrument(wasm_module: &[u8]) -> Vec<u8> {
             ExportItem::Memory(id) => Some(*id),
             _ => None,
         },
-        ExportItem::Memory,
     );
 
     module.emit_wasm()
@@ -35,13 +33,14 @@ fn export_private_items<T>(
     type_name: &str,
     ids: impl Iterator<Item = Id<T>>,
     filter: impl Fn(&ExportItem) -> Option<Id<T>>,
-    to_export: impl Fn(Id<T>) -> ExportItem,
-) {
+) where
+    Id<T>: Into<ExportItem>,
+{
     let already_exported: HashSet<Id<T>> = exports.iter().filter_map(|e| filter(&e.item)).collect();
     let private_ids = ids.filter(move |id| !already_exported.contains(id));
 
     for id in private_ids {
         let name = format!("__enhedron_{type_name}_{}", id.index());
-        exports.add(&name, to_export(id));
+        exports.add(&name, id.into());
     }
 }
