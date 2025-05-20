@@ -9,7 +9,7 @@ pub fn instrument(wasm_module: &[u8]) -> Result<Vec<u8>> {
     export_internal_items(
         &mut module.exports,
         "global",
-        module.globals.iter().map(Global::id),
+        module.globals.iter().filter(|g| g.mutable).map(Global::id),
         |item| match item {
             ExportItem::Global(id) => Some(id),
             _ => None,
@@ -33,11 +33,11 @@ fn export_internal_items<T>(
     exports: &mut ModuleExports,
     type_name: &str,
     ids: impl Iterator<Item = Id<T>>,
-    filter: impl Fn(ExportItem) -> Option<Id<T>>,
+    into_id: impl Fn(ExportItem) -> Option<Id<T>>,
 ) where
     Id<T>: Into<ExportItem>,
 {
-    let exported_ids: HashSet<Id<T>> = exports.iter().filter_map(|e| filter(e.item)).collect();
+    let exported_ids: HashSet<Id<T>> = exports.iter().filter_map(|e| into_id(e.item)).collect();
     let internal_ids = ids.filter(|id| !exported_ids.contains(id));
 
     for id in internal_ids {
