@@ -1,0 +1,8 @@
+[package]
+name = "serpent-automation-wasm-guest"
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
