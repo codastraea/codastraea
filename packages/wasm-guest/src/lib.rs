@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 // "env" is the default anyway.
 #[link(wasm_import_module = "env")]
 unsafe extern "C" {
