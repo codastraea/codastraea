@@ -1,10 +1,13 @@
-use anyhow::Result;
+use std::{fs, path::Path};
+
+use anyhow::{Context, Result};
 use wasmtime::{Caller, Engine, Linker, Module, Store};
 
 use crate::instrument::instrument;
 
-pub fn run(wat: &[u8]) -> Result<()> {
-    let wat = instrument(wat)?;
+pub fn run(wat_file: &Path) -> Result<()> {
+    let wat = fs::read(wat_file).context(format!("Opening file {wat_file:?}"))?;
+    let wat = instrument(&wat)?;
     let engine = Engine::default();
     let module = Module::new(&engine, wat)?;
 

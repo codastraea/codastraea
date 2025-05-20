@@ -5,6 +5,7 @@ use walrus::{ExportItem, Global, Memory, Module, ModuleExports, Result};
 
 pub fn instrument(wasm_module: &[u8]) -> Result<Vec<u8>> {
     let mut module = Module::from_buffer(wasm_module)?;
+
     export_private_items(
         &mut module.exports,
         "global",

@@ -1,6 +1,6 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use serpent_automation_wasm_host::runtime;
 
@@ -12,7 +12,5 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
-    let wat = fs::read(&args.file).context(format!("Opening file {:?}", args.file))?;
-    runtime::run(&wat)
+    runtime::run(&Args::parse().file)
 }
