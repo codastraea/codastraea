@@ -4,7 +4,7 @@ use wasmtime::{Caller, Engine, Linker, Module, Store};
 use crate::instrument::instrument;
 
 pub fn run(wat: &[u8]) -> Result<()> {
-    let wat = instrument(wat);
+    let wat = instrument(wat)?;
     let engine = Engine::default();
     let module = Module::new(&engine, wat)?;
 
