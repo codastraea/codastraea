@@ -1,4 +1,5 @@
 #![cfg(target_arch = "wasm32")]
+use std::ptr;
 
 // "env" is the default anyway.
 #[link(wasm_import_module = "env")]
@@ -8,10 +9,7 @@ unsafe extern "C" {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn hello() {
-    // Release mode builds will optimize this out, so use debug mode to see it's
-    // effects
-    let _ = Box::leak(Box::new(1));
     unsafe {
-        host_func(1);
+        host_func(ptr::from_ref(Box::leak(Box::new(1))) as i32);
     }
 }
