@@ -10,7 +10,7 @@ pub fn instrument(wasm_module: &[u8]) -> Vec<u8> {
         "global",
         module.globals.iter().map(Global::id),
         |item| match item {
-            ExportItem::Global(id) => Some(*id),
+            ExportItem::Global(id) => Some(id),
             _ => None,
         },
     );
@@ -20,7 +20,7 @@ pub fn instrument(wasm_module: &[u8]) -> Vec<u8> {
         "memory",
         module.memories.iter().map(Memory::id),
         |item| match item {
-            ExportItem::Memory(id) => Some(*id),
+            ExportItem::Memory(id) => Some(id),
             _ => None,
         },
     );
@@ -32,11 +32,11 @@ fn export_private_items<T>(
     exports: &mut ModuleExports,
     type_name: &str,
     ids: impl Iterator<Item = Id<T>>,
-    filter: impl Fn(&ExportItem) -> Option<Id<T>>,
+    filter: impl Fn(ExportItem) -> Option<Id<T>>,
 ) where
     Id<T>: Into<ExportItem>,
 {
-    let already_exported: HashSet<Id<T>> = exports.iter().filter_map(|e| filter(&e.item)).collect();
+    let already_exported: HashSet<Id<T>> = exports.iter().filter_map(|e| filter(e.item)).collect();
     let private_ids = ids.filter(move |id| !already_exported.contains(id));
 
     for id in private_ids {
