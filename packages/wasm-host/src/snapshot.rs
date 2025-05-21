@@ -5,7 +5,11 @@ use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use wasmtime::{AsContextMut, Instance, Val};
 
 pub struct Snapshot {
-    globals: Vec<(String, Val)>,
+    global_i32s: Vec<(String, i32)>,
+    global_i64s: Vec<(String, i64)>,
+    global_f32s: Vec<(String, f32)>,
+    global_f64s: Vec<(String, f64)>,
+    global_v128s: Vec<(String, u128)>,
     memories: Vec<(String, SnapshotMemory)>,
 }
 
@@ -17,7 +21,11 @@ struct SnapshotMemory {
 
 impl Snapshot {
     pub fn new(ctx: &mut impl AsContextMut, instance: &Instance) -> Result<Self> {
-        let mut globals = Vec::new();
+        let mut global_i32s = Vec::new();
+        let mut global_i64s = Vec::new();
+        let mut global_f32s = Vec::new();
+        let mut global_f64s = Vec::new();
+        let mut global_v128s = Vec::new();
         let mut memories = Vec::new();
 
         let exported_names: Vec<String> = instance
@@ -28,7 +36,18 @@ impl Snapshot {
         for name in exported_names {
             if let Some(global) = instance.get_global(&mut *ctx, &name) {
                 if global.ty(&mut *ctx).mutability().is_var() {
-                    globals.push((name.clone(), global.get(&mut *ctx)));
+                    let name = name.clone();
+
+                    match global.get(&mut *ctx) {
+                        Val::I32(val) => global_i32s.push((name, val)),
+                        Val::I64(val) => global_i64s.push((name, val)),
+                        Val::F32(val) => global_f32s.push((name, f32::from_bits(val))),
+                        Val::F64(val) => global_f64s.push((name, f64::from_bits(val))),
+                        Val::V128(val) => global_v128s.push((name, val.as_u128())),
+                        Val::FuncRef(_) => bail!("Mutable `FuncRef`s are not supported"),
+                        Val::ExternRef(_) => bail!("Mutable `ExternRef`s are not supported"),
+                        Val::AnyRef(_) => bail!("Mutable `AnyRef`s are not supported"),
+                    }
                 }
             }
 
@@ -48,17 +67,38 @@ impl Snapshot {
             }
         }
 
-        Ok(Self { globals, memories })
+        Ok(Self {
+            global_i32s,
+            global_i64s,
+            global_f32s,
+            global_f64s,
+            global_v128s,
+            memories,
+        })
     }
 
-    pub fn restore(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
-        for (name, value) in &self.globals {
+    fn set_globals<T: Copy + Into<Val>>(
+        ctx: &mut impl AsContextMut,
+        instance: &Instance,
+        values: &[(String, T)],
+    ) -> Result<()> {
+        for (name, value) in values {
             instance
                 .get_global(&mut *ctx, name)
                 .with_context(|| format!("Couldn't find global '{name}"))?
-                .set(&mut *ctx, *value)
+                .set(&mut *ctx, (*value).into())
                 .with_context(|| format!("Couldn't set global '{name}"))?;
         }
+
+        Ok(())
+    }
+
+    pub fn restore(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
+        Self::set_globals(ctx, instance, &self.global_i32s)?;
+        Self::set_globals(ctx, instance, &self.global_i64s)?;
+        Self::set_globals(ctx, instance, &self.global_f32s)?;
+        Self::set_globals(ctx, instance, &self.global_f64s)?;
+        Self::set_globals(ctx, instance, &self.global_v128s)?;
 
         for (name, snapshot) in &self.memories {
             let memory = instance
