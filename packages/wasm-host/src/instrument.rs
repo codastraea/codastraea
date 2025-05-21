@@ -26,6 +26,9 @@ pub fn instrument(wasm_module: &[u8]) -> Result<Vec<u8>> {
         },
     );
 
+    // TODO: Functions?
+    // TODO: Tables?
+
     Ok(module.emit_wasm())
 }
 
@@ -43,5 +46,16 @@ fn export_internal_items<T>(
     for id in internal_ids {
         let name = format!("__enhedron_{type_name}_{}", id.index());
         exports.add(&name, id.into());
+    }
+}
+
+/// This exists solely to produce a compile error if something is added to
+/// `ExportItem`.
+fn _export_items(item: ExportItem) {
+    match item {
+        ExportItem::Function(_) => {}
+        ExportItem::Table(_) => {}
+        ExportItem::Memory(_) => {}
+        ExportItem::Global(_) => {}
     }
 }

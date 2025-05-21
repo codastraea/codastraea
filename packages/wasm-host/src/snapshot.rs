@@ -34,6 +34,7 @@ impl Snapshot {
             .collect();
 
         for name in exported_names {
+            // TODO: What else needs snapshotting?
             if let Some(global) = instance.get_global(&mut *ctx, &name) {
                 if global.ty(&mut *ctx).mutability().is_var() {
                     let name = name.clone();
