@@ -4,6 +4,14 @@ use anyhow::{bail, Context, Result};
 use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use wasmtime::{AsContextMut, Instance, Val};
 
+// # Support for `Func`s
+//
+// We'd need to export every function during instrumentation, then build a map
+// of raw pointer to function name + any host functions. Then we can look at
+// global function values and determine the function name. We'd then store the
+// function name as the globals value. To restore a snapshot, we'd need a map of
+// name to raw pointer.
+
 pub struct Snapshot {
     global_i32s: Vec<(String, i32)>,
     global_i64s: Vec<(String, i64)>,
