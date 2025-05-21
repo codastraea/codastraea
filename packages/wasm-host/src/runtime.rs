@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use wasmtime::{Caller, Engine, Extern, Linker, Module, Store};
 
 use crate::instrument::instrument;
@@ -12,7 +12,7 @@ pub fn run(wat_file: &Path) -> Result<()> {
     let module = Module::new(&engine, wat)?;
 
     let Some(module_export) = module.get_export_index("memory") else {
-        anyhow::bail!("failed to find `memory` export in module");
+        bail!("failed to find `memory` export in module");
     };
     let mut linker = Linker::new(&engine);
     linker.func_wrap(
@@ -22,7 +22,7 @@ pub fn run(wat_file: &Path) -> Result<()> {
             let data: usize = data.try_into().unwrap();
             let len: usize = len.try_into().unwrap();
             let Some(Extern::Memory(memory)) = caller.get_module_export(&module_export) else {
-                anyhow::bail!("failed to find host memory")
+                bail!("failed to find host memory")
             };
             let data = memory
                 .data(&caller)
