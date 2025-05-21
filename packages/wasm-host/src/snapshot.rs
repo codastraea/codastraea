@@ -1,4 +1,7 @@
+use std::io::{Read, Write};
+
 use anyhow::{bail, Context, Result};
+use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use wasmtime::{AsContextMut, Instance, Val};
 
 pub struct Snapshot {
@@ -8,11 +11,12 @@ pub struct Snapshot {
 
 struct SnapshotMemory {
     page_size: u64,
+    uncompressed_len: usize,
     data: Vec<u8>,
 }
 
 impl Snapshot {
-    pub fn new(ctx: &mut impl AsContextMut, instance: &Instance) -> Self {
+    pub fn new(ctx: &mut impl AsContextMut, instance: &Instance) -> Result<Self> {
         let mut globals = Vec::new();
         let mut memories = Vec::new();
 
@@ -29,17 +33,22 @@ impl Snapshot {
             }
 
             if let Some(memory) = instance.get_memory(&mut *ctx, &name) {
+                let mut compressor = DeflateEncoder::new(Vec::new(), Compression::default());
+                compressor.write_all(memory.data(&mut *ctx))?;
+                let uncompressed_len = memory.data_size(&mut *ctx);
+                let data = compressor.finish()?;
                 memories.push((
                     name,
                     SnapshotMemory {
                         page_size: memory.page_size(&mut *ctx),
-                        data: memory.data(&mut *ctx).to_vec(),
+                        uncompressed_len,
+                        data,
                     },
                 ))
             }
         }
 
-        Self { globals, memories }
+        Ok(Self { globals, memories })
     }
 
     pub fn restore(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
@@ -64,7 +73,7 @@ impl Snapshot {
                 );
             }
 
-            let snapshot_bytes: u64 = snapshot.data.len().try_into()?;
+            let snapshot_bytes: u64 = snapshot.uncompressed_len.try_into()?;
             let required_pages = snapshot_bytes.div_ceil(page_size);
             assert!(required_pages * page_size >= snapshot_bytes);
 
@@ -73,6 +82,9 @@ impl Snapshot {
             if current_pages < required_pages {
                 memory.grow(&mut *ctx, required_pages - current_pages)?;
             }
+
+            let mut decoder = DeflateDecoder::new(&snapshot.data[..]);
+            decoder.read_exact(&mut memory.data_mut(&mut *ctx)[..snapshot.uncompressed_len])?;
 
             memory.write(&mut *ctx, 0, &snapshot.data)?;
         }

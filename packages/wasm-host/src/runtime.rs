@@ -13,7 +13,7 @@ pub fn run(wat_file: &Path) -> Result<()> {
         println!("Checkpoint (pre snapshot)");
     }
 
-    let snapshot = container.snapshot();
+    let snapshot = container.snapshot()?;
 
     while container.run()? {
         println!("Checkpoint (post snapshot)");
@@ -80,7 +80,7 @@ impl Container {
         })
     }
 
-    pub fn snapshot(&mut self) -> Snapshot {
+    pub fn snapshot(&mut self) -> Result<Snapshot> {
         Snapshot::new(&mut self.store, &self.instance)
     }
 
