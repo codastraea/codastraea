@@ -3,7 +3,7 @@ use std::{fs, path::Path};
 use anyhow::{bail, Context, Result};
 use wasmtime::{Caller, Engine, Extern, Linker, Module, Store};
 
-use crate::instrument::instrument;
+use crate::{instrument::instrument, snapshot::Snapshot};
 
 pub fn run(wat_file: &Path) -> Result<()> {
     let wat = fs::read(wat_file).context(format!("Opening file {wat_file:?}"))?;
@@ -42,8 +42,21 @@ pub fn run(wat_file: &Path) -> Result<()> {
     let run = instance.get_typed_func::<(), i32>(&mut store, "__enhedron_run")?;
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
+    for _i in 0..5 {
+        run.call(&mut store, ())?;
+        println!("Checkpoint (pre snapshot)");
+    }
+
+    let snapshot = Snapshot::new(&mut store, &instance);
+    
     while run.call(&mut store, ())? != 0 {
-        println!("Checkpoint");
+        println!("Checkpoint (post snapshot)");
+    }
+
+    snapshot.restore(&mut store, &instance)?;
+
+    while run.call(&mut store, ())? != 0 {
+        println!("Checkpoint (post restore)");
     }
 
     println!(
