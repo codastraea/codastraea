@@ -11,28 +11,20 @@ pub fn run(wat_file: &Path) -> Result<()> {
     let engine = Engine::default();
     let module = Module::new(&engine, wat)?;
 
-    // Host functionality can be arbitrary Rust functions and is provided
-    // to guests through a `Linker`.
     let mut linker = Linker::new(&engine);
-    linker.func_wrap("env", "host_func", |caller: Caller<'_, u32>, param: i32| {
-        println!("Got {} from WebAssembly", param);
-        println!("my host state is: {}", caller.data());
+    linker.func_wrap("env", "host_func", |_caller: Caller<'_, ()>, param: i32| {
+        println!("Got {param} from WebAssembly");
     })?;
 
-    // All wasm objects operate within the context of a "store". Each
-    // `Store` has a type parameter to store host-specific data, which in
-    // this case we're using `4` for.
-    let mut store: Store<u32> = Store::new(&engine, 4);
+    let mut store = Store::new(&engine, ());
 
-    // Instantiation of a module requires specifying its imports and then
-    // afterwards we can fetch exports by name, as well as asserting the
-    // type signature of the function with `get_typed_func`.
     let instance = linker.instantiate(&mut store, &module)?;
-    let hello = instance.get_typed_func::<(), ()>(&mut store, "hello")?;
+    let run = instance.get_typed_func::<(), i32>(&mut store, "__enhedron_run")?;
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
-    // And finally we can call the wasm!
-    hello.call(&mut store, ())?;
+    while run.call(&mut store, ())? != 0 {
+        println!("Checkpoint");
+    }
 
     println!(
         "Memory: data_size = {}, len = {}",

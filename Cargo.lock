@@ -3108,6 +3108,9 @@ dependencies = [
 [[package]]
 name = "serpent-automation-wasm-guest"
 version = "0.0.0"
+dependencies = [
+ "crossbeam",
+]
 
 [[package]]
 name = "serpent-automation-wasm-host"

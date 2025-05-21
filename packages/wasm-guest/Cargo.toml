@@ -6,3 +6,4 @@ edition.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
+crossbeam.workspace = true
