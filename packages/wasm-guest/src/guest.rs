@@ -2,14 +2,18 @@ use std::{cell::RefCell, future::Future, pin::Pin};
 
 use crate::{
     checkpoint::{checkpoint, until_checkpoint},
-    host_func,
+    log,
 };
 
 async fn counter() {
+    log("Starting counting");
+
     for i in 0..10 {
-        unsafe { host_func(i) };
+        log(format!("{i}"));
         checkpoint().await;
     }
+
+    log("Finished counting");
 }
 
 #[no_mangle]
