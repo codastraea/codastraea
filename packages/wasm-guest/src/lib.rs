@@ -1,3 +1,5 @@
+// MacOS and Windows seem to disallow unresolved symbols
+#![cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub mod checkpoint;
 pub mod guest;
 
