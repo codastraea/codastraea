@@ -11,8 +11,11 @@ use wasmtime::{AsContextMut, Instance, Val};
 // We'd need to export every function during instrumentation, then build a map
 // of raw pointer to function name + any host functions. Then we can look at
 // global function values and determine the function name. We'd then store the
-// function name as the globals value. To restore a snapshot, we'd need a map of
-// name to raw pointer.
+// function name as the globals value. Raw pointer values change rom run to run.
+// Maybe they represent the address of the compiled funcion on the host? Anyway,
+// we definitely can't just store the raw pointer.
+//
+// To restore a snapshot, we'd need a map of name to raw pointer.
 //
 // ## ExternRef/AnyRef
 //
