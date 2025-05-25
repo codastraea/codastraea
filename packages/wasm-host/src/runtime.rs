@@ -91,6 +91,14 @@ impl Container {
             },
         )?;
 
+        // TODO: Search for unresolved externals with names like these
+        linker.func_wrap("env", "__enhedron_condition_begin", || {
+            println!("Condition begin")
+        })?;
+        linker.func_wrap("env", "__enhedron_condition_end", || {
+            println!("Condition end")
+        })?;
+
         let mut store = Store::new(&engine, ());
         let instance = linker.instantiate(&mut store, &module)?;
         let init_counter = instance.get_typed_func(&mut store, "__enhedron_init_counter")?;

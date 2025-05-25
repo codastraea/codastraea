@@ -6,6 +6,7 @@ unsafe extern "C" {
     fn __enhedron_end_fn(module: u32, module_len: u32, name: u32, name_len: u32);
 }
 
+#[doc(hidden)]
 pub struct TraceFn {
     module: &'static str,
     name: &'static str,
@@ -36,6 +37,26 @@ impl Drop for TraceFn {
                 wasm_len(self.name),
             )
         }
+    }
+}
+
+type CTrace = unsafe extern "C" fn();
+
+#[doc(hidden)]
+pub struct Trace {
+    end: CTrace,
+}
+
+impl Drop for Trace {
+    fn drop(&mut self) {
+        unsafe { (self.end)() }
+    }
+}
+
+impl Trace {
+    pub fn new(begin: CTrace, end: CTrace) -> Self {
+        unsafe { begin() }
+        Self { end }
     }
 }
 

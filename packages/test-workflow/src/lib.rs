@@ -7,8 +7,17 @@ use serpent_automation_wasm_guest::{
     log, workflow,
 };
 
+fn condition() -> bool {
+    log("condition");
+    true
+}
+
 #[workflow]
 async fn counter() {
+    if condition() {
+        log("true");
+    }
+
     for i in 0..10 {
         log(format!("{i}"));
         checkpoint().await;
