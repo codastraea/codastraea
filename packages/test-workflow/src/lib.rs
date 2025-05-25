@@ -1,3 +1,6 @@
+// TODO: MacOS and Windows don't like undefined symbols with the default linker
+// flags. Need to find a better way around this.
+#![cfg(not(any(target_os = "macos", target_os = "windows")))]
 use std::{cell::RefCell, future::Future, pin::Pin};
 
 use serpent_automation_wasm_guest::{
