@@ -1,4 +1,12 @@
-pub mod checkpoint;
+use std::{cell::RefCell, future::Future, pin::Pin};
+
+use checkpoint::until_checkpoint;
+
+mod checkpoint;
+
+pub use checkpoint::checkpoint;
+#[doc(hidden)]
+pub use inventory;
 pub use serpent_automation_wasm_guest_proc_macro::workflow;
 
 unsafe extern "C" {
@@ -40,11 +48,11 @@ impl Drop for TraceFn {
     }
 }
 
-type CTrace = unsafe extern "C" fn();
+type CFunction = unsafe extern "C" fn();
 
 #[doc(hidden)]
 pub struct Trace {
-    end: CTrace,
+    end: CFunction,
 }
 
 impl Drop for Trace {
@@ -54,7 +62,7 @@ impl Drop for Trace {
 }
 
 impl Trace {
-    pub fn new(begin: CTrace, end: CTrace) -> Self {
+    pub fn new(begin: CFunction, end: CFunction) -> Self {
         unsafe { begin() }
         Self { end }
     }
@@ -75,4 +83,59 @@ fn wasm_ptr(s: &str) -> u32 {
 
 fn wasm_len(s: &str) -> u32 {
     s.len().try_into().unwrap()
+}
+
+#[doc(hidden)]
+pub struct Workflow {
+    module: &'static str,
+    name: &'static str,
+    init: CFunction,
+}
+
+inventory::collect!(Workflow);
+
+impl Workflow {
+    pub const fn new(module: &'static str, name: &'static str, init: CFunction) -> Self {
+        Self { module, name, init }
+    }
+}
+
+#[no_mangle]
+extern "C" fn __enhedron_register_workflows() -> u32 {
+    log("Registering workflows");
+
+    WORKFLOWS.with_borrow_mut(|workflows| {
+        for Workflow { module, name, init } in inventory::iter::<Workflow> {
+            log(format!("Registering workflow {module}::{name}"));
+            workflows.push(*init);
+        }
+
+        workflows.len().try_into().unwrap()
+    })
+}
+
+#[no_mangle]
+extern "C" fn __enhedron_init_workflow(index: u32) {
+    let index = usize::try_from(index).unwrap();
+    WORKFLOWS.with_borrow(|workflows| unsafe { workflows[index]() })
+}
+
+#[doc(hidden)]
+pub fn set_fn(f: impl Future<Output = ()> + 'static) {
+    MAIN.set(Box::pin(f));
+}
+
+#[no_mangle]
+extern "C" fn __enhedron_run() -> i32 {
+    MAIN.with_borrow_mut(|f| match until_checkpoint(f.as_mut()) {
+        Some(_) => 0,
+        None => 1,
+    })
+}
+
+async fn noop() {}
+
+thread_local! {
+    static MAIN: RefCell<Pin<Box<dyn Future<Output = ()>>>> = RefCell::new(Box::pin(noop()));
+    static WORKFLOWS: RefCell<Vec<CFunction>> = const { RefCell::new(Vec::new()) };
 }

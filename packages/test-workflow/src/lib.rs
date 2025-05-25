@@ -2,10 +2,7 @@
 // flags. Need to find a better way around this.
 #![cfg(not(any(target_os = "macos", target_os = "windows")))]
 
-use serpent_automation_wasm_guest::{
-    checkpoint::{checkpoint, set_fn},
-    log, workflow,
-};
+use serpent_automation_wasm_guest::{checkpoint, log, workflow};
 
 fn condition() -> bool {
     log("condition");
@@ -22,9 +19,4 @@ async fn counter() {
         log(format!("{i}"));
         checkpoint().await;
     }
-}
-
-#[no_mangle]
-pub extern "C" fn __enhedron_init_counter() {
-    set_fn(counter());
 }

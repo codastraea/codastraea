@@ -1,8 +1,9 @@
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{
     fold::{fold_block, Fold},
-    parse_macro_input, parse_quote, ExprIf, ItemFn,
+    parse_macro_input, parse_quote, ExprIf, Ident, ItemFn,
 };
 
 #[proc_macro_attribute]
@@ -13,16 +14,33 @@ pub fn workflow(_attr: TokenStream, item: TokenStream) -> TokenStream {
         sig,
         block,
     } = parse_macro_input!(item);
-    let name = &sig.ident.to_string();
+    let ident = &sig.ident;
+    let name = &ident.to_string();
+    let exported_ident = Ident::new(&format!("__enhedron_ident_{name}"), Span::call_site());
     let block = fold_block(&mut Instrument, *block);
 
     quote! {
         #(#attrs)*
         #vis #sig {
-            let __enhedron_trace = ::serpent_automation_wasm_guest::TraceFn::new(::std::module_path!(), &#name);
+            let __enhedron_trace = ::serpent_automation_wasm_guest::TraceFn::new(
+                ::std::module_path!(),
+                #name
+            );
 
             #block
         }
+
+        extern "C" fn #exported_ident() {
+            ::serpent_automation_wasm_guest::set_fn(#ident());
+        }
+
+        ::serpent_automation_wasm_guest::inventory::submit!(
+            ::serpent_automation_wasm_guest::Workflow::new(
+                ::std::module_path!(),
+                #name,
+                #exported_ident
+            )
+        );
     }
     .into()
 }

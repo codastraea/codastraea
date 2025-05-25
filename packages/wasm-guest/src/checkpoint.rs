@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::Cell,
     future::Future,
     pin::Pin,
     sync::Arc,
@@ -37,7 +37,7 @@ impl Wake for ThreadWaker {
     }
 }
 
-fn until_checkpoint<T>(mut fut: Pin<&mut (impl Future<Output = T> + ?Sized)>) -> Option<T> {
+pub fn until_checkpoint<T>(mut fut: Pin<&mut (impl Future<Output = T> + ?Sized)>) -> Option<T> {
     // Use a `Parker` instance rather than global `thread::park/unpark`, so no one
     // else can steal our `unpark`s and they don't get confused with recursive
     // `block_on` `unpark`s.
@@ -62,21 +62,6 @@ fn until_checkpoint<T>(mut fut: Pin<&mut (impl Future<Output = T> + ?Sized)>) ->
     }
 }
 
-pub fn set_fn(f: impl Future<Output = ()> + 'static) {
-    MAIN.set(Box::pin(f));
-}
-
-#[no_mangle]
-extern "C" fn __enhedron_run() -> i32 {
-    MAIN.with_borrow_mut(|f| match until_checkpoint(f.as_mut()) {
-        Some(_) => 0,
-        None => 1,
-    })
-}
-
-async fn noop() {}
-
 thread_local! {
     static AT_CHECKPOINT: Cell<bool> = const { Cell::new(false) };
-    static MAIN: RefCell<Pin<Box<dyn Future<Output = ()>>>> = RefCell::new(Box::pin(noop()));
 }

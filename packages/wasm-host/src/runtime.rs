@@ -8,7 +8,8 @@ use crate::{instrument::instrument, snapshot::Snapshot};
 pub fn run(wat_file: &Path) -> Result<()> {
     let mut container = Container::from_file(wat_file)?;
 
-    container.init_counter()?;
+    container.register_workflows()?;
+    container.init_workflow(0)?;
 
     for _i in 0..5 {
         container.run()?;
@@ -36,7 +37,8 @@ pub fn run(wat_file: &Path) -> Result<()> {
 pub struct Container {
     instance: Instance,
     store: Store<()>,
-    init_counter: TypedFunc<(), ()>,
+    init_workflow: TypedFunc<u32, ()>,
+    register_workflows: TypedFunc<(), u32>,
     run: TypedFunc<(), i32>,
 }
 
@@ -101,13 +103,16 @@ impl Container {
 
         let mut store = Store::new(&engine, ());
         let instance = linker.instantiate(&mut store, &module)?;
-        let init_counter = instance.get_typed_func(&mut store, "__enhedron_init_counter")?;
+        let register_workflows =
+            instance.get_typed_func(&mut store, "__enhedron_register_workflows")?;
+        let init_workflow = instance.get_typed_func(&mut store, "__enhedron_init_workflow")?;
         let run = instance.get_typed_func(&mut store, "__enhedron_run")?;
 
         Ok(Self {
             instance,
             store,
-            init_counter,
+            init_workflow,
+            register_workflows,
             run,
         })
     }
@@ -120,8 +125,15 @@ impl Container {
         snapshot.restore(&mut self.store, &self.instance)
     }
 
-    pub fn init_counter(&mut self) -> Result<()> {
-        self.init_counter.call(&mut self.store, ())
+    pub fn register_workflows(&mut self) -> Result<()> {
+        let workflow_count = self.register_workflows.call(&mut self.store, ())?;
+        println!("Registered {workflow_count} workflows");
+        Ok(())
+    }
+
+    pub fn init_workflow(&mut self, index: u32) -> Result<()> {
+        self.init_workflow.call(&mut self.store, index)?;
+        Ok(())
     }
 
     pub fn run(&mut self) -> Result<bool> {
