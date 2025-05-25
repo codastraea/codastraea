@@ -8,6 +8,8 @@ use crate::{instrument::instrument, snapshot::Snapshot};
 pub fn run(wat_file: &Path) -> Result<()> {
     let mut container = Container::from_file(wat_file)?;
 
+    container.init_counter()?;
+
     for _i in 0..5 {
         container.run()?;
         println!("Checkpoint (pre snapshot)");
@@ -34,6 +36,7 @@ pub fn run(wat_file: &Path) -> Result<()> {
 pub struct Container {
     instance: Instance,
     store: Store<()>,
+    init_counter: TypedFunc<(), ()>,
     run: TypedFunc<(), i32>,
 }
 
@@ -90,11 +93,13 @@ impl Container {
 
         let mut store = Store::new(&engine, ());
         let instance = linker.instantiate(&mut store, &module)?;
-        let run = instance.get_typed_func::<(), i32>(&mut store, "__enhedron_run")?;
+        let init_counter = instance.get_typed_func(&mut store, "__enhedron_init_counter")?;
+        let run = instance.get_typed_func(&mut store, "__enhedron_run")?;
 
         Ok(Self {
             instance,
             store,
+            init_counter,
             run,
         })
     }
@@ -105,6 +110,10 @@ impl Container {
 
     pub fn restore(&mut self, snapshot: &Snapshot) -> Result<()> {
         snapshot.restore(&mut self.store, &self.instance)
+    }
+
+    pub fn init_counter(&mut self) -> Result<()> {
+        self.init_counter.call(&mut self.store, ())
     }
 
     pub fn run(&mut self) -> Result<bool> {

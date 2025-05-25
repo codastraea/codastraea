@@ -1,10 +1,9 @@
 // TODO: MacOS and Windows don't like undefined symbols with the default linker
 // flags. Need to find a better way around this.
 #![cfg(not(any(target_os = "macos", target_os = "windows")))]
-use std::{cell::RefCell, future::Future, pin::Pin};
 
 use serpent_automation_wasm_guest::{
-    checkpoint::{checkpoint, until_checkpoint},
+    checkpoint::{checkpoint, set_fn},
     log, workflow,
 };
 
@@ -17,13 +16,6 @@ async fn counter() {
 }
 
 #[no_mangle]
-pub extern "C" fn __enhedron_run() -> i32 {
-    __ENHEDRON_MAIN.with_borrow_mut(|f| match until_checkpoint(f.as_mut()) {
-        Some(_) => 0,
-        None => 1,
-    })
-}
-
-thread_local! {
-    static __ENHEDRON_MAIN: RefCell<Pin<Box<dyn Future<Output = ()>>>> = RefCell::new(Box::pin(counter()));
+pub extern "C" fn __enhedron_init_counter() {
+    set_fn(counter());
 }
