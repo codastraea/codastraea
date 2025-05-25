@@ -11,6 +11,8 @@ authors = ["Simon Bourne <simonbourne@gmail.com>"]
 serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
+serpent-automation-wasm-guest = { path = "packages/wasm-guest" }
+serpent-automation-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
 silkenweb-ui5 = { path = "packages/ui5" }
 silkenweb-shoelace = { path = "packages/shoelace" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
@@ -49,3 +51,5 @@ walrus = "0.23.3"
 id-arena = "2.2.1"
 crossbeam = "0.8.4"
 flate2 = "1.1.1"
+quote = "1.0.40"
+syn = "2.0.101"

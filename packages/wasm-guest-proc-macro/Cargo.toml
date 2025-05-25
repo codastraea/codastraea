@@ -1,0 +1,10 @@
+[package]
+name = "serpent-automation-wasm-guest-proc-macro"
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }

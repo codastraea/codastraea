@@ -2,8 +2,6 @@
 name = "serpent-automation-wasm-guest"
 edition.workspace = true
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 crossbeam.workspace = true
+serpent-automation-wasm-guest-proc-macro.workspace = true

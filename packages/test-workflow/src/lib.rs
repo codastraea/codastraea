@@ -1,19 +1,16 @@
 use std::{cell::RefCell, future::Future, pin::Pin};
 
-use crate::{
+use serpent_automation_wasm_guest::{
     checkpoint::{checkpoint, until_checkpoint},
-    log,
+    log, workflow,
 };
 
+#[workflow]
 async fn counter() {
-    log("Starting counting");
-
     for i in 0..10 {
         log(format!("{i}"));
         checkpoint().await;
     }
-
-    log("Finished counting");
 }
 
 #[no_mangle]

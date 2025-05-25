@@ -1,0 +1,10 @@
+[package]
+name = "serpent-automation-test-workflow"
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+crossbeam.workspace = true
+serpent-automation-wasm-guest.workspace = true

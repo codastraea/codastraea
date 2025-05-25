@@ -3098,6 +3098,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "serpent-automation-test-workflow"
+version = "0.0.0"
+dependencies = [
+ "crossbeam",
+ "serpent-automation-wasm-guest",
+]
+
+[[package]]
 name = "serpent-automation-ui"
 version = "0.1.0"
 dependencies = [
@@ -3120,6 +3128,15 @@ name = "serpent-automation-wasm-guest"
 version = "0.0.0"
 dependencies = [
  "crossbeam",
+ "serpent-automation-wasm-guest-proc-macro",
+]
+
+[[package]]
+name = "serpent-automation-wasm-guest-proc-macro"
+version = "0.0.0"
+dependencies = [
+ "quote",
+ "syn 2.0.101",
 ]
 
 [[package]]
