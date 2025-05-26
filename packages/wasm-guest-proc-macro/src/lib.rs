@@ -116,7 +116,7 @@ impl Instrument {
                 expr => {
                     // We need to instrument child nodes, then trace
                     let expr = self.fold_expr(expr);
-                    self.traced("else", expr)
+                    Self::traced("else", expr)
                 }
             };
 
@@ -126,15 +126,15 @@ impl Instrument {
         ExprIf {
             attrs,
             if_token,
-            cond: Box::new(self.traced(condition_name, cond)),
-            then_branch: self.traced("then", then_branch),
+            cond: Box::new(Self::traced(condition_name, cond)),
+            then_branch: Self::traced("then", then_branch),
             else_branch,
         }
     }
 
-    fn traced<T: Spanned + ToTokens + Parse>(&self, trace_type: &str, item: T) -> T {
-        let begin = self.begin_ident(trace_type, &item);
-        let end = self.end_ident(trace_type, &item);
+    fn traced<T: Spanned + ToTokens + Parse>(trace_type: &str, item: T) -> T {
+        let begin = Self::begin_ident(trace_type, &item);
+        let end = Self::end_ident(trace_type, &item);
 
         parse_quote! {
             {
@@ -160,12 +160,11 @@ impl Instrument {
         }
     }
 
-    // TODO: Embed the path in these names
-    fn begin_ident(&self, name: &str, item: &impl Spanned) -> Ident {
+    fn begin_ident(name: &str, item: &impl Spanned) -> Ident {
         Ident::new(&format!("__enhedron_begin_{name}"), item.span())
     }
 
-    fn end_ident(&self, name: &str, item: &impl Spanned) -> Ident {
+    fn end_ident(name: &str, item: &impl Spanned) -> Ident {
         Ident::new(&format!("__enhedron_end_{name}"), item.span())
     }
 }

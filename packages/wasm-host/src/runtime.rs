@@ -93,19 +93,8 @@ impl Container {
             },
         )?;
 
-        let tracers = module
-            .imports()
-            .filter(|import| import.module() == LINKER_MODULE);
-        for tracer in tracers {
-            let name = tracer.name();
-
-            if let Some(trace_type) = name.strip_prefix("__enhedron_begin_") {
-                trace_event(&mut linker, name, trace_type, "begin")?;
-            }
-
-            if let Some(trace_type) = name.strip_prefix("__enhedron_end_") {
-                trace_event(&mut linker, name, trace_type, "end")?;
-            }
+        for event in ["if_condition", "else_if_condition", "then", "else"] {
+            define_trace_event(&mut linker, event)?;
         }
 
         let mut store = Store::new(&engine, ());
@@ -148,18 +137,14 @@ impl Container {
     }
 }
 
-fn trace_event(
-    linker: &mut Linker<()>,
-    name: &str,
-    trace_type: &str,
-    event_type: &str,
-) -> Result<(), anyhow::Error> {
-    let trace_type = trace_type.to_string();
-    let event_type = event_type.to_string();
+fn define_trace_event(linker: &mut Linker<()>, name: &'static str) -> Result<(), anyhow::Error> {
+    for event_type in ["begin", "end"] {
+        let ident = format!("__enhedron_{event_type}_{name}");
 
-    linker.func_wrap(LINKER_MODULE, name, move || {
-        println!("{trace_type} {event_type}")
-    })?;
+        linker.func_wrap(LINKER_MODULE, &ident, move || {
+            println!("{event_type} {name}")
+        })?;
+    }
 
     Ok(())
 }
