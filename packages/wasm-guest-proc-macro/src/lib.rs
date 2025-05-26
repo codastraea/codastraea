@@ -33,6 +33,7 @@ fn impl_workflow(
     let generics = &sig.generics;
 
     fold_errors([
+        ensure_free_function(&sig),
         ensure_async(&sig),
         ensure_no_parameters(generics, generics.const_params(), "`const`"),
         ensure_no_parameters(generics, generics.lifetimes(), "lifetime"),
@@ -64,13 +65,28 @@ fn impl_workflow(
     })
 }
 
-fn ensure_async(sig: &syn::Signature) -> std::result::Result<(), Error> {
+fn ensure_async(sig: &syn::Signature) -> Result<()> {
     sig.asyncness
         .ok_or(Error::new_spanned(
             sig,
             "`workflow` functions should be async",
         ))
         .map(|_| ())
+}
+
+/// Check this is a free function.
+///
+/// **Note**: From the perspective of proc macros, there's no way to distinguish
+/// a free function and a function in an `impl` block without a `self` parameter
+fn ensure_free_function(sig: &syn::Signature) -> Result<()> {
+    if sig.receiver().is_some() {
+        Err(Error::new_spanned(
+            sig,
+            "`workflow` functions should be free functions, not methods",
+        ))?;
+    }
+
+    Ok(())
 }
 
 fn ensure_no_parameters(item: impl ToTokens, mut iter: impl Iterator, name: &str) -> Result<()> {
