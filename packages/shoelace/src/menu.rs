@@ -22,7 +22,6 @@ custom_html_element!(
 
 text_parent_element!(item);
 
-// TODO: element_text_slot! macro.
 impl<D: Dom> Item<D> {
     pub fn on_select(self, mut handler: impl FnMut() + Clone + 'static) -> Self {
         self.on_click({
