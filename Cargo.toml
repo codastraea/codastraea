@@ -14,7 +14,6 @@ serpent-automation-executor = { path = "packages/executor" }
 serpent-automation-wasm-guest = { path = "packages/wasm-guest" }
 serpent-automation-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
 silkenweb-ui5 = { path = "packages/ui5" }
-silkenweb-shoelace = { path = "packages/shoelace" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",
 ] }

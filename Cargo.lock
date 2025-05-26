@@ -3287,16 +3287,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "silkenweb-shoelace"
-version = "0.1.0"
-dependencies = [
- "silkenweb",
- "strum",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "silkenweb-signals-ext"
 version = "0.9.0"
 source = "git+https://github.com/silkenweb/silkenweb#e7a835cc27a525a8b373199d7561793d8202a8cc"
