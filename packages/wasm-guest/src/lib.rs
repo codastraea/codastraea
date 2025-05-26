@@ -9,9 +9,22 @@ pub use checkpoint::checkpoint;
 pub use inventory;
 pub use serpent_automation_wasm_guest_proc_macro::workflow;
 
+#[cfg(target_family = "wasm")]
 unsafe extern "C" {
     fn __enhedron_fn_begin(module: u32, module_len: u32, name: u32, name_len: u32);
     fn __enhedron_fn_end(module: u32, module_len: u32, name: u32, name_len: u32);
+}
+
+#[cfg(not(target_family = "wasm"))]
+unsafe extern "C" fn __enhedron_fn_begin(
+    _module: u32,
+    _module_len: u32,
+    _name: u32,
+    _name_len: u32,
+) {
+}
+#[cfg(not(target_family = "wasm"))]
+unsafe extern "C" fn __enhedron_fn_end(_module: u32, _module_len: u32, _name: u32, _name_len: u32) {
 }
 
 #[doc(hidden)]
