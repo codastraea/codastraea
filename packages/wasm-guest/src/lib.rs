@@ -68,9 +68,13 @@ impl Trace {
     }
 }
 
+#[cfg(target_family = "wasm")]
 extern "C" {
     fn __enhedron_log(data: u32, len: u32);
 }
+
+#[cfg(not(target_family = "wasm"))]
+unsafe extern "C" fn __enhedron_log(_data: u32, _len: u32) {}
 
 pub fn log(s: impl AsRef<str>) {
     let s = s.as_ref();

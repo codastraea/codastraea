@@ -138,11 +138,17 @@ impl Instrument {
 
         parse_quote! {
             {
+                #[cfg(target_family = "wasm")]
                 extern "C" {
-                    // TODO: Embed the path in these names
                     fn #begin();
                     fn #end();
                 }
+
+                #[cfg(not(target_family = "wasm"))]
+                unsafe extern "C" fn #begin() {}
+
+                #[cfg(not(target_family = "wasm"))]
+                unsafe extern "C" fn #end() {}
 
                 let __enhedron_trace = ::serpent_automation_wasm_guest::Trace::new(
                     #begin,
@@ -154,6 +160,7 @@ impl Instrument {
         }
     }
 
+    // TODO: Embed the path in these names
     fn begin_ident(&self, name: &str, item: &impl Spanned) -> Ident {
         Ident::new(&format!("__enhedron_begin_{name}"), item.span())
     }
