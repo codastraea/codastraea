@@ -33,6 +33,7 @@ fn impl_workflow(
     let generics = &sig.generics;
 
     fold_errors([
+        ensure_async(&sig),
         ensure_no_parameters(generics, generics.const_params(), "`const`"),
         ensure_no_parameters(generics, generics.lifetimes(), "lifetime"),
         ensure_no_parameters(generics, generics.type_params(), "type"),
@@ -63,6 +64,26 @@ fn impl_workflow(
     })
 }
 
+fn ensure_async(sig: &syn::Signature) -> std::result::Result<(), Error> {
+    sig.asyncness
+        .ok_or(Error::new_spanned(
+            sig,
+            "`workflow` functions should be async",
+        ))
+        .map(|_| ())
+}
+
+fn ensure_no_parameters(item: impl ToTokens, mut iter: impl Iterator, name: &str) -> Result<()> {
+    if iter.next().is_some() {
+        Err(Error::new_spanned(
+            item,
+            format!("`workflow` functions should have no {name} parameters",),
+        ))?;
+    }
+
+    Ok(())
+}
+
 fn fold_errors(errors: impl IntoIterator<Item = Result<()>>) -> Result<()> {
     #[allow(clippy::manual_try_fold)]
     errors
@@ -74,17 +95,6 @@ fn fold_errors(errors: impl IntoIterator<Item = Result<()>>) -> Result<()> {
             }
             (r1, r2) => r2.and(r1),
         })
-}
-
-fn ensure_no_parameters(item: impl ToTokens, mut iter: impl Iterator, name: &str) -> Result<()> {
-    if iter.next().is_some() {
-        Err(Error::new_spanned(
-            item,
-            format!("There should be no {name} parameters",),
-        ))?;
-    }
-
-    Ok(())
 }
 
 struct Instrument;
