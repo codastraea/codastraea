@@ -1,7 +1,8 @@
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     fold::{fold_block, Fold},
+    parse::Parse,
     parse_macro_input, parse_quote,
     spanned::Spanned,
     Error, Expr, ExprIf, Generics, Ident, ItemFn, Result,
@@ -94,6 +95,12 @@ struct Instrument;
 
 impl Fold for Instrument {
     fn fold_expr_if(&mut self, i: ExprIf) -> ExprIf {
+        self.fold_expr_if_branch("if_condition", i)
+    }
+}
+
+impl Instrument {
+    fn fold_expr_if_branch(&mut self, condition_name: &str, i: ExprIf) -> ExprIf {
         let ExprIf {
             attrs,
             if_token,
@@ -104,24 +111,34 @@ impl Fold for Instrument {
 
         let cond = self.fold_expr(*cond);
         let then_branch = self.fold_block(then_branch);
-        let else_branch = else_branch
-            .map(|(else_token, else_expr)| (else_token, Box::new(self.fold_expr(*else_expr))));
+        let else_branch = else_branch.map(|(else_token, else_expr)| {
+            let else_expr = match *else_expr {
+                Expr::If(if_expr) => {
+                    // This will instrument all child nodes
+                    Expr::If(self.fold_expr_if_branch("else_if_condition", if_expr))
+                }
+                expr => {
+                    // We need to instrument child nodes, then trace
+                    let expr = self.fold_expr(expr);
+                    self.traced("else", expr)
+                }
+            };
+
+            (else_token, Box::new(else_expr))
+        });
 
         ExprIf {
             attrs,
             if_token,
-            cond: Box::new(self.traced_expr("condition", cond)),
-            then_branch,
+            cond: Box::new(self.traced(condition_name, cond)),
+            then_branch: self.traced("then", then_branch),
             else_branch,
         }
     }
-}
 
-impl Instrument {
-    fn traced_expr(&self, trace_type: &str, expr: Expr) -> Expr {
-        let span = expr.span();
-        let begin = Ident::new(&format!("__enhedron_begin_{trace_type}"), span);
-        let end = Ident::new(&format!("__enhedron_end_{trace_type}"), span);
+    fn traced<T: Spanned + ToTokens + Parse>(&self, trace_type: &str, item: T) -> T {
+        let begin = self.begin_ident(trace_type, &item);
+        let end = self.end_ident(trace_type, &item);
 
         parse_quote! {
             {
@@ -136,8 +153,16 @@ impl Instrument {
                     #end
                 );
 
-                (#expr)
+                (#item)
             }
         }
+    }
+
+    fn begin_ident(&self, name: &str, item: &impl Spanned) -> Ident {
+        Ident::new(&format!("__enhedron_begin_{name}"), item.span())
+    }
+
+    fn end_ident(&self, name: &str, item: &impl Spanned) -> Ident {
+        Ident::new(&format!("__enhedron_end_{name}"), item.span())
     }
 }

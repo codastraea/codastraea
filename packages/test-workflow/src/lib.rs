@@ -14,6 +14,10 @@ async fn counter() {
     if condition() {
         if !condition() {
             log("false");
+        } else if condition() {
+            log("else if")
+        } else {
+            log("else");
         }
 
         log("true");
