@@ -1,0 +1,5 @@
+error: `workflow` functions should have no type parameters
+ --> tests/macro_error/generic_parameters.rs:4:17
+  |
+4 | async fn counter<T>() {}
+  |                 ^^^

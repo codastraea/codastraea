@@ -26,11 +26,8 @@ fn impl_workflow(
         block,
     }: ItemFn,
 ) -> Result<TokenStream> {
-    let ident = &sig.ident;
-    let name = &ident.to_string();
-    let exported_ident = Ident::new(&format!("__enhedron_ident_{name}"), Span::call_site());
-    let block = fold_block(&mut Instrument, *block);
     let generics = &sig.generics;
+    let inputs = &sig.inputs;
 
     fold_errors([
         ensure_free_function(&sig),
@@ -38,7 +35,13 @@ fn impl_workflow(
         ensure_no_parameters(generics, generics.const_params(), "`const`"),
         ensure_no_parameters(generics, generics.lifetimes(), "lifetime"),
         ensure_no_parameters(generics, generics.type_params(), "type"),
+        ensure_no_parameters(inputs, inputs.iter(), "runtime"),
     ])?;
+
+    let ident = &sig.ident;
+    let name = &ident.to_string();
+    let exported_ident = Ident::new(&format!("__enhedron_ident_{name}"), Span::call_site());
+    let block = fold_block(&mut Instrument, *block);
 
     Ok(quote! {
         #(#attrs)*
@@ -79,9 +82,11 @@ fn ensure_async(sig: &syn::Signature) -> Result<()> {
 /// **Note**: From the perspective of proc macros, there's no way to distinguish
 /// a free function and a function in an `impl` block without a `self` parameter
 fn ensure_free_function(sig: &syn::Signature) -> Result<()> {
-    if sig.receiver().is_some() {
+    let receiver = &sig.receiver();
+
+    if receiver.is_some() {
         Err(Error::new_spanned(
-            sig,
+            receiver,
             "`workflow` functions should be free functions, not methods",
         ))?;
     }

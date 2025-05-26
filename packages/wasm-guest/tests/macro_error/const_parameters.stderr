@@ -1,0 +1,5 @@
+error: `workflow` functions should have no `const` parameters
+ --> tests/macro_error/const_parameters.rs:4:17
+  |
+4 | async fn counter<const X: usize>() {}
+  |                 ^^^^^^^^^^^^^^^^

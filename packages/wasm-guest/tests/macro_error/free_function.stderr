@@ -1,0 +1,11 @@
+error: `workflow` functions should have no runtime parameters
+ --> tests/macro_error/free_function.rs:7:22
+  |
+7 |     async fn counter(&self) {}
+  |                      ^^^^^
+
+error: `workflow` functions should be free functions, not methods
+ --> tests/macro_error/free_function.rs:7:22
+  |
+7 |     async fn counter(&self) {}
+  |                      ^^^^^

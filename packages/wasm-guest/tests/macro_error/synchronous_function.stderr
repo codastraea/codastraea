@@ -1,0 +1,5 @@
+error: `workflow` functions should be async
+ --> tests/macro_error/synchronous_function.rs:4:1
+  |
+4 | fn counter() {}
+  | ^^^^^^^^^^^^

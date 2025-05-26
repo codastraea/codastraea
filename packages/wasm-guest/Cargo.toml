@@ -4,5 +4,6 @@ edition.workspace = true
 
 [dependencies]
 crossbeam.workspace = true
-inventory.workspace=true
+inventory.workspace = true
 serpent-automation-wasm-guest-proc-macro.workspace = true
+trybuild.workspace = true

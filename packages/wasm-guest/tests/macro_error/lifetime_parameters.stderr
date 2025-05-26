@@ -1,0 +1,5 @@
+error: `workflow` functions should have no lifetime parameters
+ --> tests/macro_error/lifetime_parameters.rs:4:17
+  |
+4 | async fn counter<'a>() {}
+  |                 ^^^^

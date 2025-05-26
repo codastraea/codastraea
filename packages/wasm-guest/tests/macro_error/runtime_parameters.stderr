@@ -1,0 +1,5 @@
+error: `workflow` functions should have no runtime parameters
+ --> tests/macro_error/runtime_parameters.rs:4:18
+  |
+4 | async fn counter(x: usize) {}
+  |                  ^^^^^^^^

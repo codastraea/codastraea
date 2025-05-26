@@ -1,0 +1,35 @@
+error: `workflow` functions should have no runtime parameters
+ --> tests/macro_error/collect_errors.rs:7:39
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |                                       ^^^^^^^^^^^^^^^
+
+error: `workflow` functions should have no type parameters
+ --> tests/macro_error/collect_errors.rs:7:15
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |               ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `workflow` functions should have no lifetime parameters
+ --> tests/macro_error/collect_errors.rs:7:15
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |               ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `workflow` functions should have no `const` parameters
+ --> tests/macro_error/collect_errors.rs:7:15
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |               ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `workflow` functions should be async
+ --> tests/macro_error/collect_errors.rs:7:5
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `workflow` functions should be free functions, not methods
+ --> tests/macro_error/collect_errors.rs:7:39
+  |
+7 |     fn counter<'a, const X: usize, T>(&self, x: usize) {}
+  |                                       ^^^^^
