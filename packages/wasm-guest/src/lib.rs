@@ -9,9 +9,11 @@ pub use checkpoint::checkpoint;
 pub use inventory;
 /// Make a Workflow function.
 ///
-/// This instruments a function to trace any control flow, so it can be used as a workflow function.
-/// 
-/// *Workflow functions must be `async`, parameter-less and free (not inside an `impl` block).*
+/// This instruments a function to trace any control flow, so it can be used as
+/// a workflow function.
+///
+/// *Workflow functions must be `async`, parameter-less and free (not inside an
+/// `impl` block).*
 pub use serpent_automation_wasm_guest_proc_macro::workflow;
 
 #[cfg(target_family = "wasm")]
