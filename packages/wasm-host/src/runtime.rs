@@ -37,8 +37,8 @@ pub fn run(wat_file: &Path) -> Result<()> {
 pub struct Container {
     instance: Instance,
     store: Store<()>,
-    init_workflow: TypedFunc<u32, ()>,
     register_workflows: TypedFunc<(), u32>,
+    init_workflow: TypedFunc<u32, ()>,
     run: TypedFunc<(), i32>,
 }
 
@@ -49,52 +49,15 @@ impl Container {
         let engine = Engine::default();
         let module = Module::new(&engine, wat)?;
 
-        let Some(module_export) = module.get_export_index("memory") else {
+        let Some(memory_export) = module.get_export_index("memory") else {
             bail!("failed to find `memory` export in module");
         };
         let mut linker = Linker::new(&engine);
-        linker.func_wrap(
-            LINKER_MODULE,
-            "__enhedron_log",
-            move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
-                let message = read_string(memory(&module_export, &mut caller)?, data, len)?;
-                println!("Log: {message}");
-                Ok(())
-            },
-        )?;
-        linker.func_wrap(
-            LINKER_MODULE,
-            "__enhedron_fn_begin",
-            move |mut caller: Caller<'_, ()>,
-                  module_data: u32,
-                  module_len: u32,
-                  name_data: u32,
-                  name_len: u32| {
-                let memory = memory(&module_export, &mut caller)?;
-                let module = read_string(memory, module_data, module_len)?;
-                let name = read_string(memory, name_data, name_len)?;
-                println!("Begin {module}::{name}");
-                Ok(())
-            },
-        )?;
-        linker.func_wrap(
-            LINKER_MODULE,
-            "__enhedron_fn_end",
-            move |mut caller: Caller<'_, ()>,
-                  module_data: u32,
-                  module_len: u32,
-                  name_data: u32,
-                  name_len: u32| {
-                let memory = memory(&module_export, &mut caller)?;
-                let module = read_string(memory, module_data, module_len)?;
-                let name = read_string(memory, name_data, name_len)?;
-                println!("End {module}::{name}");
-                Ok(())
-            },
-        )?;
+        define_log(&mut linker, memory_export)?;
+        define_trace_fn(&mut linker, memory_export)?;
 
         for event in ["if_condition", "else_if_condition", "then", "else"] {
-            define_trace_event(&mut linker, event)?;
+            define_trace(&mut linker, event)?;
         }
 
         let mut store = Store::new(&engine, ());
@@ -107,8 +70,8 @@ impl Container {
         Ok(Self {
             instance,
             store,
-            init_workflow,
             register_workflows,
+            init_workflow,
             run,
         })
     }
@@ -137,23 +100,53 @@ impl Container {
     }
 }
 
-fn define_trace_event(linker: &mut Linker<()>, name: &'static str) -> Result<(), anyhow::Error> {
-    for event_type in ["begin", "end"] {
-        let ident = format!("__enhedron_{event_type}_{name}");
+fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
+    linker.func_wrap(
+        LINKER_MODULE,
+        "__enhedron_log",
+        move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
+            let message = read_string(memory(&mut caller, memory_export)?, data, len)?;
+            println!("Log: {message}");
+            Ok(())
+        },
+    )?;
+    Ok(())
+}
 
-        linker.func_wrap(LINKER_MODULE, &ident, move || {
-            println!("{event_type} {name}")
-        })?;
+fn define_trace_fn(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
+    for event in ["begin", "end"] {
+        linker.func_wrap(
+            LINKER_MODULE,
+            &format!("__enhedron_fn_{event}"),
+            move |mut caller: Caller<()>,
+                  module_data: u32,
+                  module_len: u32,
+                  name_data: u32,
+                  name_len: u32| {
+                let memory = memory(&mut caller, memory_export)?;
+                let module = read_string(memory, module_data, module_len)?;
+                let name = read_string(memory, name_data, name_len)?;
+                println!("{event} {module}::{name}");
+                Ok(())
+            },
+        )?;
     }
 
     Ok(())
 }
 
-fn memory<'a, 'b: 'a>(
-    module_export: &ModuleExport,
-    caller: &'a mut Caller<'b, ()>,
-) -> Result<&'a [u8]> {
-    let Some(Extern::Memory(memory)) = caller.get_module_export(module_export) else {
+fn define_trace(linker: &mut Linker<()>, name: &'static str) -> Result<()> {
+    for event in ["begin", "end"] {
+        let ident = format!("__enhedron_{event}_{name}");
+
+        linker.func_wrap(LINKER_MODULE, &ident, move || println!("{event} {name}"))?;
+    }
+
+    Ok(())
+}
+
+fn memory<'a>(caller: &'a mut Caller<()>, memory_export: ModuleExport) -> Result<&'a [u8]> {
+    let Some(Extern::Memory(memory)) = caller.get_module_export(&memory_export) else {
         bail!("failed to find host memory")
     };
     Ok(memory.data(caller))
