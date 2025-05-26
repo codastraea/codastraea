@@ -12,6 +12,10 @@ fn condition() -> bool {
 #[workflow]
 async fn counter() {
     if condition() {
+        if !condition() {
+            log("false");
+        }
+
         log("true");
     }
 

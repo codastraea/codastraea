@@ -2,7 +2,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     fold::{fold_block, Fold},
-    parse_macro_input, parse_quote, Error, ExprIf, Generics, Ident, ItemFn, Result,
+    parse_macro_input, parse_quote,
+    spanned::Spanned,
+    Error, Expr, ExprIf, Generics, Ident, ItemFn, Result,
 };
 
 #[proc_macro_attribute]
@@ -100,29 +102,42 @@ impl Fold for Instrument {
             else_branch,
         } = i;
 
-        let cond = parse_quote! {
-            {
-                extern "C" {
-                    // TODO: Embed the path in these names
-                    fn __enhedron_condition_begin();
-                    fn __enhedron_condition_end();
-                }
-
-                let __enhedron_trace = ::serpent_automation_wasm_guest::Trace::new(
-                    __enhedron_condition_begin,
-                    __enhedron_condition_end
-                );
-
-                (#cond)
-            }
-        };
+        let cond = self.fold_expr(*cond);
+        let then_branch = self.fold_block(then_branch);
+        let else_branch = else_branch
+            .map(|(else_token, else_expr)| (else_token, Box::new(self.fold_expr(*else_expr))));
 
         ExprIf {
             attrs,
             if_token,
-            cond,
+            cond: Box::new(self.traced_expr("condition", cond)),
             then_branch,
             else_branch,
+        }
+    }
+}
+
+impl Instrument {
+    fn traced_expr(&self, trace_type: &str, expr: Expr) -> Expr {
+        let span = expr.span();
+        let begin = Ident::new(&format!("__enhedron_{trace_type}_begin"), span);
+        let end = Ident::new(&format!("__enhedron_{trace_type}_end"), span);
+
+        parse_quote! {
+            {
+                extern "C" {
+                    // TODO: Embed the path in these names
+                    fn #begin();
+                    fn #end();
+                }
+
+                let __enhedron_trace = ::serpent_automation_wasm_guest::Trace::new(
+                    #begin,
+                    #end
+                );
+
+                (#expr)
+            }
         }
     }
 }
