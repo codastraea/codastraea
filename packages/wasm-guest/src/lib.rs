@@ -10,8 +10,8 @@ pub use inventory;
 pub use serpent_automation_wasm_guest_proc_macro::workflow;
 
 unsafe extern "C" {
-    fn __enhedron_begin_fn(module: u32, module_len: u32, name: u32, name_len: u32);
-    fn __enhedron_end_fn(module: u32, module_len: u32, name: u32, name_len: u32);
+    fn __enhedron_fn_begin(module: u32, module_len: u32, name: u32, name_len: u32);
+    fn __enhedron_fn_end(module: u32, module_len: u32, name: u32, name_len: u32);
 }
 
 #[doc(hidden)]
@@ -24,7 +24,7 @@ impl TraceFn {
     pub fn new(module: &'static str, name: &'static str) -> Self {
         let new = Self { module, name };
         unsafe {
-            __enhedron_begin_fn(
+            __enhedron_fn_begin(
                 wasm_ptr(new.module),
                 wasm_len(new.module),
                 wasm_ptr(new.name),
@@ -38,7 +38,7 @@ impl TraceFn {
 impl Drop for TraceFn {
     fn drop(&mut self) {
         unsafe {
-            __enhedron_end_fn(
+            __enhedron_fn_end(
                 wasm_ptr(self.module),
                 wasm_len(self.module),
                 wasm_ptr(self.name),

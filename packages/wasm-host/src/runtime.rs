@@ -49,21 +49,13 @@ impl Container {
         let engine = Engine::default();
         let module = Module::new(&engine, wat)?;
 
-        for import in module.imports() {
-            println!(
-                "Import: {}::{} (type: {:?})",
-                import.module(),
-                import.name(),
-                import.ty()
-            );
-        }
-
         let Some(module_export) = module.get_export_index("memory") else {
             bail!("failed to find `memory` export in module");
         };
+        let linker_module = "env";
         let mut linker = Linker::new(&engine);
         linker.func_wrap(
-            "env",
+            linker_module,
             "__enhedron_log",
             move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
                 let message = read_string(memory(&module_export, &mut caller)?, data, len)?;
@@ -72,8 +64,8 @@ impl Container {
             },
         )?;
         linker.func_wrap(
-            "env",
-            "__enhedron_begin_fn",
+            linker_module,
+            "__enhedron_fn_begin",
             move |mut caller: Caller<'_, ()>,
                   module_data: u32,
                   module_len: u32,
@@ -87,8 +79,8 @@ impl Container {
             },
         )?;
         linker.func_wrap(
-            "env",
-            "__enhedron_end_fn",
+            linker_module,
+            "__enhedron_fn_end",
             move |mut caller: Caller<'_, ()>,
                   module_data: u32,
                   module_len: u32,
@@ -102,13 +94,22 @@ impl Container {
             },
         )?;
 
-        // TODO: Search for unresolved externals with names like these
-        linker.func_wrap("env", "__enhedron_condition_begin", || {
-            println!("Condition begin")
-        })?;
-        linker.func_wrap("env", "__enhedron_condition_end", || {
-            println!("Condition end")
-        })?;
+        let tracers = module
+            .imports()
+            .filter(|import| import.module() == linker_module);
+        for tracer in tracers {
+            let name = tracer.name();
+
+            if let Some(trace_type) = name.strip_prefix("__enhedron_begin_") {
+                let trace_type = trace_type.to_string();
+                linker.func_wrap(linker_module, name, move || println!("{trace_type} begin"))?;
+            }
+
+            if let Some(trace_type) = name.strip_prefix("__enhedron_end_") {
+                let trace_type = trace_type.to_string();
+                linker.func_wrap(linker_module, name, move || println!("{trace_type} end"))?;
+            }
+        }
 
         let mut store = Store::new(&engine, ());
         let instance = linker.instantiate(&mut store, &module)?;

@@ -120,8 +120,8 @@ impl Fold for Instrument {
 impl Instrument {
     fn traced_expr(&self, trace_type: &str, expr: Expr) -> Expr {
         let span = expr.span();
-        let begin = Ident::new(&format!("__enhedron_{trace_type}_begin"), span);
-        let end = Ident::new(&format!("__enhedron_{trace_type}_end"), span);
+        let begin = Ident::new(&format!("__enhedron_begin_{trace_type}"), span);
+        let end = Ident::new(&format!("__enhedron_end_{trace_type}"), span);
 
         parse_quote! {
             {
