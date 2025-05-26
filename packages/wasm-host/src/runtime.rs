@@ -52,10 +52,9 @@ impl Container {
         let Some(module_export) = module.get_export_index("memory") else {
             bail!("failed to find `memory` export in module");
         };
-        let linker_module = "env";
         let mut linker = Linker::new(&engine);
         linker.func_wrap(
-            linker_module,
+            LINKER_MODULE,
             "__enhedron_log",
             move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
                 let message = read_string(memory(&module_export, &mut caller)?, data, len)?;
@@ -64,7 +63,7 @@ impl Container {
             },
         )?;
         linker.func_wrap(
-            linker_module,
+            LINKER_MODULE,
             "__enhedron_fn_begin",
             move |mut caller: Caller<'_, ()>,
                   module_data: u32,
@@ -79,7 +78,7 @@ impl Container {
             },
         )?;
         linker.func_wrap(
-            linker_module,
+            LINKER_MODULE,
             "__enhedron_fn_end",
             move |mut caller: Caller<'_, ()>,
                   module_data: u32,
@@ -96,18 +95,16 @@ impl Container {
 
         let tracers = module
             .imports()
-            .filter(|import| import.module() == linker_module);
+            .filter(|import| import.module() == LINKER_MODULE);
         for tracer in tracers {
             let name = tracer.name();
 
             if let Some(trace_type) = name.strip_prefix("__enhedron_begin_") {
-                let trace_type = trace_type.to_string();
-                linker.func_wrap(linker_module, name, move || println!("{trace_type} begin"))?;
+                trace_event(&mut linker, name, trace_type, "begin")?;
             }
 
             if let Some(trace_type) = name.strip_prefix("__enhedron_end_") {
-                let trace_type = trace_type.to_string();
-                linker.func_wrap(linker_module, name, move || println!("{trace_type} end"))?;
+                trace_event(&mut linker, name, trace_type, "end")?;
             }
         }
 
@@ -151,6 +148,22 @@ impl Container {
     }
 }
 
+fn trace_event(
+    linker: &mut Linker<()>,
+    name: &str,
+    trace_type: &str,
+    event_type: &str,
+) -> Result<(), anyhow::Error> {
+    let trace_type = trace_type.to_string();
+    let event_type = event_type.to_string();
+
+    linker.func_wrap(LINKER_MODULE, name, move || {
+        println!("{trace_type} {event_type}")
+    })?;
+
+    Ok(())
+}
+
 fn memory<'a, 'b: 'a>(
     module_export: &ModuleExport,
     caller: &'a mut Caller<'b, ()>,
@@ -172,3 +185,5 @@ fn read_string(memory: &[u8], data: u32, len: u32) -> Result<&str> {
     let string = str::from_utf8(data).context("Invalid utf-8")?;
     Ok(string)
 }
+
+const LINKER_MODULE: &str = "env";
