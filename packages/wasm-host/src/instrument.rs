@@ -1,13 +1,14 @@
 use std::collections::HashSet;
 
 use id_arena::Id;
-use walrus::{ExportItem, Function, Global, Memory, Module, ModuleExports, Result, Table};
+use walrus::{ExportItem, Global, Memory, Module, ModuleExports, Result};
 
 pub fn instrument(wasm_module: &[u8]) -> Result<Vec<u8>> {
     let mut module = Module::from_buffer(wasm_module)?;
+    let exports = &mut module.exports;
 
     export_internal_items(
-        &mut module.exports,
+        exports,
         "global",
         module.globals.iter().filter(|g| g.mutable).map(Global::id),
         |item| match item {
@@ -17,31 +18,11 @@ pub fn instrument(wasm_module: &[u8]) -> Result<Vec<u8>> {
     );
 
     export_internal_items(
-        &mut module.exports,
+        exports,
         "memory",
         module.memories.iter().map(Memory::id),
         |item| match item {
             ExportItem::Memory(id) => Some(id),
-            _ => None,
-        },
-    );
-
-    export_internal_items(
-        &mut module.exports,
-        "function",
-        module.funcs.iter().map(Function::id),
-        |item| match item {
-            ExportItem::Function(id) => Some(id),
-            _ => None,
-        },
-    );
-
-    export_internal_items(
-        &mut module.exports,
-        "table",
-        module.tables.iter().map(Table::id),
-        |item| match item {
-            ExportItem::Table(id) => Some(id),
             _ => None,
         },
     );
