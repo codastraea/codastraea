@@ -5,7 +5,7 @@ use syn::{
     parse::Parse,
     parse_macro_input, parse_quote,
     spanned::Spanned,
-    Error, Expr, ExprIf, Generics, Ident, ItemFn, Result,
+    Error, Expr, ExprIf, Ident, ItemFn, Result,
 };
 
 #[proc_macro_attribute]
@@ -33,9 +33,9 @@ fn impl_workflow(
     let generics = &sig.generics;
 
     fold_errors([
-        check_empty(generics, generics.const_params(), "`const`"),
-        check_empty(generics, generics.lifetimes(), "lifetime"),
-        check_empty(generics, generics.type_params(), "type"),
+        ensure_no_parameters(generics, generics.const_params(), "`const`"),
+        ensure_no_parameters(generics, generics.lifetimes(), "lifetime"),
+        ensure_no_parameters(generics, generics.type_params(), "type"),
     ])?;
 
     Ok(quote! {
@@ -76,19 +76,15 @@ fn fold_errors(errors: impl IntoIterator<Item = Result<()>>) -> Result<()> {
         })
 }
 
-fn check_empty<T>(
-    generics: &Generics,
-    mut iter: impl Iterator<Item = T>,
-    name: &str,
-) -> Result<()> {
+fn ensure_no_parameters(item: impl ToTokens, mut iter: impl Iterator, name: &str) -> Result<()> {
     if iter.next().is_some() {
         Err(Error::new_spanned(
-            generics,
+            item,
             format!("There should be no {name} parameters",),
-        ))
-    } else {
-        Ok(())
+        ))?;
     }
+
+    Ok(())
 }
 
 struct Instrument;
