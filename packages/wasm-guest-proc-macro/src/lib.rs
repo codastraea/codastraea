@@ -121,20 +121,20 @@ fn fold_errors(errors: impl IntoIterator<Item = Result<()>>) -> Result<()> {
 struct Instrument;
 
 impl Fold for Instrument {
-    fn fold_expr_if(&mut self, i: ExprIf) -> ExprIf {
-        self.fold_expr_if_branch("if_condition", i)
+    fn fold_expr_if(&mut self, expr_if: ExprIf) -> ExprIf {
+        self.fold_expr_if_branch("if_condition", expr_if)
     }
 }
 
 impl Instrument {
-    fn fold_expr_if_branch(&mut self, condition_name: &str, i: ExprIf) -> ExprIf {
+    fn fold_expr_if_branch(&mut self, condition_name: &str, expr_if: ExprIf) -> ExprIf {
         let ExprIf {
             attrs,
             if_token,
             cond,
             then_branch,
             else_branch,
-        } = i;
+        } = expr_if;
 
         let cond = self.fold_expr(*cond);
         let then_branch = self.fold_block(then_branch);
