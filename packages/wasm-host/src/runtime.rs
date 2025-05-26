@@ -49,6 +49,15 @@ impl Container {
         let engine = Engine::default();
         let module = Module::new(&engine, wat)?;
 
+        for import in module.imports() {
+            println!(
+                "Import: {}::{} (type: {:?})",
+                import.module(),
+                import.name(),
+                import.ty()
+            );
+        }
+
         let Some(module_export) = module.get_export_index("memory") else {
             bail!("failed to find `memory` export in module");
         };
