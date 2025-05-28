@@ -3164,6 +3164,7 @@ dependencies = [
  "anyhow",
  "clap",
  "flate2",
+ "futures-signals",
  "id-arena",
  "walrus",
  "wasmtime",

@@ -8,4 +8,5 @@ anyhow.workspace = true
 wasmtime.workspace = true
 walrus.workspace = true
 id-arena.workspace = true
-flate2.workspace=true
+flate2.workspace = true
+futures-signals.workspace = true
