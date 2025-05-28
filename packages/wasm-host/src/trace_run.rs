@@ -36,15 +36,15 @@ impl Thread {
     pub fn fn_end(&mut self, name: &str) {
         self.pop();
         let mut nodes = self.top_mut().nodes.lock_mut();
-        let index = nodes
+        let last_index = nodes
             .len()
             .checked_sub(1)
             .expect("There should be a node on the call stack");
-        let mut current = nodes[index].clone();
+        let mut current = nodes[last_index].clone();
         assert_eq!(&current.name, name);
         assert_eq!(current.status, Status::Running);
         current.status = Status::Complete;
-        nodes.set_cloned(index, current);
+        nodes.set_cloned(last_index, current);
     }
 
     fn top_mut(&mut self) -> &mut StackFrame {
