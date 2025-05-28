@@ -12,7 +12,8 @@ impl CallTree {
     }
 
     // TODO: pub(crate)
-    // TODO: Need to think about how to track the currently running node.
+    // TODO: Need to think about how to track the currently running node. Probably a
+    // clone of `children` + an index.
     pub fn fn_begin(&self, name: String) {
         self.children.lock_mut().push_cloned(Node {
             name,
@@ -35,6 +36,7 @@ impl CallTree {
 }
 
 struct Node {
+    // TODO: This should be `node_type : Call name | If | Condition | Then | Else | ...`
     name: String,
     status: Status,
     sub_tree: CallTree,
@@ -52,8 +54,9 @@ impl Clone for Node {
     }
 }
 
-// This could be more efficient, as we mostly update `status`. `name` never
-// changes, so only needs to be sent when we add a node.
+// TODO: This could be more efficient, as we mostly update `status`. `name`
+// never changes, so only needs to be sent when we add a node. Maybe it should
+// be an enum of `Status | All`
 #[derive(Clone)]
 pub struct NodeUpdate {
     pub name: String,
