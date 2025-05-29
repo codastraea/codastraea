@@ -8,7 +8,6 @@ edition.workspace = true
 [dependencies]
 silkenweb.workspace = true
 serpent-automation-frontend.workspace = true
-serpent-automation-executor.workspace = true
 serpent-automation-server-api.workspace = true
 silkenweb-ui5.workspace = true
 futures-signals.workspace = true

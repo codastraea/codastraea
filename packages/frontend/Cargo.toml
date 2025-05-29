@@ -6,7 +6,6 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-serpent-automation-executor = { workspace = true }
 serpent-automation-server-api = { workspace = true }
 arpy = { workspace = true }
 arpy-reqwasm = { workspace = true }

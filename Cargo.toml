@@ -10,7 +10,6 @@ authors = ["Simon Bourne <simonbourne@gmail.com>"]
 [workspace.dependencies]
 serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
-serpent-automation-executor = { path = "packages/executor" }
 serpent-automation-wasm-host = { path = "packages/wasm-host" }
 serpent-automation-wasm-guest = { path = "packages/wasm-guest" }
 serpent-automation-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }

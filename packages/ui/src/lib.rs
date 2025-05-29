@@ -1,11 +1,7 @@
-use std::rc::Rc;
-
-use serpent_automation_executor::library::Library;
-use serpent_automation_frontend::{call_tree::CallTree, ServerConnection};
+use serpent_automation_frontend::ServerConnection;
 use silkenweb::{
     elements::html::div,
     node::element::{ChildElement, Element, ParentElement},
-    task::spawn_local,
 };
 use thread_view::ThreadView;
 
@@ -20,7 +16,6 @@ macro_rules! css_module {
 }
 
 mod call_tree_view;
-mod call_tree_view2;
 mod source_view;
 mod thread_view;
 mod css {
@@ -29,17 +24,8 @@ mod css {
     pub use class::*;
 }
 
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
-
-pub fn app(library: &Rc<Library>) -> impl ChildElement {
-    let main_id = library.main_id().unwrap();
-    let (opened_nodes_sender, opened_nodes_receiver) = mpsc::unbounded_channel();
-    let call_tree = CallTree::root(main_id, library, opened_nodes_sender);
-
-    let opened_nodes_receiver = UnboundedReceiverStream::new(opened_nodes_receiver);
+pub fn app() -> impl ChildElement {
     let server_connection = ServerConnection::default();
-    spawn_local(call_tree.update_run_state(server_connection.clone(), opened_nodes_receiver));
 
     div()
         .class(css::full_height())

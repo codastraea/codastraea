@@ -1,5 +1,5 @@
 use derive_more::Into;
-use serpent_automation_executor::syntax_tree::SrcSpan;
+use serpent_automation_server_api::SrcSpan;
 use silkenweb::{
     elements::html::div,
     node::{element::Element, Node},

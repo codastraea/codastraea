@@ -1,18 +1,8 @@
 use arpy::{FnSubscription, MsgId};
 use futures_signals::signal_vec::VecDiff;
 use serde::{Deserialize, Serialize};
-use serpent_automation_executor::run::{CallStack, RunState};
 // TODO: Put `NodeUpdate` in this crate so frontend doesn't need to depend on
 // `wasm-host`
-
-#[derive(MsgId, Serialize, Deserialize, Debug)]
-pub struct ThreadSubscription;
-
-impl FnSubscription for ThreadSubscription {
-    type InitialReply = ();
-    type Item = (CallStack, RunState);
-    type Update = CallStack;
-}
 
 #[derive(MsgId, Serialize, Deserialize, Debug)]
 pub struct WatchCallTree {
@@ -55,4 +45,38 @@ pub enum NodeStatus {
     NotRun,
     Running,
     Complete,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct SrcSpan {
+    line: usize,
+    column: usize,
+    len: usize,
+}
+
+impl SrcSpan {
+    pub fn start() -> Self {
+        Self {
+            line: 1,
+            column: 1,
+            len: 0,
+        }
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn column(&self) -> usize {
+        self.column
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }

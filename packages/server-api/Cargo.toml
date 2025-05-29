@@ -8,5 +8,4 @@ edition = { workspace = true }
 [dependencies]
 arpy.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serpent-automation-executor.workspace = true
 futures-signals.workspace = true
