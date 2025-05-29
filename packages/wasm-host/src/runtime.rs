@@ -33,13 +33,14 @@ impl Container {
         let Some(memory_export) = module.get_export_index("memory") else {
             bail!("failed to find `memory` export in module");
         };
-        let mut linker = Linker::new(&engine);
-        define_log(&mut linker, memory_export)?;
+        let linker = &mut Linker::new(&engine);
+        define_log(linker, memory_export)?;
         let thread = Arc::new(Mutex::new(Thread::empty()));
-        define_trace_fn(&thread, &mut linker, memory_export)?;
+        define_trace_fn("begin", Thread::fn_begin, &thread, linker, memory_export)?;
+        define_trace_fn("end", Thread::fn_end, &thread, linker, memory_export)?;
 
         for event in ["if_condition", "else_if_condition", "then", "else"] {
-            define_trace(&mut linker, event)?;
+            define_trace(linker, event)?;
         }
 
         let mut store = Store::new(&engine, ());
@@ -101,30 +102,16 @@ fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()
 }
 
 fn define_trace_fn(
+    fn_name: &'static str,
+    f: impl Fn(&mut Thread, &str) + Send + Sync + 'static,
     thread: &Arc<Mutex<Thread>>,
     linker: &mut Linker<()>,
     memory_export: ModuleExport,
 ) -> Result<()> {
-    linker.func_wrap(LINKER_MODULE, "__enhedron_fn_begin", {
-        clone!(thread);
-        // TODO: Factor some of this out
-        move |mut caller: Caller<()>,
-              module_data: u32,
-              module_len: u32,
-              name_data: u32,
-              name_len: u32| {
-            let memory = memory(&mut caller, memory_export)?;
-            let module = read_string(memory, module_data, module_len)?;
-            let name = read_string(memory, name_data, name_len)?;
-            println!("begin {module}::{name}");
-            thread.lock().unwrap().fn_begin(name.to_owned());
-            Ok(())
-        }
-    })?;
     clone!(thread);
     linker.func_wrap(
         LINKER_MODULE,
-        "__enhedron_fn_end",
+        &format!("__enhedron_fn_{fn_name}"),
         move |mut caller: Caller<()>,
               module_data: u32,
               module_len: u32,
@@ -133,8 +120,8 @@ fn define_trace_fn(
             let memory = memory(&mut caller, memory_export)?;
             let module = read_string(memory, module_data, module_len)?;
             let name = read_string(memory, name_data, name_len)?;
-            println!("end {module}::{name}");
-            thread.lock().unwrap().fn_end(name);
+            println!("{fn_name} {module}::{name}");
+            f(&mut thread.lock().unwrap(), name);
             Ok(())
         },
     )?;

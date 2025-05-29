@@ -20,11 +20,11 @@ impl Thread {
         &self.call_tree
     }
 
-    pub fn fn_begin(&mut self, name: String) {
+    pub fn fn_begin(&mut self, name: &str) {
         let top = self.top_mut();
         let new_top = MutableVec::new();
         top.nodes.lock_mut().push_cloned(Node {
-            name,
+            name: name.to_string(),
             status: NodeStatus::Running,
             sub_tree: CallTree {
                 children: new_top.clone(),

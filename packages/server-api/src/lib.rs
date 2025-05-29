@@ -1,8 +1,6 @@
 use arpy::{FnSubscription, MsgId};
 use futures_signals::signal_vec::VecDiff;
 use serde::{Deserialize, Serialize};
-// TODO: Put `NodeUpdate` in this crate so frontend doesn't need to depend on
-// `wasm-host`
 
 #[derive(MsgId, Serialize, Deserialize, Debug)]
 pub struct WatchCallTree {
