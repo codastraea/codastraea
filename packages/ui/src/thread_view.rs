@@ -14,8 +14,7 @@ use silkenweb_ui5::tab;
 use strum::AsRefStr;
 
 use crate::{
-    call_tree_view::CallTreeActions,
-    call_tree_view2::CallTreeView,
+    call_tree_view2::{CallTreeActions, CallTreeView},
     css,
     source_view::{Editor, SourceView},
 };
@@ -28,12 +27,11 @@ impl ThreadView {
         let editor = Editor::new(CODE);
         let tab_group = tab::container().class(css::full_height());
         let selected_tab = Mutable::new(Tab::CallTree);
-        // TODO: Use actions
-        let _actions = Actions {
+        let actions = Actions {
             selected_tab: selected_tab.clone(),
             editor: editor.clone(),
         };
-        let call_tree_view = CallTreeView::new(server);
+        let call_tree_view = CallTreeView::new(server, actions);
         let tab = |tab: Tab| {
             tab::content().text(tab.as_ref()).selected(Sig(selected_tab
                 .signal()

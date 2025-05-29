@@ -87,6 +87,7 @@ impl CallTree {
     }
 
     pub fn watch(&self, path: &[usize]) -> impl SignalVec<Item = NodeUpdate> {
+        // TODO: What if `path` doesn't exist?
         if let Some((head, tail)) = path.split_first() {
             self.children.lock_ref()[*head].sub_tree.watch(tail)
         } else {

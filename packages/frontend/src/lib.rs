@@ -71,7 +71,7 @@ impl ServerConnection {
     pub fn watch(
         &self,
         watch_call_tree: WatchCallTree,
-    ) -> impl SignalVec<Item = NodeUpdate> + 'static {
+    ) -> impl SignalVec<Item = NodeUpdate> + use<> + 'static {
         let nodes = MutableVec::new();
 
         spawn_local({

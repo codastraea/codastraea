@@ -713,6 +713,14 @@ pub struct SrcSpan {
 }
 
 impl SrcSpan {
+    pub fn start() -> Self {
+        Self {
+            line: 1,
+            column: 1,
+            len: 0,
+        }
+    }
+
     pub fn from_span(span: &Span) -> Self {
         Self {
             line: span.location_line() as usize,
