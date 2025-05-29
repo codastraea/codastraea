@@ -3011,7 +3011,6 @@ dependencies = [
  "clonelet",
  "futures",
  "futures-signals",
- "gloo-console",
  "gloo-net 0.1.0",
  "once_cell",
  "serpent-automation-server-api",
@@ -3036,7 +3035,6 @@ dependencies = [
  "serpent-automation-server-api",
  "serpent-automation-wasm-host",
  "tokio",
- "tokio-stream",
 ]
 
 [[package]]

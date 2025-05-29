@@ -11,7 +11,6 @@ arpy-server = { workspace = true }
 arpy-axum = { workspace = true }
 axum = { workspace = true, features = ["ws", "headers"] }
 tokio = { workspace = true, features = ["full"] }
-tokio-stream = { workspace = true, features = ["sync"] }
 serde = { workspace = true, features = ["derive"] }
 serpent-automation-server-api = { workspace = true }
 serpent-automation-wasm-host = { workspace = true }

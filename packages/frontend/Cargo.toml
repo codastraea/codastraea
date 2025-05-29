@@ -11,7 +11,6 @@ arpy = { workspace = true }
 arpy-reqwasm = { workspace = true }
 gloo-net = { workspace = true }
 futures = { workspace = true }
-gloo-console = { workspace = true }
 futures-signals = { workspace = true }
 once_cell = { workspace = true }
 tokio = { workspace = true }
