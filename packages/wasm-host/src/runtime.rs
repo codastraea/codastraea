@@ -5,35 +5,6 @@ use wasmtime::{Caller, Engine, Extern, Instance, Linker, Module, ModuleExport, S
 
 use crate::{instrument::instrument, snapshot::Snapshot};
 
-pub fn run(wat_file: &Path) -> Result<()> {
-    let mut container = Container::from_file(wat_file)?;
-
-    container.register_workflows()?;
-    container.init_workflow(0)?;
-
-    for _i in 0..5 {
-        container.run()?;
-        println!("Checkpoint (pre snapshot)");
-    }
-
-    let snapshot = container.snapshot()?;
-
-    while container.run()? {
-        println!("Checkpoint (post snapshot)");
-    }
-
-    drop(container);
-
-    let mut container = Container::from_file(wat_file)?;
-    container.restore(&snapshot)?;
-
-    while container.run()? {
-        println!("Checkpoint (post restore)");
-    }
-
-    Ok(())
-}
-
 pub struct Container {
     instance: Instance,
     store: Store<()>,
