@@ -11,12 +11,14 @@ authors = ["Simon Bourne <simonbourne@gmail.com>"]
 serpent-automation-frontend = { path = "packages/frontend" }
 serpent-automation-server-api = { path = "packages/server-api" }
 serpent-automation-executor = { path = "packages/executor" }
+serpent-automation-wasm-host = { path = "packages/wasm-host" }
 serpent-automation-wasm-guest = { path = "packages/wasm-guest" }
 serpent-automation-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
 silkenweb-ui5 = { path = "packages/ui5" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",
 ] }
+silkenweb-task.git = "https://github.com/silkenweb/silkenweb"
 arpy = "0.2.0"
 arpy-server = "0.2.0"
 arpy-axum = "0.2.0"

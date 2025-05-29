@@ -15,5 +15,9 @@ tokio-stream = { workspace = true, features = ["sync"] }
 serde = { workspace = true, features = ["derive"] }
 serpent-automation-executor = { workspace = true }
 serpent-automation-server-api = { workspace = true }
+serpent-automation-wasm-host = { workspace = true }
 futures = { workspace = true }
 clonelet = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+anyhow.workspace = true
+futures-signals.workspace = true

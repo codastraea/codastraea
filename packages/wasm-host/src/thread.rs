@@ -1,4 +1,5 @@
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
+use serpent_automation_server_api::{NodeStatus, NodeUpdate};
 
 pub struct Thread {
     call_tree: CallTree,
@@ -24,7 +25,7 @@ impl Thread {
         let new_top = MutableVec::new();
         top.nodes.lock_mut().push_cloned(Node {
             name,
-            status: Status::Running,
+            status: NodeStatus::Running,
             sub_tree: CallTree {
                 children: new_top.clone(),
             },
@@ -41,9 +42,11 @@ impl Thread {
             .checked_sub(1)
             .expect("There should be a node on the call stack");
         let mut current = nodes[last_index].clone();
+        // TODO: These should be errors rather than asserts. We shouldn't crash with
+        // dodgy wasm.
         assert_eq!(&current.name, name);
-        assert_eq!(current.status, Status::Running);
-        current.status = Status::Complete;
+        assert_eq!(current.status, NodeStatus::Running);
+        current.status = NodeStatus::Complete;
         nodes.set_cloned(last_index, current);
     }
 
@@ -71,6 +74,7 @@ impl StackFrame {
     }
 }
 
+#[derive(Clone)]
 pub struct CallTree {
     children: MutableVec<Node>,
 }
@@ -89,44 +93,16 @@ impl CallTree {
             self.children.signal_vec_cloned().map(|node| NodeUpdate {
                 name: node.name,
                 status: node.status,
-                has_children: node.sub_tree.children.lock_ref().is_empty(),
+                has_children: !node.sub_tree.children.lock_ref().is_empty(),
             })
         }
     }
 }
 
+#[derive(Clone)]
 struct Node {
     // TODO: This should be `node_type : Call name | If | Condition | Then | Else | ...`
     name: String,
-    status: Status,
+    status: NodeStatus,
     sub_tree: CallTree,
-}
-
-impl Clone for Node {
-    fn clone(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            status: self.status,
-            sub_tree: CallTree {
-                children: self.sub_tree.children.clone(),
-            },
-        }
-    }
-}
-
-// TODO: This could be more efficient, as we mostly update `status`. `name`
-// never changes, so only needs to be sent when we add a node. Maybe it should
-// be an enum of `Status | All`
-#[derive(Clone)]
-pub struct NodeUpdate {
-    pub name: String,
-    pub status: Status,
-    pub has_children: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Status {
-    NotRun,
-    Running,
-    Complete,
 }

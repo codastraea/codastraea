@@ -20,6 +20,7 @@ macro_rules! css_module {
 }
 
 mod call_tree_view;
+mod call_tree_view2;
 mod source_view;
 mod thread_view;
 mod css {
@@ -37,9 +38,10 @@ pub fn app(library: &Rc<Library>) -> impl ChildElement {
     let call_tree = CallTree::root(main_id, library, opened_nodes_sender);
 
     let opened_nodes_receiver = UnboundedReceiverStream::new(opened_nodes_receiver);
-    spawn_local(call_tree.update_run_state(ServerConnection::default(), opened_nodes_receiver));
+    let server_connection = ServerConnection::default();
+    spawn_local(call_tree.update_run_state(server_connection.clone(), opened_nodes_receiver));
 
     div()
         .class(css::full_height())
-        .child(ThreadView::new(call_tree))
+        .child(ThreadView::new(server_connection))
 }

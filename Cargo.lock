@@ -3082,6 +3082,7 @@ dependencies = [
  "once_cell",
  "serpent-automation-executor",
  "serpent-automation-server-api",
+ "silkenweb-task",
  "tokio",
  "tokio-stream",
 ]
@@ -3090,15 +3091,19 @@ dependencies = [
 name = "serpent-automation-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "arpy",
  "arpy-axum",
  "arpy-server",
  "axum",
+ "clap",
  "clonelet",
  "futures",
+ "futures-signals",
  "serde",
  "serpent-automation-executor",
  "serpent-automation-server-api",
+ "serpent-automation-wasm-host",
  "tokio",
  "tokio-stream",
 ]
@@ -3108,6 +3113,7 @@ name = "serpent-automation-server-api"
 version = "0.1.0"
 dependencies = [
  "arpy",
+ "futures-signals",
  "serde",
  "serpent-automation-executor",
 ]
@@ -3129,6 +3135,7 @@ dependencies = [
  "gloo-console",
  "serpent-automation-executor",
  "serpent-automation-frontend",
+ "serpent-automation-server-api",
  "silkenweb",
  "silkenweb-ui5",
  "strum",
@@ -3163,9 +3170,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
+ "clonelet",
  "flate2",
  "futures-signals",
  "id-arena",
+ "serpent-automation-server-api",
  "walrus",
  "wasmtime",
 ]

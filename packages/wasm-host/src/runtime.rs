@@ -1,9 +1,18 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::{bail, Context, Result};
+use clonelet::clone;
 use wasmtime::{Caller, Engine, Extern, Instance, Linker, Module, ModuleExport, Store, TypedFunc};
 
-use crate::{instrument::instrument, snapshot::Snapshot};
+use crate::{
+    instrument::instrument,
+    snapshot::Snapshot,
+    thread::{CallTree, Thread},
+};
 
 pub struct Container {
     instance: Instance,
@@ -11,6 +20,7 @@ pub struct Container {
     register_workflows: TypedFunc<(), u32>,
     init_workflow: TypedFunc<u32, ()>,
     run: TypedFunc<(), i32>,
+    thread: Arc<Mutex<Thread>>,
 }
 
 impl Container {
@@ -25,7 +35,8 @@ impl Container {
         };
         let mut linker = Linker::new(&engine);
         define_log(&mut linker, memory_export)?;
-        define_trace_fn(&mut linker, memory_export)?;
+        let thread = Arc::new(Mutex::new(Thread::empty()));
+        define_trace_fn(&thread, &mut linker, memory_export)?;
 
         for event in ["if_condition", "else_if_condition", "then", "else"] {
             define_trace(&mut linker, event)?;
@@ -44,6 +55,7 @@ impl Container {
             register_workflows,
             init_workflow,
             run,
+            thread,
         })
     }
 
@@ -69,6 +81,10 @@ impl Container {
     pub fn run(&mut self) -> Result<bool> {
         Ok(self.run.call(&mut self.store, ())? != 0)
     }
+
+    pub fn call_tree(&self) -> CallTree {
+        self.thread.lock().unwrap().call_tree().clone()
+    }
 }
 
 fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
@@ -84,24 +100,44 @@ fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()
     Ok(())
 }
 
-fn define_trace_fn(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
-    for event in ["begin", "end"] {
-        linker.func_wrap(
-            LINKER_MODULE,
-            &format!("__enhedron_fn_{event}"),
-            move |mut caller: Caller<()>,
-                  module_data: u32,
-                  module_len: u32,
-                  name_data: u32,
-                  name_len: u32| {
-                let memory = memory(&mut caller, memory_export)?;
-                let module = read_string(memory, module_data, module_len)?;
-                let name = read_string(memory, name_data, name_len)?;
-                println!("{event} {module}::{name}");
-                Ok(())
-            },
-        )?;
-    }
+fn define_trace_fn(
+    thread: &Arc<Mutex<Thread>>,
+    linker: &mut Linker<()>,
+    memory_export: ModuleExport,
+) -> Result<()> {
+    linker.func_wrap(LINKER_MODULE, "__enhedron_fn_begin", {
+        clone!(thread);
+        // TODO: Factor some of this out
+        move |mut caller: Caller<()>,
+              module_data: u32,
+              module_len: u32,
+              name_data: u32,
+              name_len: u32| {
+            let memory = memory(&mut caller, memory_export)?;
+            let module = read_string(memory, module_data, module_len)?;
+            let name = read_string(memory, name_data, name_len)?;
+            println!("begin {module}::{name}");
+            thread.lock().unwrap().fn_begin(name.to_owned());
+            Ok(())
+        }
+    })?;
+    clone!(thread);
+    linker.func_wrap(
+        LINKER_MODULE,
+        "__enhedron_fn_end",
+        move |mut caller: Caller<()>,
+              module_data: u32,
+              module_len: u32,
+              name_data: u32,
+              name_len: u32| {
+            let memory = memory(&mut caller, memory_export)?;
+            let module = read_string(memory, module_data, module_len)?;
+            let name = read_string(memory, name_data, name_len)?;
+            println!("end {module}::{name}");
+            thread.lock().unwrap().fn_end(name);
+            Ok(())
+        },
+    )?;
 
     Ok(())
 }

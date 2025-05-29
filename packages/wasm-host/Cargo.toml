@@ -3,10 +3,14 @@ name = "serpent-automation-wasm-host"
 edition.workspace = true
 
 [dependencies]
-clap = { workspace = true, features = ["derive"] }
 anyhow.workspace = true
 wasmtime.workspace = true
 walrus.workspace = true
 id-arena.workspace = true
 flate2.workspace = true
 futures-signals.workspace = true
+clonelet.workspace = true
+serpent-automation-server-api.workspace = true
+
+[dev-dependencies]
+clap = { workspace = true, features = ["derive"] }

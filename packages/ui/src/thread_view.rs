@@ -1,7 +1,7 @@
 use derive_more::Into;
 use futures_signals::signal::{Mutable, SignalExt};
 use serpent_automation_executor::{syntax_tree::SrcSpan, CODE};
-use serpent_automation_frontend::call_tree::CallTree;
+use serpent_automation_frontend::ServerConnection;
 use silkenweb::{
     node::{
         element::{Element, ParentElement},
@@ -14,7 +14,8 @@ use silkenweb_ui5::tab;
 use strum::AsRefStr;
 
 use crate::{
-    call_tree_view::{CallTreeActions, CallTreeView},
+    call_tree_view::CallTreeActions,
+    call_tree_view2::CallTreeView,
     css,
     source_view::{Editor, SourceView},
 };
@@ -23,17 +24,16 @@ use crate::{
 pub struct ThreadView(Node);
 
 impl ThreadView {
-    pub fn new(call_tree: CallTree) -> Self {
+    pub fn new(server: ServerConnection) -> Self {
         let editor = Editor::new(CODE);
         let tab_group = tab::container().class(css::full_height());
         let selected_tab = Mutable::new(Tab::CallTree);
-        let call_tree_view = CallTreeView::new(
-            call_tree,
-            Actions {
-                selected_tab: selected_tab.clone(),
-                editor: editor.clone(),
-            },
-        );
+        // TODO: Use actions
+        let _actions = Actions {
+            selected_tab: selected_tab.clone(),
+            editor: editor.clone(),
+        };
+        let call_tree_view = CallTreeView::new(server);
         let tab = |tab: Tab| {
             tab::content().text(tab.as_ref()).selected(Sig(selected_tab
                 .signal()

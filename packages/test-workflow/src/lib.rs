@@ -6,6 +6,9 @@ fn condition() -> bool {
 }
 
 #[workflow]
+async fn child_fn() {}
+
+#[workflow]
 async fn counter() {
     if condition() {
         if !condition() {
@@ -21,6 +24,7 @@ async fn counter() {
 
     for i in 0..10 {
         log(format!("{i}"));
+        child_fn().await;
         checkpoint().await;
     }
 }
