@@ -1,7 +1,7 @@
 use std::{
     fs,
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use anyhow::{bail, Context, Result};
@@ -20,7 +20,7 @@ pub struct Container {
     register_workflows: TypedFunc<(), u32>,
     init_workflow: TypedFunc<u32, ()>,
     run: TypedFunc<(), i32>,
-    thread: Arc<Mutex<Thread>>,
+    thread: Arc<RwLock<Thread>>,
 }
 
 impl Container {
@@ -35,7 +35,7 @@ impl Container {
         };
         let linker = &mut Linker::new(&engine);
         define_log(linker, memory_export)?;
-        let thread = Arc::new(Mutex::new(Thread::empty()));
+        let thread = Arc::new(RwLock::new(Thread::empty()));
         define_trace_fn("begin", Thread::fn_begin, &thread, linker, memory_export)?;
         define_trace_fn("end", Thread::fn_end, &thread, linker, memory_export)?;
 
@@ -84,7 +84,7 @@ impl Container {
     }
 
     pub fn call_tree(&self) -> CallTree {
-        self.thread.lock().unwrap().call_tree().clone()
+        self.thread.read().unwrap().call_tree().clone()
     }
 }
 
@@ -104,7 +104,7 @@ fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()
 fn define_trace_fn(
     fn_name: &'static str,
     f: impl Fn(&mut Thread, &str) + Send + Sync + 'static,
-    thread: &Arc<Mutex<Thread>>,
+    thread: &Arc<RwLock<Thread>>,
     linker: &mut Linker<()>,
     memory_export: ModuleExport,
 ) -> Result<()> {
@@ -121,7 +121,7 @@ fn define_trace_fn(
             let module = read_string(memory, module_data, module_len)?;
             let name = read_string(memory, name_data, name_len)?;
             println!("{fn_name} {module}::{name}");
-            f(&mut thread.lock().unwrap(), name);
+            f(&mut thread.write().unwrap(), name);
             Ok(())
         },
     )?;
