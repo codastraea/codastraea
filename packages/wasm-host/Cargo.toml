@@ -11,6 +11,8 @@ flate2.workspace = true
 futures-signals.workspace = true
 clonelet.workspace = true
 serpent-automation-server-api.workspace = true
+futures-core.workspace = true
+futures-channel.workspace = true
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }

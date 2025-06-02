@@ -6,7 +6,6 @@ use arpy_server::WebSocketRouter;
 use axum::{Router, Server};
 use clap::Parser;
 use futures::stream::BoxStream;
-use futures_signals::signal_vec::SignalVecExt;
 use serpent_automation_server_api::WatchCallTree;
 use serpent_automation_wasm_host::runtime::Container;
 
@@ -38,7 +37,7 @@ async fn main() -> Result<()> {
     let ws = WebSocketRouter::new().handle_subscription({
         move |_updates: BoxStream<'static, ()>, watch: WatchCallTree| {
             let updates = call_tree.watch(watch.path());
-            ((), updates.to_stream())
+            ((), updates)
         }
     });
 

@@ -1,5 +1,4 @@
 use arpy::{FnSubscription, MsgId};
-use futures_signals::signal_vec::VecDiff;
 use serde::{Deserialize, Serialize};
 
 #[derive(MsgId, Serialize, Deserialize, Debug)]
@@ -23,7 +22,7 @@ impl WatchCallTree {
 
 impl FnSubscription for WatchCallTree {
     type InitialReply = ();
-    type Item = VecDiff<NodeUpdate>;
+    type Item = NodeVecDiff;
     type Update = ();
 }
 
@@ -36,6 +35,13 @@ pub struct NodeUpdate {
     pub name: String,
     pub status: NodeStatus,
     pub has_children: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum NodeVecDiff {
+    Replace(Vec<NodeUpdate>),
+    Push(NodeUpdate),
+    SetStatus { index: usize, status: NodeStatus },
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

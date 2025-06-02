@@ -1,5 +1,9 @@
-use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
-use serpent_automation_server_api::{NodeStatus, NodeUpdate};
+// TODO: Tidy this file
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+use futures_channel::mpsc;
+use futures_core::Stream;
+use serpent_automation_server_api::{NodeStatus, NodeUpdate, NodeVecDiff};
 
 pub struct Thread {
     call_tree: CallTree,
@@ -23,31 +27,42 @@ impl Thread {
 
     pub fn fn_begin(&mut self, name: &str) {
         let top = self.top_mut();
-        let new_top = MutableVec::new();
-        top.nodes.lock_mut().push_cloned(Node {
+        let new_top = NodeVec::default();
+        let node = Node {
             name: name.to_string(),
             status: NodeStatus::Running,
             sub_tree: CallTree {
                 children: new_top.clone(),
             },
-        });
+        };
+        top.nodes
+            .notify(|| NodeVecDiff::Push(NodeUpdate::from(&node)));
+        top.nodes.write().values.push(node);
         self.call_stack.push(StackFrame { nodes: new_top })
     }
 
     pub fn fn_end(&mut self, name: &str) {
         self.pop();
-        let mut nodes = self.top_mut().nodes.lock_mut();
-        let last_index = nodes
+        let nodes = &self.top_mut().nodes;
+        let mut write_nodes = nodes.write();
+        let current = write_nodes
+            .values
+            .last_mut()
+            .expect("There should be a node on the call stack");
+        // TODO: These should be errors rather than asserts. We shouldn't crash with
+        // dodgy wasm.
+        assert_eq!(current.name, name);
+        assert_eq!(current.status, NodeStatus::Running);
+        current.status = NodeStatus::Complete;
+        let last_index = write_nodes
+            .values
             .len()
             .checked_sub(1)
             .expect("There should be a node on the call stack");
-        let mut current = nodes[last_index].clone();
-        // TODO: These should be errors rather than asserts. We shouldn't crash with
-        // dodgy wasm.
-        assert_eq!(&current.name, name);
-        assert_eq!(current.status, NodeStatus::Running);
-        current.status = NodeStatus::Complete;
-        nodes.set_cloned(last_index, current);
+        nodes.notify(|| NodeVecDiff::SetStatus {
+            index: last_index,
+            status: NodeStatus::Complete,
+        });
     }
 
     fn top_mut(&mut self) -> &mut StackFrame {
@@ -63,39 +78,76 @@ impl Thread {
     }
 }
 
+#[derive(Default)]
+struct NodeVecState {
+    values: Vec<Node>,
+    watchers: Vec<mpsc::UnboundedSender<NodeVecDiff>>,
+}
+
+#[derive(Default, Clone)]
+struct NodeVec(Arc<RwLock<NodeVecState>>);
+
+impl NodeVec {
+    fn read(&self) -> RwLockReadGuard<NodeVecState> {
+        self.0.read().unwrap()
+    }
+
+    fn write(&self) -> RwLockWriteGuard<NodeVecState> {
+        self.0.write().unwrap()
+    }
+
+    fn watch(&self) -> impl Stream<Item = NodeVecDiff> {
+        let (sender, receiver) = mpsc::unbounded();
+        let mut state = self.write();
+
+        if !state.values.is_empty() {
+            sender
+                .unbounded_send(NodeVecDiff::Replace(
+                    state.values.iter().map(NodeUpdate::from).collect(),
+                ))
+                .unwrap();
+        }
+
+        state.watchers.push(sender);
+        receiver
+    }
+
+    fn notify(&self, mut change: impl FnMut() -> NodeVecDiff) {
+        self.write()
+            .watchers
+            .retain(|watcher| watcher.unbounded_send(change()).is_ok());
+    }
+}
+
 struct StackFrame {
-    nodes: MutableVec<Node>,
+    nodes: NodeVec,
     // TODO: Don't assume the running node is the last one in the list. Add an index.
 }
 
 impl StackFrame {
-    fn new(nodes: MutableVec<Node>) -> Self {
+    fn new(nodes: NodeVec) -> Self {
         Self { nodes }
     }
 }
 
 #[derive(Clone)]
 pub struct CallTree {
-    children: MutableVec<Node>,
+    children: NodeVec,
 }
 
 impl CallTree {
     pub fn empty() -> Self {
         Self {
-            children: MutableVec::new(),
+            children: NodeVec::default(),
         }
     }
 
-    pub fn watch(&self, path: &[usize]) -> impl SignalVec<Item = NodeUpdate> {
+    pub fn watch(&self, path: &[usize]) -> impl Stream<Item = NodeVecDiff> {
         // TODO: What if `path` doesn't exist?
         if let Some((head, tail)) = path.split_first() {
-            self.children.lock_ref()[*head].sub_tree.watch(tail)
+            self.children.read().values[*head].sub_tree.watch(tail)
         } else {
-            self.children.signal_vec_cloned().map(|node| NodeUpdate {
-                name: node.name,
-                status: node.status,
-                has_children: !node.sub_tree.children.lock_ref().is_empty(),
-            })
+            self.children.watch()
         }
     }
 }
@@ -106,4 +158,15 @@ struct Node {
     name: String,
     status: NodeStatus,
     sub_tree: CallTree,
+}
+
+impl<'a> From<&'a Node> for NodeUpdate {
+    fn from(value: &'a Node) -> Self {
+        let has_children = !value.sub_tree.children.read().values.is_empty();
+        Self {
+            name: value.name.clone(),
+            status: value.status,
+            has_children,
+        }
+    }
 }
