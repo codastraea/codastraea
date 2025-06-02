@@ -6,6 +6,7 @@ pub struct Thread {
     call_stack: Vec<StackFrame>,
 }
 
+// TODO: We should never panic with dodgy WASM
 impl Thread {
     pub fn empty() -> Self {
         let call_tree = CallTree::empty();
@@ -33,7 +34,6 @@ impl Thread {
         self.call_stack.push(StackFrame { nodes: new_top })
     }
 
-    // TODO: Doc panic if name != top of stack
     pub fn fn_end(&mut self, name: &str) {
         self.pop();
         let mut nodes = self.top_mut().nodes.lock_mut();
