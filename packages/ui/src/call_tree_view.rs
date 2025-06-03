@@ -93,6 +93,7 @@ impl CallTreeView {
                     if expanded == Toggle::Expand {
                         children.lock_mut().clear();
 
+                        // TODO: Make sure we only do this once (OnceCell or similar?).
                         update_node_children(server.clone(), path.clone(), children.clone());
                     }
                 }
