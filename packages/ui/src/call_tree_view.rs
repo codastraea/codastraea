@@ -1,4 +1,4 @@
-use std::{pin::pin, rc::Rc};
+use std::{cell::OnceCell, pin::pin, rc::Rc};
 
 use derive_more::Into;
 use futures::StreamExt;
@@ -76,6 +76,7 @@ impl CallTreeView {
         path.push(0);
 
         if data.has_children {
+            let once = OnceCell::new();
             let children = MutableVec::<Rc<NodeData>>::new();
             node.item_children_signal(Self::node_children(
                 server.clone(),
@@ -91,10 +92,9 @@ impl CallTreeView {
                 clone!(server);
                 move |expanded| {
                     if expanded == Toggle::Expand {
-                        children.lock_mut().clear();
-
-                        // TODO: Make sure we only do this once (OnceCell or similar?).
-                        update_node_children(server.clone(), path.clone(), children.clone());
+                        once.get_or_init(|| {
+                            update_node_children(server.clone(), path.clone(), children.clone());
+                        });
                     }
                 }
             })
