@@ -75,32 +75,32 @@ impl CallTreeView {
         // than path?
         path.push(0);
 
-        if data.has_children {
-            let once = OnceCell::new();
-            let children = MutableVec::<Rc<NodeData>>::new();
-            node.item_children_signal(Self::node_children(
-                server.clone(),
-                path.clone(),
-                actions,
-                &children,
-            ))
-            .item_optional_child(Sig(children
-                .signal_vec_cloned()
-                .is_empty()
-                .map(|loading| loading.then(|| tree::item().text("Loading...")))))
-            .on_toggle({
-                clone!(server);
-                move |expanded| {
-                    if expanded == Toggle::Expand {
-                        once.get_or_init(|| {
-                            update_node_children(server.clone(), path.clone(), children.clone());
-                        });
-                    }
+        // TODO: `has_children` should be a signal
+        let has_children = data.has_children;
+
+        // This could be optimized by sending a flag to say if the node can ever have
+        // children
+        let once = OnceCell::new();
+        let children = MutableVec::<Rc<NodeData>>::new();
+        node.item_children_signal(Self::node_children(
+            server.clone(),
+            path.clone(),
+            actions,
+            &children,
+        ))
+        .item_optional_child(Sig(children.signal_vec_cloned().is_empty().map(
+            move |loading| (has_children && loading).then(|| tree::item().text("Loading...")),
+        )))
+        .on_toggle({
+            clone!(server);
+            move |expanded| {
+                if expanded == Toggle::Expand {
+                    once.get_or_init(|| {
+                        update_node_children(server.clone(), path.clone(), children.clone());
+                    });
                 }
-            })
-        } else {
-            node
-        }
+            }
+        })
     }
 
     fn node_children(
