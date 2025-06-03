@@ -17,3 +17,4 @@ gloo-console.workspace = true
 wasm-bindgen.workspace = true
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["sync"] }
+futures.workspace = true
