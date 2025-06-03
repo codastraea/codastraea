@@ -17,6 +17,7 @@ silkenweb-ui5 = { path = "packages/ui5" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",
 ] }
+silkenweb-signals-ext.git = "https://github.com/silkenweb/silkenweb"
 silkenweb-task.git = "https://github.com/silkenweb/silkenweb"
 arpy = "0.2.0"
 arpy-server = "0.2.0"

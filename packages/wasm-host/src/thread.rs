@@ -36,7 +36,26 @@ impl Thread {
             },
         };
         top.nodes.notify(|| NodeVecDiff::Push(NewNode::from(&node)));
-        top.nodes.write().values.push(node);
+        let mut top_children = top.nodes.write();
+
+        let was_empty = top_children.values.is_empty();
+        top_children.values.push(node);
+        drop(top_children);
+
+        if let Some(top_parent_index) = self.call_stack.len().checked_sub(2) {
+            if was_empty {
+                // TODO: Don't assume the running node is the last one in the call stack.
+                let parent_nodes = &self.call_stack[top_parent_index].nodes;
+                let index = parent_nodes
+                    .read()
+                    .values
+                    .len()
+                    .checked_sub(1)
+                    .expect("Expected at least one running node");
+
+                parent_nodes.notify(|| NodeVecDiff::SetHasChildren { index });
+            }
+        }
         self.call_stack.push(StackFrame { nodes: new_top })
     }
 

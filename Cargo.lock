@@ -3045,6 +3045,7 @@ dependencies = [
  "serpent-automation-frontend",
  "serpent-automation-server-api",
  "silkenweb",
+ "silkenweb-signals-ext",
  "silkenweb-ui5",
  "strum",
  "tokio",

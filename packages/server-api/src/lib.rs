@@ -38,6 +38,7 @@ pub enum NodeVecDiff {
     Replace(Vec<NewNode>),
     Push(NewNode),
     SetStatus { index: usize, status: NodeStatus },
+    SetHasChildren { index: usize },
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

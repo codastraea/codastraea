@@ -15,6 +15,7 @@ use silkenweb::{
     value::Sig,
     Value,
 };
+use silkenweb_signals_ext::SignalProduct;
 use silkenweb_ui5::{
     button::{badge, button, BadgeDesign, Design},
     icon, menu,
@@ -32,7 +33,7 @@ pub trait CallTreeActions: Clone + 'static {
 struct NodeData {
     name: String,
     status: Mutable<NodeStatus>,
-    has_children: bool,
+    has_children: Mutable<bool>,
 }
 
 impl NodeData {
@@ -40,7 +41,7 @@ impl NodeData {
         Rc::new(Self {
             name: value.name,
             status: Mutable::new(value.status),
-            has_children: value.has_children,
+            has_children: Mutable::new(value.has_children),
         })
     }
 }
@@ -75,22 +76,20 @@ impl CallTreeView {
         // than path?
         path.push(0);
 
-        // TODO: `has_children` should be a signal
-        let has_children = data.has_children;
-
-        // This could be optimized by sending a flag to say if the node can ever have
-        // children
         let once = OnceCell::new();
         let children = MutableVec::<Rc<NodeData>>::new();
+        let children_empty = children.signal_vec_cloned().is_empty();
+        let loading = (children_empty, data.has_children.signal())
+            .signal_ref(|empty, has_children| *empty && *has_children);
         node.item_children_signal(Self::node_children(
             server.clone(),
             path.clone(),
             actions,
             &children,
         ))
-        .item_optional_child(Sig(children.signal_vec_cloned().is_empty().map(
-            move |loading| (has_children && loading).then(|| tree::item().text("Loading...")),
-        )))
+        .item_optional_child(Sig(
+            loading.map(move |loading| loading.then(|| tree::item().text("Loading...")))
+        ))
         .on_toggle({
             clone!(server);
             move |expanded| {
@@ -138,6 +137,7 @@ fn update_node_children(
                     .lock_mut()
                     .push_cloned(NodeData::from_update(update)),
                 Diff::SetStatus { index, status } => children.lock_ref()[index].status.set(status),
+                Diff::SetHasChildren { index } => children.lock_ref()[index].has_children.set(true),
             }
         }
     })
