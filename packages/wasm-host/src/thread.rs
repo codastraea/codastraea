@@ -58,6 +58,7 @@ impl Thread {
             .len()
             .checked_sub(1)
             .expect("There should be a node on the call stack");
+        drop(write_nodes);
         nodes.notify(|| NodeVecDiff::SetStatus {
             index: last_index,
             status: NodeStatus::Complete,
