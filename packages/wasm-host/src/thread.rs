@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use futures_channel::mpsc;
 use futures_core::Stream;
-use serpent_automation_server_api::{NodeStatus, NodeUpdate, NodeVecDiff};
+use serpent_automation_server_api::{NewNode, NodeStatus, NodeVecDiff};
 
 pub struct Thread {
     call_tree: CallTree,
@@ -35,8 +35,7 @@ impl Thread {
                 children: new_top.clone(),
             },
         };
-        top.nodes
-            .notify(|| NodeVecDiff::Push(NodeUpdate::from(&node)));
+        top.nodes.notify(|| NodeVecDiff::Push(NewNode::from(&node)));
         top.nodes.write().values.push(node);
         self.call_stack.push(StackFrame { nodes: new_top })
     }
@@ -103,7 +102,7 @@ impl NodeVec {
         if !state.values.is_empty() {
             sender
                 .unbounded_send(NodeVecDiff::Replace(
-                    state.values.iter().map(NodeUpdate::from).collect(),
+                    state.values.iter().map(NewNode::from).collect(),
                 ))
                 .unwrap();
         }
@@ -160,7 +159,7 @@ struct Node {
     sub_tree: CallTree,
 }
 
-impl<'a> From<&'a Node> for NodeUpdate {
+impl<'a> From<&'a Node> for NewNode {
     fn from(value: &'a Node) -> Self {
         let has_children = !value.sub_tree.children.read().values.is_empty();
         Self {

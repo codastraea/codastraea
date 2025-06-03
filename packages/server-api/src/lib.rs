@@ -26,12 +26,8 @@ impl FnSubscription for WatchCallTree {
     type Update = ();
 }
 
-// TODO: This could be more efficient, as we mostly update `status`. `name`
-// never changes, so only needs to be sent when we add a node. Maybe it should
-// be an enum of `Status | All`. We need to use a stream of updates rather than
-// relying on `SignalVec`.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct NodeUpdate {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NewNode {
     pub name: String,
     pub status: NodeStatus,
     pub has_children: bool,
@@ -39,8 +35,8 @@ pub struct NodeUpdate {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum NodeVecDiff {
-    Replace(Vec<NodeUpdate>),
-    Push(NodeUpdate),
+    Replace(Vec<NewNode>),
+    Push(NewNode),
     SetStatus { index: usize, status: NodeStatus },
 }
 
