@@ -70,7 +70,7 @@ impl CallTreeView {
         data: &Rc<NodeData>,
         actions: impl CallTreeActions,
     ) -> tree::CustomItem {
-        let node = node_dropdown(data, actions.clone());
+        let node = node_contents(data, actions.clone());
         // TODO: pass this around in `NodeData`, or use a node_id (slot map id) rather
         // than path?
         path.push(0);
@@ -143,7 +143,7 @@ fn update_node_children(
     })
 }
 
-fn node_dropdown(node: &NodeData, actions: impl CallTreeActions) -> tree::CustomItem {
+fn node_contents(node: &NodeData, actions: impl CallTreeActions) -> tree::CustomItem {
     // TODO: `Design::Emphasized` for control flow nodes
     let design = Design::Default;
     let run_status = &node.status;
