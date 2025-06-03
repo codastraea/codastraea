@@ -8,7 +8,6 @@ wasmtime.workspace = true
 walrus.workspace = true
 id-arena.workspace = true
 flate2.workspace = true
-futures-signals.workspace = true
 clonelet.workspace = true
 serpent-automation-server-api.workspace = true
 futures-core.workspace = true

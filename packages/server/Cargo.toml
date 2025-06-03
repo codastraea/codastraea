@@ -17,4 +17,3 @@ serpent-automation-wasm-host = { workspace = true }
 futures = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 anyhow.workspace = true
-futures-signals.workspace = true

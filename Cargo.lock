@@ -1442,19 +1442,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
-name = "gloo-console"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82b7ce3c05debe147233596904981848862b068862e9ec3e34be446077190d3f"
-dependencies = [
- "gloo-utils",
- "js-sys",
- "serde",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "gloo-net"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3008,13 +2995,10 @@ version = "0.1.0"
 dependencies = [
  "arpy",
  "arpy-reqwasm",
- "clonelet",
  "futures",
- "futures-signals",
  "gloo-net 0.1.0",
  "once_cell",
  "serpent-automation-server-api",
- "silkenweb-task",
  "tokio",
 ]
 
@@ -3029,7 +3013,6 @@ dependencies = [
  "axum",
  "clap",
  "futures",
- "futures-signals",
  "serde",
  "serpent-automation-server-api",
  "serpent-automation-wasm-host",
@@ -3041,7 +3024,6 @@ name = "serpent-automation-server-api"
 version = "0.1.0"
 dependencies = [
  "arpy",
- "futures-signals",
  "serde",
 ]
 
@@ -3060,7 +3042,6 @@ dependencies = [
  "derive_more 0.99.20",
  "futures",
  "futures-signals",
- "gloo-console",
  "serpent-automation-frontend",
  "serpent-automation-server-api",
  "silkenweb",
@@ -3100,7 +3081,6 @@ dependencies = [
  "flate2",
  "futures-channel",
  "futures-core",
- "futures-signals",
  "id-arena",
  "serpent-automation-server-api",
  "walrus",
