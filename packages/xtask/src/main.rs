@@ -6,9 +6,14 @@ use xtask_base::{
 
 #[derive(Parser)]
 enum Commands {
-    UI,
-    // TODO: Add a release flag
-    Serve,
+    UI {
+        #[arg(long)]
+        release: bool,
+    },
+    Serve {
+        #[arg(long)]
+        release: bool,
+    },
     #[clap(flatten)]
     Common(CommonCmds),
 }
@@ -18,12 +23,18 @@ fn main() {
         type Cmds = Commands;
 
         match Cmds::parse() {
-            Cmds::UI => cmd!("trunk serve --open").dir("packages/ui").run()?,
-            Cmds::Serve => {
-                cmd!("cargo build --target wasm32-unknown-unknown")
+            Cmds::UI { release } => {
+                let release = release.then_some("--release");
+                cmd!("trunk serve {release...} --open")
+                    .dir("packages/ui")
+                    .run()?
+            }
+            Cmds::Serve { release } => {
+                let release = release.then_some("--release");
+                cmd!("cargo build {release...} --target wasm32-unknown-unknown")
                     .dir("packages/test-workflow")
                     .run()?;
-                cmd!("cargo run -- ../../target/wasm32-unknown-unknown/debug/serpent_automation_test_workflow.wasm")
+                cmd!("cargo run {release...} -- ../../target/wasm32-unknown-unknown/debug/serpent_automation_test_workflow.wasm")
                     .dir("packages/server")
                     .run()?
             }
