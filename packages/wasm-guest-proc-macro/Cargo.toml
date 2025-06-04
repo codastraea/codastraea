@@ -1,5 +1,5 @@
 [package]
-name = "serpent-automation-wasm-guest-proc-macro"
+name = "codastraea-wasm-guest-proc-macro"
 edition.workspace = true
 
 [lib]

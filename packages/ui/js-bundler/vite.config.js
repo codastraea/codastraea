@@ -5,7 +5,7 @@ module.exports = defineConfig({
     build: {
         lib: {
             entry: resolve(__dirname, 'main.js'),
-            name: 'SerpentAutomation',
+            name: 'Codastraea',
             formats: ['esm'],
         },
     },

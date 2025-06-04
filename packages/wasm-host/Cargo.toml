@@ -1,5 +1,5 @@
 [package]
-name = "serpent-automation-wasm-host"
+name = "codastraea-wasm-host"
 edition.workspace = true
 
 [dependencies]
@@ -9,7 +9,7 @@ walrus.workspace = true
 id-arena.workspace = true
 flate2.workspace = true
 clonelet.workspace = true
-serpent-automation-server-api.workspace = true
+codastraea-server-api.workspace = true
 futures-core.workspace = true
 futures-channel.workspace = true
 slotmap.workspace = true

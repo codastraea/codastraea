@@ -1,12 +1,12 @@
 [package]
-name = "serpent-automation-frontend"
+name = "codastraea-frontend"
 publish = false
 authors = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-serpent-automation-server-api = { workspace = true }
+codastraea-server-api = { workspace = true }
 arpy = { workspace = true }
 arpy-reqwasm = { workspace = true }
 gloo-net = { workspace = true }

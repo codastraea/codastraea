@@ -1,3 +1,3 @@
-# Serpent Automation
+# Codastraea
 
-Like github actions but your workflows are written in Python
+Like github actions but your workflows are written in Rust

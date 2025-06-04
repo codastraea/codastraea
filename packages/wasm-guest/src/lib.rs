@@ -5,8 +5,6 @@ use checkpoint::until_checkpoint;
 mod checkpoint;
 
 pub use checkpoint::checkpoint;
-#[doc(hidden)]
-pub use inventory;
 /// Make a Workflow function.
 ///
 /// This instruments a function to trace any control flow, so it can be used as
@@ -14,7 +12,9 @@ pub use inventory;
 ///
 /// *Workflow functions must be `async`, parameter-less and free (not inside an
 /// `impl` block).*
-pub use serpent_automation_wasm_guest_proc_macro::workflow;
+pub use codastraea_wasm_guest_proc_macro::workflow;
+#[doc(hidden)]
+pub use inventory;
 
 #[cfg(target_family = "wasm")]
 unsafe extern "C" {

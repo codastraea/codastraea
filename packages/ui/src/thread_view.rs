@@ -1,7 +1,7 @@
+use codastraea_frontend::ServerConnection;
+use codastraea_server_api::SrcSpan;
 use derive_more::Into;
 use futures_signals::signal::{Mutable, SignalExt};
-use serpent_automation_frontend::ServerConnection;
-use serpent_automation_server_api::SrcSpan;
 use silkenweb::{
     node::{
         element::{Element, ParentElement},

@@ -1,4 +1,4 @@
-use serpent_automation_wasm_guest::{checkpoint, log, workflow};
+use codastraea_wasm_guest::{checkpoint, log, workflow};
 
 fn condition() -> bool {
     log("condition");

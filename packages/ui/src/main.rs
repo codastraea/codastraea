@@ -1,4 +1,4 @@
-use serpent_automation_ui::app;
+use codastraea_ui::app;
 use silkenweb::mount;
 
 fn main() {

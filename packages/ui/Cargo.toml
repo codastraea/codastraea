@@ -1,5 +1,5 @@
 [package]
-name = "serpent-automation-ui"
+name = "codastraea-ui"
 publish = false
 authors.workspace = true
 version.workspace = true
@@ -8,8 +8,8 @@ edition.workspace = true
 [dependencies]
 silkenweb.workspace = true
 silkenweb-signals-ext.workspace = true
-serpent-automation-frontend.workspace = true
-serpent-automation-server-api.workspace = true
+codastraea-frontend.workspace = true
+codastraea-server-api.workspace = true
 silkenweb-ui5.workspace = true
 futures-signals.workspace = true
 web-sys = { workspace = true, features = ["DomRect", "Element"] }

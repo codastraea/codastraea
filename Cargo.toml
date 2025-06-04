@@ -8,11 +8,11 @@ edition = "2021"
 authors = ["Simon Bourne <simonbourne@gmail.com>"]
 
 [workspace.dependencies]
-serpent-automation-frontend = { path = "packages/frontend" }
-serpent-automation-server-api = { path = "packages/server-api" }
-serpent-automation-wasm-host = { path = "packages/wasm-host" }
-serpent-automation-wasm-guest = { path = "packages/wasm-guest" }
-serpent-automation-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
+codastraea-frontend = { path = "packages/frontend" }
+codastraea-server-api = { path = "packages/server-api" }
+codastraea-wasm-host = { path = "packages/wasm-host" }
+codastraea-wasm-guest = { path = "packages/wasm-guest" }
+codastraea-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
 silkenweb-ui5 = { path = "packages/ui5" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",

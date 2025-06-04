@@ -1,4 +1,4 @@
-use serpent_automation_frontend::ServerConnection;
+use codastraea_frontend::ServerConnection;
 use silkenweb::{
     elements::html::div,
     node::element::{ChildElement, Element, ParentElement},

@@ -5,9 +5,9 @@ use arpy_axum::RpcRoute;
 use arpy_server::WebSocketRouter;
 use axum::{Router, Server};
 use clap::Parser;
+use codastraea_server_api::WatchCallTree;
+use codastraea_wasm_host::runtime::Container;
 use futures::stream::BoxStream;
-use serpent_automation_server_api::WatchCallTree;
-use serpent_automation_wasm_host::runtime::Container;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     let mut container = Container::from_file(&wat_file)?;
 
     container.register_workflows()?;
-    container.init_workflow("serpent_automation_test_workflow", "counter")?;
+    container.init_workflow("codastraea_test_workflow", "counter")?;
     let node_store = container.node_store();
 
     thread::spawn({

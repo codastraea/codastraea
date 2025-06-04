@@ -1,5 +1,5 @@
 [package]
-name = "serpent-automation-server-api"
+name = "codastraea-server-api"
 publish = false
 authors = { workspace = true }
 version = { workspace = true }

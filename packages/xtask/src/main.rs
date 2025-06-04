@@ -34,7 +34,7 @@ fn main() {
                 cmd!("cargo build {release...} --target wasm32-unknown-unknown")
                     .dir("packages/test-workflow")
                     .run()?;
-                cmd!("cargo run {release...} -- ../../target/wasm32-unknown-unknown/debug/serpent_automation_test_workflow.wasm")
+                cmd!("cargo run {release...} -- ../../target/wasm32-unknown-unknown/debug/codastraea_test_workflow.wasm")
                     .dir("packages/server")
                     .run()?
             }

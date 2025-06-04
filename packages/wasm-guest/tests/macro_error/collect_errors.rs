@@ -1,4 +1,4 @@
-use serpent_automation_wasm_guest::workflow;
+use codastraea_wasm_guest::workflow;
 
 pub struct X;
 

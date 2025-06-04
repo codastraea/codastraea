@@ -46,7 +46,7 @@ fn impl_workflow(
     Ok(quote! {
         #(#attrs)*
         #vis #sig {
-            let __enhedron_trace = ::serpent_automation_wasm_guest::TraceFn::new(
+            let __enhedron_trace = ::codastraea_wasm_guest::TraceFn::new(
                 ::std::module_path!(),
                 #name
             );
@@ -55,11 +55,11 @@ fn impl_workflow(
         }
 
         extern "C" fn #exported_ident() {
-            ::serpent_automation_wasm_guest::set_fn(#ident());
+            ::codastraea_wasm_guest::set_fn(#ident());
         }
 
-        ::serpent_automation_wasm_guest::inventory::submit!(
-            ::serpent_automation_wasm_guest::Workflow::new(
+        ::codastraea_wasm_guest::inventory::submit!(
+            ::codastraea_wasm_guest::Workflow::new(
                 ::std::module_path!(),
                 #name,
                 #exported_ident
@@ -181,7 +181,7 @@ impl Instrument {
                 #[cfg(not(target_family = "wasm"))]
                 unsafe extern "C" fn #end() {}
 
-                let __enhedron_trace = ::serpent_automation_wasm_guest::Trace::new(
+                let __enhedron_trace = ::codastraea_wasm_guest::Trace::new(
                     #begin,
                     #end
                 );

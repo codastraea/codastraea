@@ -1,5 +1,5 @@
+use codastraea_server_api::SrcSpan;
 use derive_more::Into;
-use serpent_automation_server_api::SrcSpan;
 use silkenweb::{
     elements::html::div,
     node::{element::Element, Node},
@@ -39,7 +39,7 @@ impl Editor {
     }
 }
 
-#[wasm_bindgen(raw_module = "/serpent-automation-js-bundle.esm.js")]
+#[wasm_bindgen(raw_module = "/codastraea-js-bundle.esm.js")]
 extern "C" {
     // TODO: Can any of these throw exceptions?
     #[derive(Clone)]

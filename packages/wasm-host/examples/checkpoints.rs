@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
-use serpent_automation_wasm_host::runtime::Container;
+use codastraea_wasm_host::runtime::Container;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let mut container = Container::from_file(&wat_file)?;
 
     container.register_workflows()?;
-    container.init_workflow("serpent_automation_test_workflow", "counter")?;
+    container.init_workflow("codastraea_test_workflow", "counter")?;
 
     for _i in 0..5 {
         container.run()?;

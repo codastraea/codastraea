@@ -1,8 +1,8 @@
 use arpy::ConcurrentRpcClient;
 use arpy_reqwasm::websocket;
+use codastraea_server_api::{NodeVecDiff, WatchCallTree};
 use futures::{stream, Stream, StreamExt};
 use gloo_net::websocket::futures::WebSocket;
-use serpent_automation_server_api::{NodeVecDiff, WatchCallTree};
 
 #[derive(Clone)]
 pub struct ServerConnection {

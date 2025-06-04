@@ -1,9 +1,9 @@
 [package]
-name = "serpent-automation-wasm-guest"
+name = "codastraea-wasm-guest"
 edition.workspace = true
 
 [dependencies]
 crossbeam.workspace = true
 inventory.workspace = true
-serpent-automation-wasm-guest-proc-macro.workspace = true
+codastraea-wasm-guest-proc-macro.workspace = true
 trybuild.workspace = true
