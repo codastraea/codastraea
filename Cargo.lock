@@ -645,7 +645,6 @@ dependencies = [
  "futures",
  "futures-signals",
  "silkenweb",
- "silkenweb-signals-ext",
  "silkenweb-ui5",
  "strum",
  "tokio",

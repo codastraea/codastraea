@@ -17,7 +17,6 @@ use silkenweb::{
     value::Sig,
     Value,
 };
-use silkenweb_signals_ext::SignalProduct;
 use silkenweb_ui5::{
     button::{badge, button, BadgeDesign, Design},
     icon, menu,
@@ -72,13 +71,8 @@ impl CallTreeView {
 
         let once = OnceCell::new();
         let children = MutableVec::<Rc<NodeData>>::new();
-        let children_empty = children.signal_vec_cloned().is_empty();
-        let loading = (children_empty, data.has_children.signal())
-            .signal_ref(|empty, has_children| *empty && *has_children);
         node.item_children_signal(Self::node_children(server.clone(), actions, &children))
-            .item_optional_child(Sig(
-                loading.map(move |loading| loading.then(|| tree::item().text("Loading...")))
-            ))
+            .has_children(Sig(data.has_children.signal()))
             .on_toggle({
                 let node_id = data.id;
                 clone!(server);
