@@ -7,7 +7,9 @@ use futures_signals::{
     signal_vec::{MutableVec, SignalVecExt},
 };
 use serpent_automation_frontend::ServerConnection;
-use serpent_automation_server_api::{NewNode, NodeStatus, NodeVecDiff, SrcSpan, WatchCallTree};
+use serpent_automation_server_api::{
+    CallTreeChildNodeId, NewNode, NodeStatus, NodeVecDiff, SrcSpan, WatchCallTree,
+};
 use silkenweb::{
     clone,
     node::{element::TextParentElement, Node},
@@ -31,6 +33,7 @@ pub trait CallTreeActions: Clone + 'static {
 }
 
 struct NodeData {
+    id: CallTreeChildNodeId,
     name: String,
     status: Mutable<NodeStatus>,
     has_children: Mutable<bool>,
@@ -39,6 +42,7 @@ struct NodeData {
 impl NodeData {
     fn from_update(value: NewNode) -> Rc<Self> {
         Rc::new(Self {
+            id: value.id,
             name: value.name,
             status: Mutable::new(value.status),
             has_children: Mutable::new(value.has_children),
@@ -49,62 +53,51 @@ impl NodeData {
 impl CallTreeView {
     pub fn new(server: ServerConnection, actions: impl CallTreeActions) -> Self {
         let children = MutableVec::<Rc<NodeData>>::new();
-        let path = Vec::new();
-        update_node_children(server.clone(), path.clone(), children.clone());
+        update_node_children(server.clone(), WatchCallTree::root(), children.clone());
 
         Self(
             tree::container()
                 .compact_size(true)
-                .item_children_signal(Self::node_children(
-                    server.clone(),
-                    path,
-                    actions,
-                    &children,
-                ))
+                .item_children_signal(Self::node_children(server.clone(), actions, &children))
                 .into(),
         )
     }
 
     fn node(
         server: &ServerConnection,
-        mut path: Vec<usize>,
         data: &Rc<NodeData>,
         actions: impl CallTreeActions,
     ) -> tree::CustomItem {
         let node = node_contents(data, actions.clone());
-        // TODO: pass this around in `NodeData`, or use a node_id (slot map id) rather
-        // than path?
-        path.push(0);
 
         let once = OnceCell::new();
         let children = MutableVec::<Rc<NodeData>>::new();
         let children_empty = children.signal_vec_cloned().is_empty();
         let loading = (children_empty, data.has_children.signal())
             .signal_ref(|empty, has_children| *empty && *has_children);
-        node.item_children_signal(Self::node_children(
-            server.clone(),
-            path.clone(),
-            actions,
-            &children,
-        ))
-        .item_optional_child(Sig(
-            loading.map(move |loading| loading.then(|| tree::item().text("Loading...")))
-        ))
-        .on_toggle({
-            clone!(server);
-            move |expanded| {
-                if expanded == Toggle::Expand {
-                    once.get_or_init(|| {
-                        update_node_children(server.clone(), path.clone(), children.clone());
-                    });
+        node.item_children_signal(Self::node_children(server.clone(), actions, &children))
+            .item_optional_child(Sig(
+                loading.map(move |loading| loading.then(|| tree::item().text("Loading...")))
+            ))
+            .on_toggle({
+                let node_id = data.id;
+                clone!(server);
+                move |expanded| {
+                    if expanded == Toggle::Expand {
+                        once.get_or_init(|| {
+                            update_node_children(
+                                server.clone(),
+                                WatchCallTree::node(node_id),
+                                children.clone(),
+                            );
+                        });
+                    }
                 }
-            }
-        })
+            })
     }
 
     fn node_children(
         server: ServerConnection,
-        path: Vec<usize>,
         actions: impl CallTreeActions,
         children: &MutableVec<Rc<NodeData>>,
     ) -> futures_signals::signal_vec::Map<
@@ -113,19 +106,19 @@ impl CallTreeView {
     > {
         children
             .signal_vec_cloned()
-            .map(move |c| Self::node(&server, path.clone(), &c, actions.clone()))
+            .map(move |c| Self::node(&server, &c, actions.clone()))
     }
 }
 
 fn update_node_children(
     server: ServerConnection,
-    path: Vec<usize>,
+    watch: WatchCallTree,
     children: MutableVec<Rc<NodeData>>,
 ) {
     // TODO: We need a way to cancel this. Put it in a Vec and cancel when we close
     // the call tree?
     spawn_local(async move {
-        let mut updates = pin!(server.watch(WatchCallTree::node(path.clone())).await);
+        let mut updates = pin!(server.watch(watch).await);
 
         while let Some(update) = updates.next().await {
             use NodeVecDiff as Diff;

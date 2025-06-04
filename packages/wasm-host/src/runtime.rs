@@ -11,7 +11,7 @@ use wasmtime::{Caller, Engine, Extern, Instance, Linker, Module, ModuleExport, S
 use crate::{
     instrument::instrument,
     snapshot::Snapshot,
-    thread::{CallTree, Thread},
+    thread::{NodeStore, Thread},
 };
 
 pub struct Container {
@@ -83,8 +83,8 @@ impl Container {
         Ok(self.run.call(&mut self.store, ())? != 0)
     }
 
-    pub fn call_tree(&self) -> CallTree {
-        self.thread.read().unwrap().call_tree().clone()
+    pub fn node_store(&self) -> NodeStore {
+        self.thread.read().unwrap().node_store()
     }
 }
 

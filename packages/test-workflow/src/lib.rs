@@ -5,8 +5,16 @@ fn condition() -> bool {
     true
 }
 
+// TODO: If we change the order of definition of these functions, the server
+// seems to deadlock.
 #[workflow]
-async fn child_fn() {}
+async fn grandchild_fn() {}
+
+#[workflow]
+async fn child_fn() {
+    grandchild_fn().await;
+    grandchild_fn().await;
+}
 
 #[workflow]
 async fn counter() {

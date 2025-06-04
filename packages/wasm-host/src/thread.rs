@@ -3,38 +3,78 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use futures_channel::mpsc;
 use futures_core::Stream;
-use serpent_automation_server_api::{NewNode, NodeStatus, NodeVecDiff};
+use serpent_automation_server_api::{
+    CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeVecDiff,
+};
+use slotmap::SlotMap;
+
+#[derive(Clone)]
+pub struct NodeStore(Arc<RwLock<NodeStoreData>>);
+
+impl NodeStore {
+    pub fn watch(&self, id: CallTreeNodeId) -> impl Stream<Item = NodeVecDiff> {
+        let data = self.0.read().unwrap();
+
+        if let CallTreeNodeId::Child(child_id) = id {
+            // TODO: empty stream if not found
+            data.children
+                .get(child_id)
+                .expect("TODO: return empty stream")
+                .watch()
+        } else {
+            data.root.watch()
+        }
+    }
+
+    fn new(root: NodeVec) -> Self {
+        Self(Arc::new(RwLock::new(NodeStoreData {
+            root,
+            children: SlotMap::with_key(),
+        })))
+    }
+
+    fn insert(&self, nodes: NodeVec) -> CallTreeChildNodeId {
+        self.0.write().unwrap().children.insert(nodes)
+    }
+}
+
+struct NodeStoreData {
+    root: NodeVec,
+    children: SlotMap<CallTreeChildNodeId, NodeVec>,
+}
 
 pub struct Thread {
-    call_tree: CallTree,
     call_stack: Vec<StackFrame>,
+    node_store: NodeStore,
 }
 
 // TODO: We should never panic with dodgy WASM
 impl Thread {
     pub fn empty() -> Self {
-        let call_tree = CallTree::empty();
-        let call_stack = vec![StackFrame::new(call_tree.children.clone())];
+        let root = NodeVec::default();
+        let call_stack = vec![StackFrame::new(root.clone())];
+        let node_store = NodeStore::new(root.clone());
+
         Self {
-            call_tree,
             call_stack,
+            node_store,
         }
     }
 
-    pub fn call_tree(&self) -> &CallTree {
-        &self.call_tree
+    pub fn node_store(&self) -> NodeStore {
+        self.node_store.clone()
     }
 
     pub fn fn_begin(&mut self, name: &str) {
-        let top = self.top_mut();
         let new_top = NodeVec::default();
+        let id = self.node_store.insert(new_top.clone());
         let node = Node {
+            id,
             name: name.to_string(),
             status: NodeStatus::Running,
-            sub_tree: CallTree {
-                children: new_top.clone(),
-            },
+            sub_tree: new_top.clone(),
         };
+        let top = self.top_mut();
         top.nodes.notify(|| NodeVecDiff::Push(NewNode::from(&node)));
         let mut top_children = top.nodes.write();
 
@@ -150,39 +190,19 @@ impl StackFrame {
 }
 
 #[derive(Clone)]
-pub struct CallTree {
-    children: NodeVec,
-}
-
-impl CallTree {
-    pub fn empty() -> Self {
-        Self {
-            children: NodeVec::default(),
-        }
-    }
-
-    pub fn watch(&self, path: &[usize]) -> impl Stream<Item = NodeVecDiff> {
-        // TODO: What if `path` doesn't exist?
-        if let Some((head, tail)) = path.split_first() {
-            self.children.read().values[*head].sub_tree.watch(tail)
-        } else {
-            self.children.watch()
-        }
-    }
-}
-
-#[derive(Clone)]
 struct Node {
+    id: CallTreeChildNodeId,
     // TODO: This should be `node_type : Call name | If | Condition | Then | Else | ...`
     name: String,
     status: NodeStatus,
-    sub_tree: CallTree,
+    sub_tree: NodeVec,
 }
 
 impl<'a> From<&'a Node> for NewNode {
     fn from(value: &'a Node) -> Self {
-        let has_children = !value.sub_tree.children.read().values.is_empty();
+        let has_children = !value.sub_tree.read().values.is_empty();
         Self {
+            id: value.id,
             name: value.name.clone(),
             status: value.status,
             has_children,

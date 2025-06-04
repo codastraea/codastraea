@@ -12,6 +12,7 @@ clonelet.workspace = true
 serpent-automation-server-api.workspace = true
 futures-core.workspace = true
 futures-channel.workspace = true
+slotmap.workspace = true
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }

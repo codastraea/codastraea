@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 
     container.register_workflows()?;
     container.init_workflow(0)?;
-    let call_tree = container.call_tree();
+    let node_store = container.node_store();
 
     thread::spawn({
         move || {
@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
 
     let ws = WebSocketRouter::new().handle_subscription({
         move |_updates: BoxStream<'static, ()>, watch: WatchCallTree| {
-            let updates = call_tree.watch(watch.path());
+            let updates = node_store.watch(watch.id());
             ((), updates)
         }
     });

@@ -3025,6 +3025,7 @@ version = "0.1.0"
 dependencies = [
  "arpy",
  "serde",
+ "slotmap",
 ]
 
 [[package]]
@@ -3084,6 +3085,7 @@ dependencies = [
  "futures-core",
  "id-arena",
  "serpent-automation-server-api",
+ "slotmap",
  "walrus",
  "wasmtime",
 ]

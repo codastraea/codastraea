@@ -1,22 +1,35 @@
 use arpy::{FnSubscription, MsgId};
 use serde::{Deserialize, Serialize};
+use slotmap::new_key_type;
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+pub enum CallTreeNodeId {
+    Root,
+    Child(CallTreeChildNodeId),
+}
+
+new_key_type! {pub struct CallTreeChildNodeId;}
 
 #[derive(MsgId, Serialize, Deserialize, Debug)]
 pub struct WatchCallTree {
-    path: Vec<usize>,
+    node_id: CallTreeNodeId,
 }
 
 impl WatchCallTree {
     pub fn root() -> Self {
-        Self::node(Vec::new())
+        Self {
+            node_id: CallTreeNodeId::Root,
+        }
     }
 
-    pub fn node(path: Vec<usize>) -> Self {
-        Self { path }
+    pub fn node(node_id: CallTreeChildNodeId) -> Self {
+        Self {
+            node_id: CallTreeNodeId::Child(node_id),
+        }
     }
 
-    pub fn path(&self) -> &[usize] {
-        &self.path
+    pub fn id(&self) -> CallTreeNodeId {
+        self.node_id
     }
 }
 
@@ -28,6 +41,7 @@ impl FnSubscription for WatchCallTree {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NewNode {
+    pub id: CallTreeChildNodeId,
     pub name: String,
     pub status: NodeStatus,
     pub has_children: bool,
