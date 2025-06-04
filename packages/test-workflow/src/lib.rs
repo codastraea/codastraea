@@ -5,8 +5,8 @@ fn condition() -> bool {
     true
 }
 
-// TODO: If we change the order of definition of these functions, the server
-// seems to deadlock.
+// TODO: How do we select which workflow to run? It currently just selects the
+// first registered workflow (which seems to be the last defined workflow)
 #[workflow]
 async fn grandchild_fn() {}
 
