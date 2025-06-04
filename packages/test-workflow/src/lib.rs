@@ -5,17 +5,6 @@ fn condition() -> bool {
     true
 }
 
-// TODO: How do we select which workflow to run? It currently just selects the
-// first registered workflow (which seems to be the last defined workflow)
-#[workflow]
-async fn grandchild_fn() {}
-
-#[workflow]
-async fn child_fn() {
-    grandchild_fn().await;
-    grandchild_fn().await;
-}
-
 #[workflow]
 async fn counter() {
     if condition() {
@@ -36,3 +25,12 @@ async fn counter() {
         checkpoint().await;
     }
 }
+
+#[workflow]
+async fn child_fn() {
+    grandchild_fn().await;
+    grandchild_fn().await;
+}
+
+#[workflow]
+async fn grandchild_fn() {}

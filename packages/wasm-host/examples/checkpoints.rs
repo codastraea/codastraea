@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     let mut container = Container::from_file(&wat_file)?;
 
     container.register_workflows()?;
-    container.init_workflow(0)?;
+    container.init_workflow("serpent_automation_test_workflow", "counter")?;
 
     for _i in 0..5 {
         container.run()?;

@@ -91,11 +91,29 @@ impl Trace {
 #[cfg(target_family = "wasm")]
 extern "C" {
     fn __enhedron_log(data: u32, len: u32);
+    fn __enhedron_register_workflow_index(
+        module_data: u32,
+        module_len: u32,
+        name_data: u32,
+        name_len: u32,
+        index: u32,
+    );
 }
 
 #[cfg(not(target_family = "wasm"))]
 unsafe extern "C" fn __enhedron_log(_data: u32, _len: u32) {}
 
+#[cfg(not(target_family = "wasm"))]
+unsafe extern "C" fn __enhedron_register_workflow_index(
+    _module_data: u32,
+    _module_len: u32,
+    _name_data: u32,
+    _name_len: u32,
+    _index: u32,
+) {
+}
+
+// TODO: Use the component model for communication betwen the host and wasm.
 pub fn log(s: impl AsRef<str>) {
     let s = s.as_ref();
     unsafe { __enhedron_log(wasm_ptr(s), wasm_len(s)) };
@@ -129,8 +147,18 @@ extern "C" fn __enhedron_register_workflows() -> u32 {
     log("Registering workflows");
 
     WORKFLOWS.with_borrow_mut(|workflows| {
-        for Workflow { module, name, init } in inventory::iter::<Workflow> {
-            log(format!("Registering workflow {module}::{name}"));
+        for (index, Workflow { module, name, init }) in
+            inventory::iter::<Workflow>.into_iter().enumerate()
+        {
+            unsafe {
+                __enhedron_register_workflow_index(
+                    wasm_ptr(module),
+                    wasm_len(module),
+                    wasm_ptr(name),
+                    wasm_len(name),
+                    index.try_into().unwrap(),
+                )
+            }
             workflows.push(*init);
         }
 

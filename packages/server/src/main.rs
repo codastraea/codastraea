@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     let mut container = Container::from_file(&wat_file)?;
 
     container.register_workflows()?;
-    container.init_workflow(0)?;
+    container.init_workflow("serpent_automation_test_workflow", "counter")?;
     let node_store = container.node_store();
 
     thread::spawn({

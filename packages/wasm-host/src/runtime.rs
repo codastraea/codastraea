@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::Path,
     sync::{Arc, RwLock},
@@ -21,6 +22,24 @@ pub struct Container {
     init_workflow: TypedFunc<u32, ()>,
     run: TypedFunc<(), i32>,
     thread: Arc<RwLock<Thread>>,
+    workflow_indices: WorkflowIndices,
+}
+
+type WorkflowIndices = Arc<RwLock<HashMap<WorkflowKey, u32>>>;
+
+#[derive(Hash, Eq, PartialEq)]
+struct WorkflowKey {
+    module: String,
+    name: String,
+}
+
+impl WorkflowKey {
+    fn new(module: &str, name: &str) -> Self {
+        Self {
+            module: module.to_string(),
+            name: name.to_string(),
+        }
+    }
 }
 
 impl Container {
@@ -34,6 +53,8 @@ impl Container {
             bail!("failed to find `memory` export in module");
         };
         let linker = &mut Linker::new(&engine);
+        let workflow_indices = WorkflowIndices::default();
+        define_register_workflow_index(workflow_indices.clone(), linker, memory_export)?;
         define_log(linker, memory_export)?;
         let thread = Arc::new(RwLock::new(Thread::empty()));
         define_trace_fn("begin", Thread::fn_begin, &thread, linker, memory_export)?;
@@ -57,6 +78,7 @@ impl Container {
             init_workflow,
             run,
             thread,
+            workflow_indices,
         })
     }
 
@@ -74,7 +96,13 @@ impl Container {
         Ok(())
     }
 
-    pub fn init_workflow(&mut self, index: u32) -> Result<()> {
+    pub fn init_workflow(&mut self, module: &str, name: &str) -> Result<()> {
+        let index = *self
+            .workflow_indices
+            .read()
+            .unwrap()
+            .get(&WorkflowKey::new(module, name))
+            .with_context(|| format!("Unknown workflow {module}::{name}"))?;
         self.init_workflow.call(&mut self.store, index)?;
         Ok(())
     }
@@ -86,6 +114,34 @@ impl Container {
     pub fn node_store(&self) -> NodeStore {
         self.thread.read().unwrap().node_store()
     }
+}
+
+fn define_register_workflow_index(
+    workflow_indices: WorkflowIndices,
+    linker: &mut Linker<()>,
+    memory_export: ModuleExport,
+) -> Result<()> {
+    linker.func_wrap(
+        LINKER_MODULE,
+        "__enhedron_register_workflow_index",
+        move |mut caller: Caller<'_, ()>,
+              module_data: u32,
+              module_len: u32,
+              name_data: u32,
+              name_len: u32,
+              index: u32| {
+            let memory = memory(&mut caller, memory_export)?;
+            let module = read_string(memory, module_data, module_len)?;
+            let name = read_string(memory, name_data, name_len)?;
+            println!("Registering workflow index: {module}::{name} = {index}");
+            workflow_indices
+                .write()
+                .unwrap()
+                .insert(WorkflowKey::new(module, name), index);
+            Ok(())
+        },
+    )?;
+    Ok(())
 }
 
 fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
