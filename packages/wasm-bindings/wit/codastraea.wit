@@ -1,0 +1,20 @@
+package codastraea:guest;
+
+world main {
+    export register-workflows: func() -> u64;
+    export initialize-workflow: func(index: u64);
+    export run-workflow: func() -> bool;
+
+    import register-workflow-index: func(module: string, name: string, index: u64);
+    import begin-fn: func(module: string, name: string);
+    import end-fn: func(module: string, name: string);
+    import begin-if-condition: func();
+    import end-if-condition: func();
+    import begin-else-if-condition: func();
+    import end-else-if-condition: func();
+    import begin-then: func();
+    import end-then: func();
+    import begin-else: func();
+    import end-else: func();
+    import log: func(message: string);
+}

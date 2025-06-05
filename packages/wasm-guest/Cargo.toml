@@ -5,5 +5,8 @@ edition.workspace = true
 [dependencies]
 crossbeam.workspace = true
 inventory.workspace = true
+codastraea-wasm-bindings = { workspace = true, features = [
+    "guest-bindings",
+], default-features = false }
 codastraea-wasm-guest-proc-macro.workspace = true
 trybuild.workspace = true

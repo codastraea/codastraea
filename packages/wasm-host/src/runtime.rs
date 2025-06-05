@@ -5,9 +5,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use anyhow::{bail, Context, Result};
-use clonelet::clone;
-use wasmtime::{Caller, Engine, Extern, Instance, Linker, Module, ModuleExport, Store, TypedFunc};
+use anyhow::{Context, Result};
+use codastraea_wasm_bindings::host::{Main, MainImports};
+use wasmtime::{
+    component::{Component, Linker},
+    Engine, Store,
+};
 
 use crate::{
     instrument::instrument,
@@ -16,16 +19,13 @@ use crate::{
 };
 
 pub struct Container {
-    instance: Instance,
-    store: Store<()>,
-    register_workflows: TypedFunc<(), u32>,
-    init_workflow: TypedFunc<u32, ()>,
-    run: TypedFunc<(), i32>,
+    bindings: Main,
+    store: Store<State>,
     thread: Arc<RwLock<Thread>>,
     workflow_indices: WorkflowIndices,
 }
 
-type WorkflowIndices = Arc<RwLock<HashMap<WorkflowKey, u32>>>;
+type WorkflowIndices = Arc<RwLock<HashMap<WorkflowKey, u64>>>;
 
 #[derive(Hash, Eq, PartialEq)]
 struct WorkflowKey {
@@ -33,12 +33,70 @@ struct WorkflowKey {
     name: String,
 }
 
+struct State {
+    thread: Arc<RwLock<Thread>>,
+    workflow_indices: WorkflowIndices,
+}
+
+impl MainImports for State {
+    fn register_workflow_index(&mut self, module: String, name: String, index: u64) {
+        println!("Registering workflow index: {module}::{name} = {index}");
+        self.workflow_indices
+            .write()
+            .unwrap()
+            .insert(WorkflowKey::new(module, name), index);
+    }
+
+    fn begin_fn(&mut self, module: String, name: String) {
+        println!("Begin {module}::{name}");
+        self.thread.write().unwrap().fn_begin(&name)
+    }
+
+    fn end_fn(&mut self, module: String, name: String) {
+        println!("End {module}::{name}");
+        self.thread.write().unwrap().fn_end(&name)
+    }
+
+    fn begin_if_condition(&mut self) {
+        println!("begin_if_condition")
+    }
+
+    fn end_if_condition(&mut self) {
+        println!("end_if_condition")
+    }
+
+    fn begin_else_if_condition(&mut self) {
+        println!("begin_else_if_condition")
+    }
+
+    fn end_else_if_condition(&mut self) {
+        println!("end_else_if_condition")
+    }
+
+    fn begin_then(&mut self) {
+        println!("begin_then")
+    }
+
+    fn end_then(&mut self) {
+        println!("end_then")
+    }
+
+    fn begin_else(&mut self) {
+        println!("begin_else")
+    }
+
+    fn end_else(&mut self) {
+        println!("end_else")
+    }
+
+    fn log(&mut self, message: String) {
+        println!("{message}");
+    }
+}
+
 impl WorkflowKey {
-    fn new(module: &str, name: &str) -> Self {
-        Self {
-            module: module.to_string(),
-            name: name.to_string(),
-        }
+    fn new(module: String, name: String) -> Self {
+        Self { module, name }
     }
 }
 
@@ -47,36 +105,26 @@ impl Container {
         let wat = fs::read(wat_file).context(format!("Opening file {wat_file:?}"))?;
         let wat = instrument(&wat)?;
         let engine = Engine::default();
-        let module = Module::new(&engine, wat)?;
-
-        let Some(memory_export) = module.get_export_index("memory") else {
-            bail!("failed to find `memory` export in module");
-        };
+        let component = Component::from_binary(&engine, &wat)?;
         let linker = &mut Linker::new(&engine);
+
+        Main::add_to_linker(linker, |state: &mut State| state)?;
+
         let workflow_indices = WorkflowIndices::default();
-        define_register_workflow_index(workflow_indices.clone(), linker, memory_export)?;
-        define_log(linker, memory_export)?;
         let thread = Arc::new(RwLock::new(Thread::empty()));
-        define_trace_fn("begin", Thread::fn_begin, &thread, linker, memory_export)?;
-        define_trace_fn("end", Thread::fn_end, &thread, linker, memory_export)?;
-
-        for event in ["if_condition", "else_if_condition", "then", "else"] {
-            define_trace(linker, event)?;
-        }
-
-        let mut store = Store::new(&engine, ());
-        let instance = linker.instantiate(&mut store, &module)?;
-        let register_workflows =
-            instance.get_typed_func(&mut store, "__enhedron_register_workflows")?;
-        let init_workflow = instance.get_typed_func(&mut store, "__enhedron_init_workflow")?;
-        let run = instance.get_typed_func(&mut store, "__enhedron_run")?;
+        let mut store = Store::new(
+            &engine,
+            State {
+                thread: thread.clone(),
+                workflow_indices: workflow_indices.clone(),
+            },
+        );
+        let instance = linker.instantiate(&mut store, &component)?;
+        let bindings = Main::instantiate(&mut store, &component, &linker)?;
 
         Ok(Self {
-            instance,
+            bindings,
             store,
-            register_workflows,
-            init_workflow,
-            run,
             thread,
             workflow_indices,
         })
@@ -92,7 +140,7 @@ impl Container {
     }
 
     pub fn register_workflows(&mut self) -> Result<()> {
-        let workflow_count = self.register_workflows.call(&mut self.store, ())?;
+        let workflow_count = self.bindings.call_register_workflows(&mut self.store)?;
         println!("Registered {workflow_count} workflows");
         Ok(())
     }
@@ -102,117 +150,20 @@ impl Container {
             .workflow_indices
             .read()
             .unwrap()
-            .get(&WorkflowKey::new(module, name))
+            .get(&WorkflowKey::new(module.to_string(), name.to_string()))
             .with_context(|| format!("Unknown workflow {module}::{name}"))?;
-        self.init_workflow.call(&mut self.store, index)?;
+        self.bindings
+            .call_initialize_workflow(&mut self.store, index)?;
         Ok(())
     }
 
     pub fn run(&mut self) -> Result<bool> {
-        Ok(self.run.call(&mut self.store, ())? != 0)
+        Ok(self.bindings.call_run_workflow(&mut self.store)?)
     }
 
     pub fn node_store(&self) -> NodeStore {
         self.thread.read().unwrap().node_store()
     }
-}
-
-fn define_register_workflow_index(
-    workflow_indices: WorkflowIndices,
-    linker: &mut Linker<()>,
-    memory_export: ModuleExport,
-) -> Result<()> {
-    linker.func_wrap(
-        LINKER_MODULE,
-        "__enhedron_register_workflow_index",
-        move |mut caller: Caller<'_, ()>,
-              module_data: u32,
-              module_len: u32,
-              name_data: u32,
-              name_len: u32,
-              index: u32| {
-            let memory = memory(&mut caller, memory_export)?;
-            let module = read_string(memory, module_data, module_len)?;
-            let name = read_string(memory, name_data, name_len)?;
-            println!("Registering workflow index: {module}::{name} = {index}");
-            workflow_indices
-                .write()
-                .unwrap()
-                .insert(WorkflowKey::new(module, name), index);
-            Ok(())
-        },
-    )?;
-    Ok(())
-}
-
-fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
-    linker.func_wrap(
-        LINKER_MODULE,
-        "__enhedron_log",
-        move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
-            let message = read_string(memory(&mut caller, memory_export)?, data, len)?;
-            println!("Log: {message}");
-            Ok(())
-        },
-    )?;
-    Ok(())
-}
-
-fn define_trace_fn(
-    fn_name: &'static str,
-    f: impl Fn(&mut Thread, &str) + Send + Sync + 'static,
-    thread: &Arc<RwLock<Thread>>,
-    linker: &mut Linker<()>,
-    memory_export: ModuleExport,
-) -> Result<()> {
-    clone!(thread);
-    linker.func_wrap(
-        LINKER_MODULE,
-        &format!("__enhedron_fn_{fn_name}"),
-        move |mut caller: Caller<()>,
-              module_data: u32,
-              module_len: u32,
-              name_data: u32,
-              name_len: u32| {
-            let memory = memory(&mut caller, memory_export)?;
-            let module = read_string(memory, module_data, module_len)?;
-            let name = read_string(memory, name_data, name_len)?;
-            println!("{fn_name} {module}::{name}");
-            f(&mut thread.write().unwrap(), name);
-            Ok(())
-        },
-    )?;
-
-    Ok(())
-}
-
-fn define_trace(linker: &mut Linker<()>, name: &'static str) -> Result<()> {
-    for event in ["begin", "end"] {
-        let ident = format!("__enhedron_{event}_{name}");
-
-        linker.func_wrap(LINKER_MODULE, &ident, move || println!("{event} {name}"))?;
-    }
-
-    Ok(())
-}
-
-fn memory<'a>(caller: &'a mut Caller<()>, memory_export: ModuleExport) -> Result<&'a [u8]> {
-    let Some(Extern::Memory(memory)) = caller.get_module_export(&memory_export) else {
-        bail!("failed to find host memory")
-    };
-    Ok(memory.data(caller))
-}
-
-fn read_string(memory: &[u8], data: u32, len: u32) -> Result<&str> {
-    let data: usize = data.try_into().unwrap();
-    let len: usize = len.try_into().unwrap();
-    let data = memory
-        .get(data..)
-        .context("`data` out of bounds")?
-        .get(..len)
-        .context("`len` out of bounds")?;
-    let string = str::from_utf8(data).context("Invalid utf-8")?;
-    Ok(string)
 }
 
 const LINKER_MODULE: &str = "env";

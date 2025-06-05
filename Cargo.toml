@@ -13,6 +13,7 @@ codastraea-server-api = { path = "packages/server-api" }
 codastraea-wasm-host = { path = "packages/wasm-host" }
 codastraea-wasm-guest = { path = "packages/wasm-guest" }
 codastraea-wasm-guest-proc-macro = { path = "packages/wasm-guest-proc-macro" }
+codastraea-wasm-bindings = { path = "packages/wasm-bindings", default-features = false }
 silkenweb-ui5 = { path = "packages/ui5" }
 silkenweb = { git = "https://github.com/silkenweb/silkenweb", features = [
     "css-transpile",
@@ -58,3 +59,4 @@ proc-macro2 = "1.0.95"
 trybuild = "1.0.105"
 futures-core = "0.3.31"
 futures-channel = "0.3.31"
+wit-bindgen = "0.42.1"

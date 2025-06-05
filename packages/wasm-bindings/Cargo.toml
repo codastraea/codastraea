@@ -1,0 +1,12 @@
+[package]
+name = "codastraea-wasm-bindings"
+edition.workspace = true
+
+[features]
+default = ["host-bindings", "guest-bindings"]
+host-bindings = ["dep:wasmtime"]
+guest-bindings = ["dep:wit-bindgen"]
+
+[dependencies]
+wasmtime = { workspace = true, optional = true }
+wit-bindgen = { workspace = true, optional = true }

@@ -5,6 +5,7 @@ use checkpoint::until_checkpoint;
 mod checkpoint;
 
 pub use checkpoint::checkpoint;
+pub use codastraea_wasm_bindings::guest;
 /// Make a Workflow function.
 ///
 /// This instruments a function to trace any control flow, so it can be used as
@@ -16,24 +17,6 @@ pub use codastraea_wasm_guest_proc_macro::workflow;
 #[doc(hidden)]
 pub use inventory;
 
-#[cfg(target_family = "wasm")]
-unsafe extern "C" {
-    fn __enhedron_fn_begin(module: u32, module_len: u32, name: u32, name_len: u32);
-    fn __enhedron_fn_end(module: u32, module_len: u32, name: u32, name_len: u32);
-}
-
-#[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_fn_begin(
-    _module: u32,
-    _module_len: u32,
-    _name: u32,
-    _name_len: u32,
-) {
-}
-#[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_fn_end(_module: u32, _module_len: u32, _name: u32, _name_len: u32) {
-}
-
 #[doc(hidden)]
 pub struct TraceFn {
     module: &'static str,
@@ -42,29 +25,14 @@ pub struct TraceFn {
 
 impl TraceFn {
     pub fn new(module: &'static str, name: &'static str) -> Self {
-        let new = Self { module, name };
-        unsafe {
-            __enhedron_fn_begin(
-                wasm_ptr(new.module),
-                wasm_len(new.module),
-                wasm_ptr(new.name),
-                wasm_len(new.name),
-            )
-        }
-        new
+        guest::begin_fn(module, name);
+        Self { module, name }
     }
 }
 
 impl Drop for TraceFn {
     fn drop(&mut self) {
-        unsafe {
-            __enhedron_fn_end(
-                wasm_ptr(self.module),
-                wasm_len(self.module),
-                wasm_ptr(self.name),
-                wasm_len(self.name),
-            )
-        }
+        guest::end_fn(self.module, self.name)
     }
 }
 
@@ -72,59 +40,20 @@ type CFunction = unsafe extern "C" fn();
 
 #[doc(hidden)]
 pub struct Trace {
-    end: CFunction,
+    end: fn(),
 }
 
 impl Drop for Trace {
     fn drop(&mut self) {
-        unsafe { (self.end)() }
+        (self.end)()
     }
 }
 
 impl Trace {
-    pub fn new(begin: CFunction, end: CFunction) -> Self {
-        unsafe { begin() }
+    pub fn new(begin: impl FnOnce(), end: fn()) -> Self {
+        begin();
         Self { end }
     }
-}
-
-#[cfg(target_family = "wasm")]
-extern "C" {
-    fn __enhedron_log(data: u32, len: u32);
-    fn __enhedron_register_workflow_index(
-        module_data: u32,
-        module_len: u32,
-        name_data: u32,
-        name_len: u32,
-        index: u32,
-    );
-}
-
-#[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_log(_data: u32, _len: u32) {}
-
-#[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_register_workflow_index(
-    _module_data: u32,
-    _module_len: u32,
-    _name_data: u32,
-    _name_len: u32,
-    _index: u32,
-) {
-}
-
-// TODO: Use the component model for communication betwen the host and wasm.
-pub fn log(s: impl AsRef<str>) {
-    let s = s.as_ref();
-    unsafe { __enhedron_log(wasm_ptr(s), wasm_len(s)) };
-}
-
-fn wasm_ptr(s: &str) -> u32 {
-    (s.as_ptr() as usize).try_into().unwrap()
-}
-
-fn wasm_len(s: &str) -> u32 {
-    s.len().try_into().unwrap()
 }
 
 #[doc(hidden)]
@@ -144,21 +73,17 @@ impl Workflow {
 
 #[no_mangle]
 extern "C" fn __enhedron_register_workflows() -> u32 {
-    log("Registering workflows");
+    guest::log("Registering workflows");
 
     WORKFLOWS.with_borrow_mut(|workflows| {
         for (index, Workflow { module, name, init }) in
             inventory::iter::<Workflow>.into_iter().enumerate()
         {
-            unsafe {
-                __enhedron_register_workflow_index(
-                    wasm_ptr(module),
-                    wasm_len(module),
-                    wasm_ptr(name),
-                    wasm_len(name),
-                    index.try_into().unwrap(),
-                )
-            }
+            guest::register_workflow_index(
+                module,
+                name,
+                index.try_into().expect("Index should convert to u64"),
+            );
             workflows.push(*init);
         }
 

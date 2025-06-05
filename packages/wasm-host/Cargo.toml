@@ -13,6 +13,9 @@ codastraea-server-api.workspace = true
 futures-core.workspace = true
 futures-channel.workspace = true
 slotmap.workspace = true
+codastraea-wasm-bindings = { workspace = true, features = [
+    "host-bindings",
+], default-features = false }
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
