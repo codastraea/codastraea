@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use anyhow::{bail, Context, Result};
 use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
-use wasmtime::{AsContextMut, Instance, Val};
+use wasmtime::{AsContextMut, Instance, Ref, Val};
 
 // # TODO
 //
@@ -73,9 +73,15 @@ impl Snapshot {
                         Val::F32(val) => global_f32s.push((name, f32::from_bits(val))),
                         Val::F64(val) => global_f64s.push((name, f64::from_bits(val))),
                         Val::V128(val) => global_v128s.push((name, val.as_u128())),
-                        Val::FuncRef(_) => bail!("Mutable `FuncRef`s are not supported"),
-                        Val::ExternRef(_) => bail!("Mutable `ExternRef`s are not supported"),
-                        Val::AnyRef(_) => bail!("Mutable `AnyRef`s are not supported"),
+                        Val::FuncRef(_) => {
+                            bail!("Global '{name}': Mutable `FuncRef`s are not supported")
+                        }
+                        Val::ExternRef(_) => {
+                            bail!("Global '{name}': Mutable `ExternRef`s are not supported")
+                        }
+                        Val::AnyRef(_) => {
+                            bail!("Global '{name}': Mutable `AnyRef`s are not supported")
+                        }
                     }
                 }
             }
@@ -86,13 +92,32 @@ impl Snapshot {
                 let uncompressed_len = memory.data_size(&mut *ctx);
                 let data = compressor.finish()?;
                 memories.push((
-                    name,
+                    name.clone(),
                     SnapshotMemory {
                         page_size: memory.page_size(&mut *ctx),
                         uncompressed_len,
                         data,
                     },
                 ))
+            }
+
+            if let Some(table) = instance.get_table(&mut *ctx, &name) {
+                for index in 0..table.size(&*ctx) {
+                    if let Some(item) = table.get(&mut *ctx, index) {
+                        match item {
+                            Ref::Func(func) => {
+                                // TODO: Implement
+                                println!("Func {func:?}");
+                            }
+                            Ref::Extern(_) => {
+                                bail!("Table {name}[{index}]: `ExternRef`s are not supported")
+                            }
+                            Ref::Any(_) => {
+                                bail!("Table {name}[{index}]: `AnyRef`s are not supported")
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -128,6 +153,8 @@ impl Snapshot {
         Self::set_globals(ctx, instance, &self.global_f32s)?;
         Self::set_globals(ctx, instance, &self.global_f64s)?;
         Self::set_globals(ctx, instance, &self.global_v128s)?;
+
+        // TODO: Restore tables
 
         for (name, snapshot) in &self.memories {
             let memory = instance
