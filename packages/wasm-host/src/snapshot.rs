@@ -1,4 +1,7 @@
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+};
 
 use anyhow::{bail, Context, Result};
 use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
@@ -40,6 +43,7 @@ pub struct Snapshot {
     global_f64s: Vec<(String, f64)>,
     global_v128s: Vec<(String, u128)>,
     memories: Vec<(String, SnapshotMemory)>,
+    tables: Vec<(String, Vec<Option<String>>)>,
 }
 
 struct SnapshotMemory {
@@ -50,17 +54,27 @@ struct SnapshotMemory {
 
 impl Snapshot {
     pub fn new(ctx: &mut impl AsContextMut, instance: &Instance) -> Result<Self> {
+        // TODO: Break this function up
         let mut global_i32s = Vec::new();
         let mut global_i64s = Vec::new();
         let mut global_f32s = Vec::new();
         let mut global_f64s = Vec::new();
         let mut global_v128s = Vec::new();
         let mut memories = Vec::new();
+        let mut tables = Vec::new();
 
         let exported_names: Vec<String> = instance
             .exports(&mut *ctx)
             .map(|e| e.name().to_string())
             .collect();
+
+        let mut lookup_func_name = HashMap::new();
+
+        for name in &exported_names {
+            if let Some(func) = instance.get_func(&mut *ctx, name) {
+                lookup_func_name.insert(unsafe { func.to_raw(&mut *ctx) }, name.clone());
+            }
+        }
 
         for name in exported_names {
             if let Some(global) = instance.get_global(&mut *ctx, &name) {
@@ -102,22 +116,36 @@ impl Snapshot {
             }
 
             if let Some(table) = instance.get_table(&mut *ctx, &name) {
+                let mut table_data = Vec::new();
+
                 for index in 0..table.size(&*ctx) {
-                    if let Some(item) = table.get(&mut *ctx, index) {
-                        match item {
-                            Ref::Func(func) => {
-                                // TODO: Implement
-                                println!("Func {func:?}");
-                            }
-                            Ref::Extern(_) => {
-                                bail!("Table {name}[{index}]: `ExternRef`s are not supported")
-                            }
-                            Ref::Any(_) => {
-                                bail!("Table {name}[{index}]: `AnyRef`s are not supported")
-                            }
+                    let item = table
+                        .get(&mut *ctx, index)
+                        .expect("Index should be in bounds");
+
+                    let item = match item {
+                        Ref::Func(None) => None,
+                        Ref::Func(Some(func)) => {
+                            let name = lookup_func_name
+                                .get(&unsafe { func.to_raw(&mut *ctx) })
+                                .with_context(|| {
+                                    format!("Table {name}[{index}]: function not found")
+                                })?;
+
+                            Some(name.clone())
                         }
-                    }
+                        Ref::Extern(_) => {
+                            bail!("Table {name}[{index}]: `ExternRef`s are not supported")
+                        }
+                        Ref::Any(_) => {
+                            bail!("Table {name}[{index}]: `AnyRef`s are not supported")
+                        }
+                    };
+
+                    table_data.push(item);
                 }
+
+                tables.push((name.clone(), table_data));
             }
         }
 
@@ -128,6 +156,7 @@ impl Snapshot {
             global_f64s,
             global_v128s,
             memories,
+            tables,
         })
     }
 
@@ -148,14 +177,14 @@ impl Snapshot {
     }
 
     pub fn restore(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
-        Self::set_globals(ctx, instance, &self.global_i32s)?;
-        Self::set_globals(ctx, instance, &self.global_i64s)?;
-        Self::set_globals(ctx, instance, &self.global_f32s)?;
-        Self::set_globals(ctx, instance, &self.global_f64s)?;
-        Self::set_globals(ctx, instance, &self.global_v128s)?;
+        self.restore_globals(ctx, instance)?;
+        self.restore_tables(ctx, instance)?;
+        self.restore_memories(ctx, instance)?;
 
-        // TODO: Restore tables
+        Ok(())
+    }
 
+    fn restore_memories(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
         for (name, snapshot) in &self.memories {
             let memory = instance
                 .get_memory(&mut *ctx, name)
@@ -185,6 +214,48 @@ impl Snapshot {
             memory.write(&mut *ctx, 0, &snapshot.data)?;
         }
 
+        Ok(())
+    }
+
+    fn restore_tables(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
+        for (name, snapshot_table) in &self.tables {
+            let table = instance
+                .get_table(&mut *ctx, name)
+                .with_context(|| format!("Couldn't find table {name}"))?;
+            let snapshot_len: u64 = snapshot_table
+                .len()
+                .try_into()
+                .expect("Table len should convert to u64");
+            let table_size = table.size(&*ctx);
+
+            if let Some(delta) = snapshot_len.checked_sub(table_size) {
+                table.grow(&mut *ctx, delta, Ref::Func(None))?;
+            }
+
+            for (index, func_name) in snapshot_table.iter().enumerate() {
+                let item = if let Some(func_name) = func_name {
+                    let func = instance
+                        .get_func(&mut *ctx, func_name)
+                        .with_context(|| format!("Function '{func_name}' not found"))?;
+                    Ref::Func(Some(func))
+                } else {
+                    Ref::Func(None)
+                };
+
+                let index = index.try_into().expect("Index should convert to u64");
+                table.set(&mut *ctx, index, item)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn restore_globals(&self, ctx: &mut impl AsContextMut, instance: &Instance) -> Result<()> {
+        Self::set_globals(ctx, instance, &self.global_i32s)?;
+        Self::set_globals(ctx, instance, &self.global_i64s)?;
+        Self::set_globals(ctx, instance, &self.global_f32s)?;
+        Self::set_globals(ctx, instance, &self.global_f64s)?;
+        Self::set_globals(ctx, instance, &self.global_v128s)?;
         Ok(())
     }
 }
