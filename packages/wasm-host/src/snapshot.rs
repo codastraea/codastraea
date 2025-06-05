@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ffi::c_void,
     io::{Read, Write},
 };
 
@@ -8,17 +9,6 @@ use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use wasmtime::{AsContextMut, Instance, Ref, Val};
 
 // # TODO
-//
-// ## Function
-//
-// We'd need to export every function during instrumentation, then build a map
-// of raw pointer to function name + any host functions. Then we can look at
-// global function values and determine the function name. We'd then store the
-// function name as the globals value. Raw pointer values change rom run to run.
-// Maybe they represent the address of the compiled funcion on the host? Anyway,
-// we definitely can't just store the raw pointer.
-//
-// To restore a snapshot, we'd need a map of name to raw pointer.
 //
 // ## ExternRef/AnyRef
 //
@@ -30,11 +20,6 @@ use wasmtime::{AsContextMut, Instance, Ref, Val};
 //   already be exported by the instrumentation.
 // - Should we be copying shared memory or rejecting anything with shared
 //   memory? All threads should at least be stopped before a snapshot.
-//
-// ## Table
-//
-// These are just arrays of Func/ExternRef/AnyRefs, so once we handle all those
-// types, tables should be easy.
 
 pub struct Snapshot {
     global_i32s: Vec<(String, i32)>,
@@ -68,13 +53,7 @@ impl Snapshot {
             .map(|e| e.name().to_string())
             .collect();
 
-        let mut lookup_func_name = HashMap::new();
-
-        for name in &exported_names {
-            if let Some(func) = instance.get_func(&mut *ctx, name) {
-                lookup_func_name.insert(unsafe { func.to_raw(&mut *ctx) }, name.clone());
-            }
-        }
+        let lookup_func_name = func_name_lookup(ctx, instance, &exported_names);
 
         for name in exported_names {
             if let Some(global) = instance.get_global(&mut *ctx, &name) {
@@ -258,4 +237,20 @@ impl Snapshot {
         Self::set_globals(ctx, instance, &self.global_v128s)?;
         Ok(())
     }
+}
+
+fn func_name_lookup(
+    ctx: &mut impl AsContextMut,
+    instance: &Instance,
+    exported_names: &Vec<String>,
+) -> HashMap<*mut c_void, String> {
+    let mut lookup_func_name = HashMap::new();
+
+    for name in exported_names {
+        if let Some(func) = instance.get_func(&mut *ctx, name) {
+            lookup_func_name.insert(unsafe { func.to_raw(&mut *ctx) }, name.clone());
+        }
+    }
+
+    lookup_func_name
 }
