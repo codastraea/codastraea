@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
-use wasmtime::{AsContextMut, Instance, Ref, Val};
+use wasmtime::{AsContextMut, Instance, Memory, Ref, Val};
 
 // # TODO
 //
@@ -80,18 +80,7 @@ impl Snapshot {
             }
 
             if let Some(memory) = instance.get_memory(&mut *ctx, &name) {
-                let mut compressor = DeflateEncoder::new(Vec::new(), Compression::default());
-                compressor.write_all(memory.data(&mut *ctx))?;
-                let uncompressed_len = memory.data_size(&mut *ctx);
-                let data = compressor.finish()?;
-                memories.push((
-                    name.clone(),
-                    SnapshotMemory {
-                        page_size: memory.page_size(&mut *ctx),
-                        uncompressed_len,
-                        data,
-                    },
-                ))
+                snapshot_memory(ctx, &mut memories, &name, memory)?;
             }
 
             if let Some(table) = instance.get_table(&mut *ctx, &name) {
@@ -237,6 +226,27 @@ impl Snapshot {
         Self::set_globals(ctx, instance, &self.global_v128s)?;
         Ok(())
     }
+}
+
+fn snapshot_memory(
+    ctx: &mut impl AsContextMut,
+    memories: &mut Vec<(String, SnapshotMemory)>,
+    name: &str,
+    memory: Memory,
+) -> Result<()> {
+    let mut compressor = DeflateEncoder::new(Vec::new(), Compression::default());
+    compressor.write_all(memory.data(&mut *ctx))?;
+    let uncompressed_len = memory.data_size(&mut *ctx);
+    let data = compressor.finish()?;
+    memories.push((
+        name.to_string(),
+        SnapshotMemory {
+            page_size: memory.page_size(&mut *ctx),
+            uncompressed_len,
+            data,
+        },
+    ));
+    Ok(())
 }
 
 fn func_name_lookup(
