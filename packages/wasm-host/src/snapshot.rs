@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
-use wasmtime::{AsContextMut, Global, Instance, Memory, Ref, Table, Val};
+use wasmtime::{AsContextMut, Func, Global, Instance, Memory, Ref, Table, Val};
 
 // # TODO
 //
@@ -34,10 +34,17 @@ struct Globals {
     f32s: NamedVec<f32>,
     f64s: NamedVec<f64>,
     v128s: NamedVec<u128>,
+    functions: NamedVec<Option<String>>,
 }
 
 impl Globals {
-    fn snapshot(&mut self, ctx: &mut impl AsContextMut, name: &str, global: Global) -> Result<()> {
+    fn snapshot(
+        &mut self,
+        ctx: &mut impl AsContextMut,
+        lookup_func_name: &FunctionNames,
+        name: &str,
+        global: Global,
+    ) -> Result<()> {
         if global.ty(&mut *ctx).mutability().is_var() {
             let name = name.to_string();
 
@@ -47,9 +54,9 @@ impl Globals {
                 Val::F32(val) => self.f32s.push((name, f32::from_bits(val))),
                 Val::F64(val) => self.f64s.push((name, f64::from_bits(val))),
                 Val::V128(val) => self.v128s.push((name, val.as_u128())),
-                Val::FuncRef(_) => {
-                    bail!("Global '{name}': Mutable `FuncRef`s are not supported")
-                }
+                Val::FuncRef(func) => self
+                    .functions
+                    .push((name, lookup_func_name.get(&mut *ctx, &func)?)),
                 Val::ExternRef(_) => {
                     bail!("Global '{name}': Mutable `ExternRef`s are not supported")
                 }
@@ -68,6 +75,12 @@ impl Globals {
         Self::set_globals(ctx, instance, &self.f32s)?;
         Self::set_globals(ctx, instance, &self.f64s)?;
         Self::set_globals(ctx, instance, &self.v128s)?;
+
+        for (name, func_name) in &self.functions {
+            let func = get_function(&mut *ctx, instance, func_name)?;
+            Self::set_global(ctx, instance, name, Val::FuncRef(func))?;
+        }
+
         Ok(())
     }
 
@@ -77,14 +90,23 @@ impl Globals {
         values: &[(String, T)],
     ) -> Result<()> {
         for (name, value) in values {
-            instance
-                .get_global(&mut *ctx, name)
-                .with_context(|| format!("Couldn't find global '{name}"))?
-                .set(&mut *ctx, (*value).into())
-                .with_context(|| format!("Couldn't set global '{name}"))?;
+            Self::set_global(ctx, instance, name, (*value).into())?;
         }
 
         Ok(())
+    }
+
+    fn set_global(
+        ctx: &mut impl AsContextMut,
+        instance: &Instance,
+        name: &str,
+        value: Val,
+    ) -> Result<()> {
+        instance
+            .get_global(&mut *ctx, name)
+            .with_context(|| format!("Couldn't find global '{name}"))?
+            .set(&mut *ctx, value)
+            .with_context(|| format!("Couldn't set global '{name}"))
     }
 }
 
@@ -107,11 +129,11 @@ impl Snapshot {
             .map(|e| e.name().to_string())
             .collect();
 
-        let lookup_func_name = func_name_lookup(ctx, instance, &exported_names);
+        let lookup_func_name = FunctionNames::new(ctx, instance, &exported_names);
 
         for name in exported_names {
             if let Some(global) = instance.get_global(&mut *ctx, &name) {
-                globals.snapshot(ctx, &name, global)?;
+                globals.snapshot(ctx, &lookup_func_name, &name, global)?;
             }
 
             if let Some(memory) = instance.get_memory(&mut *ctx, &name) {
@@ -194,17 +216,9 @@ impl Snapshot {
             }
 
             for (index, func_name) in snapshot_table.iter().enumerate() {
-                let item = if let Some(func_name) = func_name {
-                    let func = instance
-                        .get_func(&mut *ctx, func_name)
-                        .with_context(|| format!("Function '{func_name}' not found"))?;
-                    Ref::Func(Some(func))
-                } else {
-                    Ref::Func(None)
-                };
-
+                let item = get_function(ctx, instance, func_name)?;
                 let index = index.try_into().expect("Index should convert to u64");
-                table.set(&mut *ctx, index, item)?;
+                table.set(&mut *ctx, index, Ref::Func(item))?;
             }
         }
 
@@ -214,7 +228,7 @@ impl Snapshot {
 
 fn snapshot_table(
     ctx: &mut impl AsContextMut,
-    lookup_func_name: &HashMap<*mut c_void, String>,
+    lookup_func_name: &FunctionNames,
     table: Table,
 ) -> Result<Vec<Option<String>>> {
     let mut table_data = Vec::new();
@@ -224,14 +238,7 @@ fn snapshot_table(
             .expect("Index should be in bounds");
 
         let item = match item {
-            Ref::Func(None) => None,
-            Ref::Func(Some(func)) => {
-                let name = lookup_func_name
-                    .get(&unsafe { func.to_raw(&mut *ctx) })
-                    .context("Function not found")?;
-
-                Some(name.clone())
-            }
+            Ref::Func(func) => lookup_func_name.get(&mut *ctx, &func)?,
             Ref::Extern(_) => bail!("`ExternRef`s are not supported"),
             Ref::Any(_) => bail!("`AnyRef`s are not supported"),
         };
@@ -254,18 +261,47 @@ fn snapshot_memory(ctx: &mut impl AsContextMut, memory: Memory) -> Result<Snapsh
     })
 }
 
-fn func_name_lookup(
-    ctx: &mut impl AsContextMut,
-    instance: &Instance,
-    exported_names: &Vec<String>,
-) -> HashMap<*mut c_void, String> {
-    let mut lookup_func_name = HashMap::new();
+struct FunctionNames(HashMap<*mut c_void, String>);
 
-    for name in exported_names {
-        if let Some(func) = instance.get_func(&mut *ctx, name) {
-            lookup_func_name.insert(unsafe { func.to_raw(&mut *ctx) }, name.clone());
+impl FunctionNames {
+    fn new(ctx: &mut impl AsContextMut, instance: &Instance, exported_names: &Vec<String>) -> Self {
+        let mut lookup_func_name = HashMap::new();
+
+        for name in exported_names {
+            if let Some(func) = instance.get_func(&mut *ctx, name) {
+                lookup_func_name.insert(unsafe { func.to_raw(&mut *ctx) }, name.clone());
+            }
         }
+
+        Self(lookup_func_name)
     }
 
-    lookup_func_name
+    fn get(&self, ctx: impl AsContextMut, func: &Option<Func>) -> Result<Option<String>> {
+        Ok(if let Some(func) = func {
+            Some(
+                self.0
+                    .get(&unsafe { func.to_raw(ctx) })
+                    .context("Function not found")?
+                    .to_string(),
+            )
+        } else {
+            None
+        })
+    }
+}
+
+fn get_function(
+    ctx: &mut impl AsContextMut,
+    instance: &Instance,
+    func_name: &Option<String>,
+) -> Result<Option<Func>> {
+    Ok(if let Some(func_name) = func_name {
+        Some(
+            instance
+                .get_func(&mut *ctx, func_name)
+                .with_context(|| format!("Function '{func_name}' not found"))?,
+        )
+    } else {
+        None
+    })
 }
