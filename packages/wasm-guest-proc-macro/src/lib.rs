@@ -40,13 +40,13 @@ fn impl_workflow(
 
     let ident = &sig.ident;
     let name = &ident.to_string();
-    let exported_ident = Ident::new(&format!("__enhedron_ident_{name}"), Span::call_site());
+    let exported_ident = Ident::new(&format!("__codastraea_ident_{name}"), Span::call_site());
     let block = fold_block(&mut Instrument, *block);
 
     Ok(quote! {
         #(#attrs)*
         #vis #sig {
-            let __enhedron_trace = ::codastraea_wasm_guest::TraceFn::new(
+            let __codastraea_trace = ::codastraea_wasm_guest::TraceFn::new(
                 ::std::module_path!(),
                 #name
             );
@@ -181,7 +181,7 @@ impl Instrument {
                 #[cfg(not(target_family = "wasm"))]
                 unsafe extern "C" fn #end() {}
 
-                let __enhedron_trace = ::codastraea_wasm_guest::Trace::new(
+                let __codastraea_trace = ::codastraea_wasm_guest::Trace::new(
                     #begin,
                     #end
                 );
@@ -192,10 +192,10 @@ impl Instrument {
     }
 
     fn begin_ident(name: &str, item: &impl Spanned) -> Ident {
-        Ident::new(&format!("__enhedron_begin_{name}"), item.span())
+        Ident::new(&format!("__codastraea_begin_{name}"), item.span())
     }
 
     fn end_ident(name: &str, item: &impl Spanned) -> Ident {
-        Ident::new(&format!("__enhedron_end_{name}"), item.span())
+        Ident::new(&format!("__codastraea_end_{name}"), item.span())
     }
 }

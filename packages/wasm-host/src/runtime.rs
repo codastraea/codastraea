@@ -67,9 +67,9 @@ impl Container {
         let mut store = Store::new(&engine, ());
         let instance = linker.instantiate(&mut store, &module)?;
         let register_workflows =
-            instance.get_typed_func(&mut store, "__enhedron_register_workflows")?;
-        let init_workflow = instance.get_typed_func(&mut store, "__enhedron_init_workflow")?;
-        let run = instance.get_typed_func(&mut store, "__enhedron_run")?;
+            instance.get_typed_func(&mut store, "__codastraea_register_workflows")?;
+        let init_workflow = instance.get_typed_func(&mut store, "__codastraea_init_workflow")?;
+        let run = instance.get_typed_func(&mut store, "__codastraea_run")?;
 
         Ok(Self {
             instance,
@@ -124,7 +124,7 @@ fn define_register_workflow_index(
 ) -> Result<()> {
     linker.func_wrap(
         LINKER_MODULE,
-        "__enhedron_register_workflow_index",
+        "__codastraea_register_workflow_index",
         move |mut caller: Caller<'_, ()>,
               module_data: u32,
               module_len: u32,
@@ -148,7 +148,7 @@ fn define_register_workflow_index(
 fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()> {
     linker.func_wrap(
         LINKER_MODULE,
-        "__enhedron_log",
+        "__codastraea_log",
         move |mut caller: Caller<'_, ()>, data: u32, len: u32| {
             let message = read_string(memory(&mut caller, memory_export)?, data, len)?;
             println!("Log: {message}");
@@ -168,7 +168,7 @@ fn define_trace_fn(
     clone!(thread);
     linker.func_wrap(
         LINKER_MODULE,
-        &format!("__enhedron_fn_{fn_name}"),
+        &format!("__codastraea_fn_{fn_name}"),
         move |mut caller: Caller<()>,
               module_data: u32,
               module_len: u32,
@@ -188,7 +188,7 @@ fn define_trace_fn(
 
 fn define_trace(linker: &mut Linker<()>, name: &'static str) -> Result<()> {
     for event in ["begin", "end"] {
-        let ident = format!("__enhedron_{event}_{name}");
+        let ident = format!("__codastraea_{event}_{name}");
 
         linker.func_wrap(LINKER_MODULE, &ident, move || println!("{event} {name}"))?;
     }

@@ -18,12 +18,12 @@ pub use inventory;
 
 #[cfg(target_family = "wasm")]
 unsafe extern "C" {
-    fn __enhedron_fn_begin(module: u32, module_len: u32, name: u32, name_len: u32);
-    fn __enhedron_fn_end(module: u32, module_len: u32, name: u32, name_len: u32);
+    fn __codastraea_fn_begin(module: u32, module_len: u32, name: u32, name_len: u32);
+    fn __codastraea_fn_end(module: u32, module_len: u32, name: u32, name_len: u32);
 }
 
 #[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_fn_begin(
+unsafe extern "C" fn __codastraea_fn_begin(
     _module: u32,
     _module_len: u32,
     _name: u32,
@@ -31,7 +31,12 @@ unsafe extern "C" fn __enhedron_fn_begin(
 ) {
 }
 #[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_fn_end(_module: u32, _module_len: u32, _name: u32, _name_len: u32) {
+unsafe extern "C" fn __codastraea_fn_end(
+    _module: u32,
+    _module_len: u32,
+    _name: u32,
+    _name_len: u32,
+) {
 }
 
 #[doc(hidden)]
@@ -44,7 +49,7 @@ impl TraceFn {
     pub fn new(module: &'static str, name: &'static str) -> Self {
         let new = Self { module, name };
         unsafe {
-            __enhedron_fn_begin(
+            __codastraea_fn_begin(
                 wasm_ptr(new.module),
                 wasm_len(new.module),
                 wasm_ptr(new.name),
@@ -58,7 +63,7 @@ impl TraceFn {
 impl Drop for TraceFn {
     fn drop(&mut self) {
         unsafe {
-            __enhedron_fn_end(
+            __codastraea_fn_end(
                 wasm_ptr(self.module),
                 wasm_len(self.module),
                 wasm_ptr(self.name),
@@ -90,8 +95,8 @@ impl Trace {
 
 #[cfg(target_family = "wasm")]
 extern "C" {
-    fn __enhedron_log(data: u32, len: u32);
-    fn __enhedron_register_workflow_index(
+    fn __codastraea_log(data: u32, len: u32);
+    fn __codastraea_register_workflow_index(
         module_data: u32,
         module_len: u32,
         name_data: u32,
@@ -101,10 +106,10 @@ extern "C" {
 }
 
 #[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_log(_data: u32, _len: u32) {}
+unsafe extern "C" fn __codastraea_log(_data: u32, _len: u32) {}
 
 #[cfg(not(target_family = "wasm"))]
-unsafe extern "C" fn __enhedron_register_workflow_index(
+unsafe extern "C" fn __codastraea_register_workflow_index(
     _module_data: u32,
     _module_len: u32,
     _name_data: u32,
@@ -115,7 +120,7 @@ unsafe extern "C" fn __enhedron_register_workflow_index(
 
 pub fn log(s: impl AsRef<str>) {
     let s = s.as_ref();
-    unsafe { __enhedron_log(wasm_ptr(s), wasm_len(s)) };
+    unsafe { __codastraea_log(wasm_ptr(s), wasm_len(s)) };
 }
 
 fn wasm_ptr(s: &str) -> u32 {
@@ -142,7 +147,7 @@ impl Workflow {
 }
 
 #[no_mangle]
-extern "C" fn __enhedron_register_workflows() -> u32 {
+extern "C" fn __codastraea_register_workflows() -> u32 {
     log("Registering workflows");
 
     WORKFLOWS.with_borrow_mut(|workflows| {
@@ -150,7 +155,7 @@ extern "C" fn __enhedron_register_workflows() -> u32 {
             inventory::iter::<Workflow>.into_iter().enumerate()
         {
             unsafe {
-                __enhedron_register_workflow_index(
+                __codastraea_register_workflow_index(
                     wasm_ptr(module),
                     wasm_len(module),
                     wasm_ptr(name),
@@ -166,7 +171,7 @@ extern "C" fn __enhedron_register_workflows() -> u32 {
 }
 
 #[no_mangle]
-extern "C" fn __enhedron_init_workflow(index: u32) {
+extern "C" fn __codastraea_init_workflow(index: u32) {
     let index = usize::try_from(index).unwrap();
     WORKFLOWS.with_borrow(|workflows| unsafe { workflows[index]() })
 }
@@ -177,7 +182,7 @@ pub fn set_fn(f: impl Future<Output = ()> + 'static) {
 }
 
 #[no_mangle]
-extern "C" fn __enhedron_run() -> i32 {
+extern "C" fn __codastraea_run() -> i32 {
     MAIN.with_borrow_mut(|f| match until_checkpoint(f.as_mut()) {
         Some(_) => 0,
         None => 1,
