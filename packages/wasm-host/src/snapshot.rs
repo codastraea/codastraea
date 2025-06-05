@@ -22,14 +22,16 @@ use wasmtime::{AsContextMut, Instance, Memory, Ref, Val};
 //   memory? All threads should at least be stopped before a snapshot.
 
 pub struct Snapshot {
-    global_i32s: Vec<(String, i32)>,
-    global_i64s: Vec<(String, i64)>,
-    global_f32s: Vec<(String, f32)>,
-    global_f64s: Vec<(String, f64)>,
-    global_v128s: Vec<(String, u128)>,
-    memories: Vec<(String, SnapshotMemory)>,
-    tables: Vec<(String, Vec<Option<String>>)>,
+    global_i32s: NamedVec<i32>,
+    global_i64s: NamedVec<i64>,
+    global_f32s: NamedVec<f32>,
+    global_f64s: NamedVec<f64>,
+    global_v128s: NamedVec<u128>,
+    memories: NamedVec<SnapshotMemory>,
+    tables: NamedVec<Vec<Option<String>>>,
 }
+
+type NamedVec<T> = Vec<(String, T)>;
 
 struct SnapshotMemory {
     page_size: u64,
@@ -230,7 +232,7 @@ impl Snapshot {
 
 fn snapshot_memory(
     ctx: &mut impl AsContextMut,
-    memories: &mut Vec<(String, SnapshotMemory)>,
+    memories: &mut NamedVec<SnapshotMemory>,
     name: &str,
     memory: Memory,
 ) -> Result<()> {
