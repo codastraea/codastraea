@@ -83,6 +83,7 @@ impl Container {
     }
 
     pub fn snapshot(&mut self) -> Result<Snapshot> {
+        // TODO: We also need to snapshot and restore the call stack.
         Snapshot::new(&mut self.store, &self.instance)
     }
 
