@@ -8,4 +8,4 @@ edition = { workspace = true }
 [dependencies]
 arpy.workspace = true
 serde = { workspace = true, features = ["derive"] }
-slotmap.workspace = true
+slotmap = { workspace = true, features = ["serde"] }
