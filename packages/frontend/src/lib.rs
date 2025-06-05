@@ -18,7 +18,6 @@ impl Default for ServerConnection {
 }
 
 impl ServerConnection {
-    // TODO: Is `WatchCallTree` a good name? We're watching nodes.
     pub async fn watch(
         &self,
         watch_call_tree: WatchCallTree,

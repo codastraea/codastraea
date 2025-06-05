@@ -113,7 +113,6 @@ unsafe extern "C" fn __enhedron_register_workflow_index(
 ) {
 }
 
-// TODO: Use the component model for communication betwen the host and wasm.
 pub fn log(s: impl AsRef<str>) {
     let s = s.as_ref();
     unsafe { __enhedron_log(wasm_ptr(s), wasm_len(s)) };
