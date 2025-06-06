@@ -62,7 +62,7 @@ fn export_internal_items<T>(
     let internal_ids = ids.filter(|id| !exported_ids.contains(id));
 
     for id in internal_ids {
-        let name = format!("__enhedron_{type_name}_{}", id.index());
+        let name = format!("__codastraea_{type_name}_{}", id.index());
         exports.add(&name, id.into());
     }
 }

@@ -4,25 +4,31 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use codastraea_server_api::{
     CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeVecDiff,
 };
+use futures::{
+    stream::{self, BoxStream},
+    Stream,
+};
 use futures_channel::mpsc;
-use futures_core::Stream;
 use slotmap::SlotMap;
 
 #[derive(Clone)]
 pub struct NodeStore(Arc<RwLock<NodeStoreData>>);
 
 impl NodeStore {
-    pub fn watch(&self, id: CallTreeNodeId) -> impl Stream<Item = NodeVecDiff> {
+    /// Watch a group of nodes.
+    ///
+    /// An empty stream is returned if `id` is not found.
+    pub fn watch(&self, id: CallTreeNodeId) -> BoxStream<'static, NodeVecDiff> {
         let data = self.0.read().unwrap();
 
         if let CallTreeNodeId::Child(child_id) = id {
-            // TODO: empty stream if not found
-            data.children
-                .get(child_id)
-                .expect("TODO: return empty stream")
-                .watch()
+            if let Some(child) = data.children.get(child_id) {
+                Box::pin(child.watch())
+            } else {
+                Box::pin(stream::empty())
+            }
         } else {
-            data.root.watch()
+            Box::pin(data.root.watch())
         }
     }
 

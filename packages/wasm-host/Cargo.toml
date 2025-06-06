@@ -10,7 +10,7 @@ id-arena.workspace = true
 flate2.workspace = true
 clonelet.workspace = true
 codastraea-server-api.workspace = true
-futures-core.workspace = true
+futures.workspace = true
 futures-channel.workspace = true
 slotmap.workspace = true
 codastraea-wasm-bindings = { workspace = true, features = [

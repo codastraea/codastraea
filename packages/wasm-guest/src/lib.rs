@@ -92,7 +92,7 @@ extern "C" fn __enhedron_register_workflows() -> u32 {
 }
 
 #[no_mangle]
-extern "C" fn __enhedron_init_workflow(index: u32) {
+extern "C" fn __codastraea_init_workflow(index: u32) {
     let index = usize::try_from(index).unwrap();
     WORKFLOWS.with_borrow(|workflows| unsafe { workflows[index]() })
 }
@@ -103,7 +103,7 @@ pub fn set_fn(f: impl Future<Output = ()> + 'static) {
 }
 
 #[no_mangle]
-extern "C" fn __enhedron_run() -> i32 {
+extern "C" fn __codastraea_run() -> i32 {
     MAIN.with_borrow_mut(|f| match until_checkpoint(f.as_mut()) {
         Some(_) => 0,
         None => 1,
