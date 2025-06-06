@@ -26,16 +26,16 @@ pub struct TraceFn {
 
 impl TraceFn {
     pub fn new(module: &'static str, name: &'static str) -> Self {
-        let new = Self { module, name };
         unsafe {
             host::__codastraea_fn_begin(
-                wasm_ptr(new.module),
-                wasm_len(new.module),
-                wasm_ptr(new.name),
-                wasm_len(new.name),
+                wasm_ptr(module),
+                wasm_len(module),
+                wasm_ptr(name),
+                wasm_len(name),
             )
         }
-        new
+
+        Self { module, name }
     }
 }
 
