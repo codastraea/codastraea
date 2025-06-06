@@ -248,6 +248,7 @@ enum TableEntry {
     NullExternRef,
     NullAnyRef,
 }
+
 fn snapshot_table(
     ctx: &mut impl AsContextMut,
     lookup_func_name: &FunctionNames,
