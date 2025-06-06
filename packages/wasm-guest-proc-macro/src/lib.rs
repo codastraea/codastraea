@@ -44,6 +44,7 @@ fn impl_workflow(
 
     Ok(quote! {
         #(#attrs)*
+        #[inline(never)]
         #vis #sig {
             let __codastraea_trace = ::codastraea_wasm_guest::TraceFn::new(
                 ::std::module_path!(),
