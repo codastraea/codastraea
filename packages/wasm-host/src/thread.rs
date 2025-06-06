@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+use anyhow::{ensure, Context, Result};
 use codastraea_server_api::{
     CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeVecDiff,
 };
@@ -53,7 +54,6 @@ pub struct Thread {
     node_store: NodeStore,
 }
 
-// TODO: We should never panic with dodgy WASM
 impl Thread {
     pub fn empty() -> Self {
         let root = NodeVec::default();
@@ -70,7 +70,17 @@ impl Thread {
         self.node_store.clone()
     }
 
+    // TODO: Error handling for `fn_begin` and `fn_end`. We should really display an
+    // error node in the call tree.
     pub fn fn_begin(&mut self, name: &str) {
+        self.try_fn_begin(name).expect("TODO: Handle errors")
+    }
+
+    pub fn fn_end(&mut self, name: &str) {
+        self.try_fn_end(name).expect("TODO: Handle errors")
+    }
+
+    fn try_fn_begin(&mut self, name: &str) -> Result<()> {
         let new_top = NodeVec::default();
         let id = self.node_store.insert(new_top.clone());
         let node = Node {
@@ -79,7 +89,7 @@ impl Thread {
             status: NodeStatus::Running,
             sub_tree: new_top.clone(),
         };
-        let top = self.top_mut();
+        let top = self.top_mut()?;
         let mut top_children = top.nodes.write();
         let was_empty = top_children.is_empty();
         top_children.push(node);
@@ -93,7 +103,7 @@ impl Thread {
                     .read()
                     .len()
                     .checked_sub(1)
-                    .expect("Expected at least one running node");
+                    .context("Expected at least one running node")?;
 
                 parent_nodes
                     .write()
@@ -101,41 +111,42 @@ impl Thread {
             }
         }
 
-        self.call_stack.push(StackFrame { nodes: new_top })
+        self.call_stack.push(StackFrame { nodes: new_top });
+        Ok(())
     }
 
-    pub fn fn_end(&mut self, name: &str) {
-        self.pop();
-        let mut nodes = self.top_mut().nodes.write();
+    fn try_fn_end(&mut self, name: &str) -> Result<()> {
+        self.pop()?;
+        let mut nodes = self.top_mut()?.nodes.write();
         let current = nodes
             .values
             .last_mut()
-            .expect("There should be a node on the call stack");
-        // TODO: These should be errors rather than asserts. We shouldn't crash with
-        // dodgy wasm.
-        assert_eq!(current.name, name);
-        assert_eq!(current.status, NodeStatus::Running);
+            .context("There should be a node on the call stack")?;
+        ensure!(current.name == name);
+        ensure!(current.status == NodeStatus::Running);
         current.status = NodeStatus::Complete;
         let last_index = nodes
             .len()
             .checked_sub(1)
-            .expect("There should be a node on the call stack");
+            .context("There should be a node on the call stack")?;
         nodes.notify(|| NodeVecDiff::SetStatus {
             index: last_index,
             status: NodeStatus::Complete,
         });
+        Ok(())
     }
 
-    fn top_mut(&mut self) -> &mut StackFrame {
+    fn top_mut(&mut self) -> Result<&mut StackFrame> {
         self.call_stack
             .last_mut()
-            .expect("Call stack should never be empty")
+            .context("Call stack should never be empty")
     }
 
-    fn pop(&mut self) {
+    fn pop(&mut self) -> Result<()> {
         self.call_stack
             .pop()
-            .expect("Call stack should never be empty");
+            .context("Call stack should never be empty")?;
+        Ok(())
     }
 }
 
