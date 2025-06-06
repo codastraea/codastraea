@@ -1,4 +1,4 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{
     fold::{fold_block, Fold},
@@ -40,7 +40,6 @@ fn impl_workflow(
 
     let ident = &sig.ident;
     let name = &ident.to_string();
-    let exported_ident = Ident::new(&format!("__codastraea_ident_{name}"), Span::call_site());
     let block = fold_block(&mut Instrument, *block);
 
     Ok(quote! {
@@ -54,16 +53,18 @@ fn impl_workflow(
             #block
         }
 
-        extern "C" fn #exported_ident() {
-            ::codastraea_wasm_guest::set_fn(#ident());
-        }
-
         ::codastraea_wasm_guest::inventory::submit!(
-            ::codastraea_wasm_guest::Workflow::new(
-                ::std::module_path!(),
-                #name,
-                #exported_ident
-            )
+            {
+                fn set_main_fn() {
+                    ::codastraea_wasm_guest::set_main_fn(#ident());
+                }
+
+                ::codastraea_wasm_guest::Workflow::new(
+                    ::std::module_path!(),
+                    #name,
+                    set_main_fn
+                )
+            }
         );
     })
 }

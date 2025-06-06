@@ -135,13 +135,13 @@ fn wasm_len(s: &str) -> u32 {
 pub struct Workflow {
     module: &'static str,
     name: &'static str,
-    init: CFunction,
+    init: fn(),
 }
 
 inventory::collect!(Workflow);
 
 impl Workflow {
-    pub const fn new(module: &'static str, name: &'static str, init: CFunction) -> Self {
+    pub const fn new(module: &'static str, name: &'static str, init: fn()) -> Self {
         Self { module, name, init }
     }
 }
@@ -173,11 +173,11 @@ extern "C" fn __codastraea_register_workflows() -> u32 {
 #[no_mangle]
 extern "C" fn __codastraea_init_workflow(index: u32) {
     let index = usize::try_from(index).unwrap();
-    WORKFLOWS.with_borrow(|workflows| unsafe { workflows[index]() })
+    WORKFLOWS.with_borrow(|workflows| workflows[index]())
 }
 
 #[doc(hidden)]
-pub fn set_fn(f: impl Future<Output = ()> + 'static) {
+pub fn set_main_fn(f: impl Future<Output = ()> + 'static) {
     MAIN.set(Box::pin(f));
 }
 
@@ -193,5 +193,5 @@ async fn noop() {}
 
 thread_local! {
     static MAIN: RefCell<Pin<Box<dyn Future<Output = ()>>>> = RefCell::new(Box::pin(noop()));
-    static WORKFLOWS: RefCell<Vec<CFunction>> = const { RefCell::new(Vec::new()) };
+    static WORKFLOWS: RefCell<Vec<fn()>> = const { RefCell::new(Vec::new()) };
 }
