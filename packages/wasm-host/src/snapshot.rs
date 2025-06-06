@@ -24,7 +24,7 @@ use wasmtime::{AsContextMut, Func, Global, Instance, Memory, Ref, Table, Val};
 pub struct Snapshot {
     globals: Globals,
     memories: NamedVec<SnapshotMemory>,
-    tables: NamedVec<Vec<Option<String>>>,
+    tables: NamedVec<Vec<TableEntry>>,
 }
 
 #[derive(Default)]
@@ -227,10 +227,15 @@ impl Snapshot {
                 table.grow(&mut *ctx, delta, Ref::Func(None))?;
             }
 
-            for (index, func_name) in snapshot_table.iter().enumerate() {
-                let item = get_function(ctx, instance, func_name)?;
+            for (index, table_entry) in snapshot_table.iter().enumerate() {
                 let index = index.try_into().expect("Index should convert to u64");
-                table.set(&mut *ctx, index, Ref::Func(item))?;
+                use TableEntry as TE;
+                let item = match table_entry {
+                    TE::Func(func_name) => Ref::Func(get_function(ctx, instance, func_name)?),
+                    TE::NullExternRef => Ref::Extern(None),
+                    TE::NullAnyRef => Ref::Any(None),
+                };
+                table.set(&mut *ctx, index, item)?;
             }
         }
 
@@ -238,11 +243,16 @@ impl Snapshot {
     }
 }
 
+enum TableEntry {
+    Func(Option<String>),
+    NullExternRef,
+    NullAnyRef,
+}
 fn snapshot_table(
     ctx: &mut impl AsContextMut,
     lookup_func_name: &FunctionNames,
     table: Table,
-) -> Result<Vec<Option<String>>> {
+) -> Result<Vec<TableEntry>> {
     let mut table_data = Vec::new();
     for index in 0..table.size(&*ctx) {
         let item = table
@@ -250,7 +260,9 @@ fn snapshot_table(
             .expect("Index should be in bounds");
 
         let item = match item {
-            Ref::Func(func) => lookup_func_name.get(&mut *ctx, &func)?,
+            Ref::Func(func) => TableEntry::Func(lookup_func_name.get(&mut *ctx, &func)?),
+            Ref::Extern(None) => TableEntry::NullExternRef,
+            Ref::Any(None) => TableEntry::NullAnyRef,
             Ref::Extern(_) => bail!("`ExternRef`s are not supported"),
             Ref::Any(_) => bail!("`AnyRef`s are not supported"),
         };
