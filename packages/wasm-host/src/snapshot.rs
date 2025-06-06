@@ -35,6 +35,8 @@ struct Globals {
     f64s: NamedVec<f64>,
     v128s: NamedVec<u128>,
     functions: NamedVec<Option<String>>,
+    null_extern_ref_names: Vec<String>,
+    null_any_ref_names: Vec<String>,
 }
 
 impl Globals {
@@ -57,6 +59,8 @@ impl Globals {
                 Val::FuncRef(func) => self
                     .functions
                     .push((name, lookup_func_name.get(&mut *ctx, &func)?)),
+                Val::ExternRef(None) => self.null_extern_ref_names.push(name),
+                Val::AnyRef(None) => self.null_any_ref_names.push(name),
                 Val::ExternRef(_) => {
                     bail!("Global '{name}': Mutable `ExternRef`s are not supported")
                 }
@@ -79,6 +83,14 @@ impl Globals {
         for (name, func_name) in &self.functions {
             let func = get_function(&mut *ctx, instance, func_name)?;
             Self::set_global(ctx, instance, name, Val::FuncRef(func))?;
+        }
+
+        for name in &self.null_extern_ref_names {
+            Self::set_global(ctx, instance, name, Val::ExternRef(None))?;
+        }
+
+        for name in &self.null_any_ref_names {
+            Self::set_global(ctx, instance, name, Val::AnyRef(None))?;
         }
 
         Ok(())
