@@ -73,22 +73,19 @@ impl Drop for TraceFn {
     }
 }
 
-type CFunction = unsafe extern "C" fn();
-
 #[doc(hidden)]
-pub struct Trace {
-    end: CFunction,
+pub struct OnDrop<F: Fn()> {
+    end: F,
 }
 
-impl Drop for Trace {
+impl<F: Fn()> Drop for OnDrop<F> {
     fn drop(&mut self) {
-        unsafe { (self.end)() }
+        (self.end)()
     }
 }
 
-impl Trace {
-    pub fn new(begin: CFunction, end: CFunction) -> Self {
-        unsafe { begin() }
+impl<F: Fn()> OnDrop<F> {
+    pub fn new(end: F) -> Self {
         Self { end }
     }
 }

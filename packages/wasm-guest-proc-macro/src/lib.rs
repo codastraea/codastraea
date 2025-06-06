@@ -183,9 +183,9 @@ impl Instrument {
                 #[cfg(not(target_family = "wasm"))]
                 unsafe extern "C" fn #end() {}
 
-                let __codastraea_trace = ::codastraea_wasm_guest::Trace::new(
-                    #begin,
-                    #end
+                unsafe{ #begin() }
+                let __codastraea_trace = ::codastraea_wasm_guest::OnDrop::new(
+                    || unsafe { #end() }
                 );
 
                 (#item)
