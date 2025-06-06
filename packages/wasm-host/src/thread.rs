@@ -1,4 +1,3 @@
-// TODO: Tidy this file
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use codastraea_server_api::{
@@ -59,7 +58,7 @@ impl Thread {
     pub fn empty() -> Self {
         let root = NodeVec::default();
         let call_stack = vec![StackFrame::new(root.clone())];
-        let node_store = NodeStore::new(root.clone());
+        let node_store = NodeStore::new(root);
 
         Self {
             call_stack,
@@ -81,11 +80,9 @@ impl Thread {
             sub_tree: new_top.clone(),
         };
         let top = self.top_mut();
-        top.nodes.notify(|| NodeVecDiff::Push(NewNode::from(&node)));
         let mut top_children = top.nodes.write();
-
-        let was_empty = top_children.values.is_empty();
-        top_children.values.push(node);
+        let was_empty = top_children.is_empty();
+        top_children.push(node);
         drop(top_children);
 
         if let Some(top_parent_index) = self.call_stack.len().checked_sub(2) {
@@ -94,22 +91,23 @@ impl Thread {
                 let parent_nodes = &self.call_stack[top_parent_index].nodes;
                 let index = parent_nodes
                     .read()
-                    .values
                     .len()
                     .checked_sub(1)
                     .expect("Expected at least one running node");
 
-                parent_nodes.notify(|| NodeVecDiff::SetHasChildren { index });
+                parent_nodes
+                    .write()
+                    .notify(|| NodeVecDiff::SetHasChildren { index });
             }
         }
+
         self.call_stack.push(StackFrame { nodes: new_top })
     }
 
     pub fn fn_end(&mut self, name: &str) {
         self.pop();
-        let nodes = &self.top_mut().nodes;
-        let mut write_nodes = nodes.write();
-        let current = write_nodes
+        let mut nodes = self.top_mut().nodes.write();
+        let current = nodes
             .values
             .last_mut()
             .expect("There should be a node on the call stack");
@@ -118,12 +116,10 @@ impl Thread {
         assert_eq!(current.name, name);
         assert_eq!(current.status, NodeStatus::Running);
         current.status = NodeStatus::Complete;
-        let last_index = write_nodes
-            .values
+        let last_index = nodes
             .len()
             .checked_sub(1)
             .expect("There should be a node on the call stack");
-        drop(write_nodes);
         nodes.notify(|| NodeVecDiff::SetStatus {
             index: last_index,
             status: NodeStatus::Complete,
@@ -149,6 +145,26 @@ struct NodeVecState {
     watchers: Vec<mpsc::UnboundedSender<NodeVecDiff>>,
 }
 
+impl NodeVecState {
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    fn push(&mut self, node: Node) {
+        self.notify(|| NodeVecDiff::Push(NewNode::from(&node)));
+        self.values.push(node);
+    }
+
+    fn notify(&mut self, mut change: impl FnMut() -> NodeVecDiff) {
+        self.watchers
+            .retain(|watcher| watcher.unbounded_send(change()).is_ok());
+    }
+}
+
 #[derive(Default, Clone)]
 struct NodeVec(Arc<RwLock<NodeVecState>>);
 
@@ -165,7 +181,7 @@ impl NodeVec {
         let (sender, receiver) = mpsc::unbounded();
         let mut state = self.write();
 
-        if !state.values.is_empty() {
+        if !state.is_empty() {
             sender
                 .unbounded_send(NodeVecDiff::Replace(
                     state.values.iter().map(NewNode::from).collect(),
@@ -175,12 +191,6 @@ impl NodeVec {
 
         state.watchers.push(sender);
         receiver
-    }
-
-    fn notify(&self, mut change: impl FnMut() -> NodeVecDiff) {
-        self.write()
-            .watchers
-            .retain(|watcher| watcher.unbounded_send(change()).is_ok());
     }
 }
 
@@ -206,7 +216,7 @@ struct Node {
 
 impl<'a> From<&'a Node> for NewNode {
     fn from(value: &'a Node) -> Self {
-        let has_children = !value.sub_tree.read().values.is_empty();
+        let has_children = !value.sub_tree.read().is_empty();
         Self {
             id: value.id,
             name: value.name.clone(),
