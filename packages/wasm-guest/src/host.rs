@@ -14,7 +14,10 @@ unsafe extern "C" {
 
 #[cfg(not(target_family = "wasm"))]
 mod define {
+    #[no_mangle]
     unsafe extern "C" fn __codastraea_log(_data: u32, _len: u32) {}
+
+    #[no_mangle]
     unsafe extern "C" fn __codastraea_register_workflow_index(
         _module_data: u32,
         _module_len: u32,
@@ -24,7 +27,7 @@ mod define {
     ) {
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[no_mangle]
     unsafe extern "C" fn __codastraea_fn_begin(
         _module: u32,
         _module_len: u32,
@@ -32,7 +35,8 @@ mod define {
         _name_len: u32,
     ) {
     }
-    #[cfg(not(target_family = "wasm"))]
+
+    #[no_mangle]
     unsafe extern "C" fn __codastraea_fn_end(
         _module: u32,
         _module_len: u32,
