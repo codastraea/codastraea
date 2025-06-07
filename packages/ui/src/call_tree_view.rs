@@ -2,7 +2,7 @@ use std::{cell::OnceCell, pin::pin, rc::Rc};
 
 use codastraea_frontend::ServerConnection;
 use codastraea_server_api::{
-    CallTreeChildNodeId, NewNode, NodeStatus, NodeVecDiff, SrcSpan, WatchCallTree,
+    CallTreeChildNodeId, NewNode, NodeStatus, NodeType, NodeVecDiff, SrcSpan, WatchCallTree,
 };
 use derive_more::Into;
 use futures::StreamExt;
@@ -33,7 +33,7 @@ pub trait CallTreeActions: Clone + 'static {
 
 struct NodeData {
     id: CallTreeChildNodeId,
-    name: String,
+    typ: NodeType,
     status: Mutable<NodeStatus>,
     has_children: Mutable<bool>,
 }
@@ -42,7 +42,7 @@ impl NodeData {
     fn from_update(value: NewNode) -> Rc<Self> {
         Rc::new(Self {
             id: value.id,
-            name: value.name,
+            typ: value.typ,
             status: Mutable::new(value.status),
             has_children: Mutable::new(value.has_children),
         })
@@ -131,8 +131,11 @@ fn update_node_children(
 }
 
 fn node_contents(node: &NodeData, actions: impl CallTreeActions) -> tree::CustomItem {
-    // TODO: `Design::Emphasized` for control flow nodes
-    let design = Design::Default;
+    let design = if node.typ.is_control_flow() {
+        Design::Emphasized
+    } else {
+        Design::Default
+    };
     let run_status = &node.status;
     let icon = run_status.signal().map(|run_status| match run_status {
         NodeStatus::NotRun => icon::base::circle_task(),
@@ -157,7 +160,7 @@ fn node_contents(node: &NodeData, actions: impl CallTreeActions) -> tree::Custom
     );
     let button = button()
         .design(design)
-        .text(&node.name)
+        .text(node.typ.as_display_name())
         .icon(Sig(icon))
         .end_icon(icon::base::slim_arrow_down())
         .menu_opener(&menu)

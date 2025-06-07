@@ -124,7 +124,7 @@ struct Instrument;
 
 impl Fold for Instrument {
     fn fold_expr_if(&mut self, expr_if: ExprIf) -> ExprIf {
-        self.fold_expr_if_branch("if_condition", expr_if)
+        self.fold_expr_if_branch("if", expr_if)
     }
 }
 
@@ -144,7 +144,7 @@ impl Instrument {
             let else_expr = match *else_expr {
                 Expr::If(if_expr) => {
                     // This will instrument all child nodes
-                    Expr::If(self.fold_expr_if_branch("else_if_condition", if_expr))
+                    Expr::If(self.fold_expr_if_branch("else_if", if_expr))
                 }
                 expr => {
                     // We need to instrument child nodes, then trace

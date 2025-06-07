@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use anyhow::{ensure, Context, Result};
 use codastraea_server_api::{
-    CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeVecDiff,
+    CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeType, NodeVecDiff
 };
 use futures::{
     stream::{self, BoxStream},
@@ -72,20 +72,20 @@ impl Thread {
 
     // TODO: Error handling for `fn_begin` and `fn_end`. We should really display an
     // error node in the call tree.
-    pub fn fn_begin(&mut self, name: &str) {
-        self.try_fn_begin(name).expect("TODO: Handle errors")
+    pub fn begin(&mut self, typ: &NodeType) {
+        self.try_begin(typ).expect("TODO: Handle errors")
     }
 
-    pub fn fn_end(&mut self, name: &str) {
-        self.try_fn_end(name).expect("TODO: Handle errors")
+    pub fn end(&mut self, typ: &NodeType) {
+        self.try_end(typ).expect("TODO: Handle errors")
     }
 
-    fn try_fn_begin(&mut self, name: &str) -> Result<()> {
+    fn try_begin(&mut self, typ: &NodeType) -> Result<()> {
         let new_top = NodeVec::default();
         let id = self.node_store.insert(new_top.clone());
         let node = Node {
             id,
-            name: name.to_string(),
+            typ: typ.clone(),
             status: NodeStatus::Running,
             sub_tree: new_top.clone(),
         };
@@ -115,14 +115,14 @@ impl Thread {
         Ok(())
     }
 
-    fn try_fn_end(&mut self, name: &str) -> Result<()> {
+    fn try_end(&mut self, typ: &NodeType) -> Result<()> {
         self.pop()?;
         let mut nodes = self.top_mut()?.nodes.write();
         let current = nodes
             .values
             .last_mut()
             .context("There should be a node on the call stack")?;
-        ensure!(current.name == name);
+        ensure!(&current.typ == typ);
         ensure!(current.status == NodeStatus::Running);
         current.status = NodeStatus::Complete;
         let last_index = nodes
@@ -219,8 +219,7 @@ impl StackFrame {
 #[derive(Clone)]
 struct Node {
     id: CallTreeChildNodeId,
-    // TODO: This should be `node_type : Call name | If | Condition | Then | Else | ...`
-    name: String,
+    typ: NodeType,
     status: NodeStatus,
     sub_tree: NodeVec,
 }
@@ -230,7 +229,7 @@ impl<'a> From<&'a Node> for NewNode {
         let has_children = !value.sub_tree.read().is_empty();
         Self {
             id: value.id,
-            name: value.name.clone(),
+            typ: value.typ.clone(),
             status: value.status,
             has_children,
         }

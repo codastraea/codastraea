@@ -42,9 +42,47 @@ impl FnSubscription for WatchCallTree {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NewNode {
     pub id: CallTreeChildNodeId,
-    pub name: String,
+    pub typ: NodeType,
     pub status: NodeStatus,
     pub has_children: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum NodeType {
+    Call { name: String },
+    If,
+    Then,
+    ElseIf,
+    Else,
+}
+
+impl NodeType {
+    pub fn as_snake_str(&self) -> &str {
+        match self {
+            Self::Call { name } => name,
+            Self::If => "if",
+            Self::Then => "then",
+            Self::ElseIf => "else_if",
+            Self::Else => "else",
+        }
+    }
+
+    pub fn as_display_name(&self) -> &str {
+        match self {
+            Self::Call { name } => name,
+            Self::If => "if",
+            Self::Then => "then",
+            Self::ElseIf => "else if",
+            Self::Else => "else",
+        }
+    }
+
+    pub fn is_control_flow(&self) -> bool {
+        match self {
+            Self::Call { .. } => false,
+            Self::If | Self::Then | Self::ElseIf | Self::Else => true,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

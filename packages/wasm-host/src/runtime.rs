@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use clonelet::clone;
+use codastraea_server_api::NodeType;
 use wasmtime::{Caller, Engine, Extern, Instance, Linker, Module, ModuleExport, Store, TypedFunc};
 
 use crate::{
@@ -57,11 +58,17 @@ impl Container {
         define_register_workflow_index(workflow_indices.clone(), linker, memory_export)?;
         define_log(linker, memory_export)?;
         let thread = Arc::new(RwLock::new(Thread::empty()));
-        define_trace_fn("begin", Thread::fn_begin, &thread, linker, memory_export)?;
-        define_trace_fn("end", Thread::fn_end, &thread, linker, memory_export)?;
+        define_trace_fn("begin", Thread::begin, &thread, linker, memory_export)?;
+        define_trace_fn("end", Thread::end, &thread, linker, memory_export)?;
 
-        for event in ["if_condition", "else_if_condition", "then", "else"] {
-            define_trace(linker, event)?;
+        for node_type in [
+            NodeType::If,
+            NodeType::Then,
+            NodeType::ElseIf,
+            NodeType::Else,
+        ] {
+            define_trace("begin", Thread::begin, &thread, linker, &node_type)?;
+            define_trace("end", Thread::end, &thread, linker, &node_type)?;
         }
 
         let mut store = Store::new(&engine, ());
@@ -160,7 +167,7 @@ fn define_log(linker: &mut Linker<()>, memory_export: ModuleExport) -> Result<()
 
 fn define_trace_fn(
     fn_name: &'static str,
-    f: impl Fn(&mut Thread, &str) + Send + Sync + 'static,
+    f: impl Fn(&mut Thread, &NodeType) + Send + Sync + 'static,
     thread: &Arc<RwLock<Thread>>,
     linker: &mut Linker<()>,
     memory_export: ModuleExport,
@@ -178,7 +185,12 @@ fn define_trace_fn(
             let module = read_string(memory, module_data, module_len)?;
             let name = read_string(memory, name_data, name_len)?;
             println!("{fn_name} {module}::{name}");
-            f(&mut thread.write().unwrap(), name);
+            f(
+                &mut thread.write().unwrap(),
+                &NodeType::Call {
+                    name: name.to_string(),
+                },
+            );
             Ok(())
         },
     )?;
@@ -186,12 +198,21 @@ fn define_trace_fn(
     Ok(())
 }
 
-fn define_trace(linker: &mut Linker<()>, name: &'static str) -> Result<()> {
-    for event in ["begin", "end"] {
-        let ident = format!("__codastraea_{event}_{name}");
+fn define_trace(
+    event: &'static str,
+    f: impl Fn(&mut Thread, &NodeType) + Send + Sync + 'static,
+    thread: &Arc<RwLock<Thread>>,
+    linker: &mut Linker<()>,
+    node_type: &NodeType,
+) -> Result<()> {
+    let snake_name = node_type.as_snake_str();
+    let ident = format!("__codastraea_{event}_{snake_name}");
+    clone!(thread, node_type);
 
-        linker.func_wrap(LINKER_MODULE, &ident, move || println!("{event} {name}"))?;
-    }
+    linker.func_wrap(LINKER_MODULE, &ident, move || {
+        println!("{event} {}", node_type.as_snake_str());
+        f(&mut thread.write().unwrap(), &node_type);
+    })?;
 
     Ok(())
 }
