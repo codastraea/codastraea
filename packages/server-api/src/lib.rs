@@ -51,6 +51,7 @@ pub struct NewNode {
 pub enum NodeType {
     Call { name: String },
     If,
+    Condition,
     Then,
     ElseIf,
     Else,
@@ -61,6 +62,7 @@ impl NodeType {
         match self {
             Self::Call { name } => name,
             Self::If => "if",
+            Self::Condition => "condition",
             Self::Then => "then",
             Self::ElseIf => "else_if",
             Self::Else => "else",
@@ -71,6 +73,7 @@ impl NodeType {
         match self {
             Self::Call { name } => name,
             Self::If => "if",
+            Self::Condition => "condition",
             Self::Then => "then",
             Self::ElseIf => "else if",
             Self::Else => "else",
@@ -79,8 +82,8 @@ impl NodeType {
 
     pub fn is_control_flow(&self) -> bool {
         match self {
-            Self::Call { .. } => false,
-            Self::If | Self::Then | Self::ElseIf | Self::Else => true,
+            Self::Call { .. } | Self::Condition | Self::Then => false,
+            Self::If | Self::ElseIf | Self::Else => true,
         }
     }
 }

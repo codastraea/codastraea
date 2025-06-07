@@ -1,3 +1,4 @@
+use codastraea_server_api::NodeType;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
@@ -124,12 +125,12 @@ struct Instrument;
 
 impl Fold for Instrument {
     fn fold_expr_if(&mut self, expr_if: ExprIf) -> ExprIf {
-        self.fold_expr_if_branch("if", expr_if)
+        self.fold_expr_if_branch(&NodeType::If, expr_if)
     }
 }
 
 impl Instrument {
-    fn fold_expr_if_branch(&mut self, condition_name: &str, expr_if: ExprIf) -> ExprIf {
+    fn fold_expr_if_branch(&mut self, node_type: &NodeType, expr_if: ExprIf) -> ExprIf {
         let ExprIf {
             attrs,
             if_token,
@@ -138,18 +139,18 @@ impl Instrument {
             else_branch,
         } = expr_if;
 
-        let cond = self.fold_expr(*cond);
+        let cond = Self::traced(&NodeType::Condition, self.fold_expr(*cond));
         let then_branch = self.fold_block(then_branch);
         let else_branch = else_branch.map(|(else_token, else_expr)| {
             let else_expr = match *else_expr {
                 Expr::If(if_expr) => {
                     // This will instrument all child nodes
-                    Expr::If(self.fold_expr_if_branch("else_if", if_expr))
+                    Expr::If(self.fold_expr_if_branch(&NodeType::ElseIf, if_expr))
                 }
                 expr => {
                     // We need to instrument child nodes, then trace
                     let expr = self.fold_expr(expr);
-                    Self::traced("else", expr)
+                    Self::traced(&NodeType::Else, expr)
                 }
             };
 
@@ -159,13 +160,14 @@ impl Instrument {
         ExprIf {
             attrs,
             if_token,
-            cond: Box::new(Self::traced(condition_name, cond)),
-            then_branch: Self::traced("then", then_branch),
+            cond: Box::new(Self::traced(node_type, cond)),
+            then_branch: Self::traced(&NodeType::Then, then_branch),
             else_branch,
         }
     }
 
-    fn traced<T: Spanned + ToTokens + Parse>(trace_type: &str, item: T) -> T {
+    fn traced<T: Spanned + ToTokens + Parse>(node_type: &NodeType, item: T) -> T {
+        let trace_type = node_type.as_snake_str();
         let begin = Self::begin_ident(trace_type, item.span());
         let end = Self::end_ident(trace_type, item.span());
 

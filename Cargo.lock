@@ -666,6 +666,7 @@ dependencies = [
 name = "codastraea-wasm-guest-proc-macro"
 version = "0.0.0"
 dependencies = [
+ "codastraea-server-api",
  "proc-macro2",
  "quote",
  "syn 2.0.101",

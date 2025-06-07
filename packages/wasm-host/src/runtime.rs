@@ -63,6 +63,7 @@ impl Container {
 
         for node_type in [
             NodeType::If,
+            NodeType::Condition,
             NodeType::Then,
             NodeType::ElseIf,
             NodeType::Else,
