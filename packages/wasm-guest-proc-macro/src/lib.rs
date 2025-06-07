@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
     fold::{fold_block, Fold},
@@ -166,8 +166,8 @@ impl Instrument {
     }
 
     fn traced<T: Spanned + ToTokens + Parse>(trace_type: &str, item: T) -> T {
-        let begin = Self::begin_ident(trace_type, &item);
-        let end = Self::end_ident(trace_type, &item);
+        let begin = Self::begin_ident(trace_type, item.span());
+        let end = Self::end_ident(trace_type, item.span());
 
         parse_quote! {
             {
@@ -193,11 +193,11 @@ impl Instrument {
         }
     }
 
-    fn begin_ident(name: &str, item: &impl Spanned) -> Ident {
-        Ident::new(&format!("__codastraea_begin_{name}"), item.span())
+    fn begin_ident(name: &str, span: Span) -> Ident {
+        Ident::new(&format!("__codastraea_begin_{name}"), span)
     }
 
-    fn end_ident(name: &str, item: &impl Spanned) -> Ident {
-        Ident::new(&format!("__codastraea_end_{name}"), item.span())
+    fn end_ident(name: &str, span: Span) -> Ident {
+        Ident::new(&format!("__codastraea_end_{name}"), span)
     }
 }
