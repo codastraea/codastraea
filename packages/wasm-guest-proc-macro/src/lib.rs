@@ -6,7 +6,7 @@ use syn::{
     parse::Parse,
     parse_macro_input, parse_quote,
     spanned::Spanned,
-    Error, Expr, ExprIf, Ident, ItemFn, Result,
+    Block, Error, Expr, ExprBlock, ExprIf, Ident, ItemFn, Result,
 };
 
 #[proc_macro_attribute]
@@ -139,7 +139,7 @@ impl Instrument {
             else_branch,
         } = expr_if;
 
-        let cond = Self::traced(&NodeType::Condition, self.fold_expr(*cond));
+        let cond = self.fold_expr(*cond);
         let then_branch = self.fold_block(then_branch);
         let else_branch = else_branch.map(|(else_token, else_expr)| {
             let else_expr = match *else_expr {
@@ -150,43 +150,61 @@ impl Instrument {
                 expr => {
                     // We need to instrument child nodes, then trace
                     let expr = self.fold_expr(expr);
-                    Self::traced(&NodeType::Else, expr)
+                    Self::traced_expr(&NodeType::Else, expr)
                 }
             };
+
+            let trace_guard = Self::trace_guard(else_expr.span());
+            let else_expr = parse_quote! {{
+                drop(#trace_guard);
+                #else_expr
+            }};
 
             (else_token, Box::new(else_expr))
         });
 
-        ExprIf {
-            attrs,
-            if_token,
-            cond: Box::new(Self::traced(node_type, cond)),
-            then_branch: Self::traced(&NodeType::Then, then_branch),
-            else_branch,
+        let if_expr = Self::traced(
+            node_type,
+            ExprIf {
+                attrs,
+                if_token,
+                cond: Box::new(Self::traced_expr(&NodeType::Condition, cond)),
+                then_branch: Self::traced(&NodeType::Then, then_branch),
+                else_branch,
+            },
+        );
+
+        parse_quote! {
+            if true {
+                (#if_expr)
+            }
         }
     }
 
-    fn traced<T: Spanned + ToTokens + Parse>(node_type: &NodeType, item: T) -> T {
+    fn traced_expr<T: Spanned + ToTokens + Parse>(node_type: &NodeType, item: T) -> Expr {
+        Expr::Block(ExprBlock {
+            attrs: Vec::new(),
+            label: None,
+            block: Self::traced(node_type, item),
+        })
+    }
+
+    fn traced<T: Spanned + ToTokens + Parse>(node_type: &NodeType, item: T) -> Block {
         let trace_type = node_type.as_snake_str();
-        let begin = Self::begin_ident(trace_type, item.span());
-        let end = Self::end_ident(trace_type, item.span());
+        let span = item.span();
+        let begin = Ident::new(&format!("__codastraea_begin_{trace_type}"), span);
+        let end = Ident::new(&format!("__codastraea_end_{trace_type}"), span);
+        let trace_guard = Self::trace_guard(span);
 
         parse_quote! {
             {
-                #[cfg(target_family = "wasm")]
                 extern "C" {
                     fn #begin();
                     fn #end();
                 }
 
-                #[cfg(not(target_family = "wasm"))]
-                unsafe extern "C" fn #begin() {}
-
-                #[cfg(not(target_family = "wasm"))]
-                unsafe extern "C" fn #end() {}
-
                 unsafe{ #begin() }
-                let __codastraea_trace = ::codastraea_wasm_guest::OnDrop::new(
+                let #trace_guard = ::codastraea_wasm_guest::OnDrop::new(
                     || unsafe { #end() }
                 );
 
@@ -195,11 +213,7 @@ impl Instrument {
         }
     }
 
-    fn begin_ident(name: &str, span: Span) -> Ident {
-        Ident::new(&format!("__codastraea_begin_{name}"), span)
-    }
-
-    fn end_ident(name: &str, span: Span) -> Ident {
-        Ident::new(&format!("__codastraea_end_{name}"), span)
+    fn trace_guard(span: Span) -> Ident {
+        Ident::new("__codastraea_trace", span)
     }
 }
