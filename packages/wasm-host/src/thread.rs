@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use anyhow::{ensure, Context, Result};
 use codastraea_server_api::{
-    CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeType, NodeVecDiff
+    CallTreeChildNodeId, CallTreeNodeId, NewNode, NodeStatus, NodeType, NodeVecDiff,
 };
 use futures::{
     stream::{self, BoxStream},
